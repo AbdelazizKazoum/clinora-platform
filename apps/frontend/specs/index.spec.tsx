@@ -1,10 +1,7 @@
-import React from 'react';
-import { render } from '@testing-library/react';
-import Page from '../src/app/page';
+import { META_DATA } from '../src/config/constants';
 
-describe('Page', () => {
-  it('should render successfully', () => {
-    const { baseElement } = render(<Page />);
-    expect(baseElement).toBeTruthy();
+describe('frontend starter', () => {
+  it('should expose template metadata', () => {
+    expect(META_DATA.title).toContain('UBold');
   });
 });

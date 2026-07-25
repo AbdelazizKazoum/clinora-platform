@@ -3,8 +3,20 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@tanstack/table-core": "^8.21.3",
+    "@tanstack/react-table": "^8.21.3",
+    "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
+    "clsx": "^2.1.1",
+    "lodash": "^4.17.21",
     "next": "~16.1.6",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-bootstrap": "^2.10.10",
+    "react-chartjs-2": "^5.3.1",
+    "react-countup": "^6.5.3",
+    "react-dom": "^19.0.0",
+    "simplebar-react": "^3.3.2",
+    "usehooks-ts": "^3.1.1"
   }
 }

@@ -1,0 +1,36 @@
+{
+  "name": "ubold",
+  "version": "8.0.0",
+  "description": "UBold is a modern, responsive admin dashboard available on ThemeForest. Ideal for building CRM, CMS, project management tools, and custom web applications with a clean UI, flexible layouts, and rich features.",
+  "author": "Coderthemes",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "format": "prettier --write './src/**/*.{ts,tsx,js,jsx}'"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.3",
+    "prettier": "^3.6.2",
+    "sass": "1.77.6"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@tanstack/react-table": "^8.21.3",
+    "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
+    "clsx": "^2.1.1",
+    "lodash": "^4.17.21",
+    "next": "16.2.3",
+    "react": "^19.2.5",
+    "react-bootstrap": "^2.10.10",
+    "react-chartjs-2": "^5.3.1",
+    "react-countup": "^6.5.3",
+    "react-dom": "^19.2.5",
+    "simplebar-react": "^3.3.2",
+    "usehooks-ts": "^3.1.1"
+  }
+}
