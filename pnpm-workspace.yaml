@@ -1,2 +1,11 @@
+packages:
+  - 'apps/**'
+  - 'libs/**'
+
 allowBuilds:
-  nx: set this to true or false
+  nx: true
+  '@parcel/watcher': true
+  less: true
+  sharp: true
+  unrs-resolver: true
+  '@swc/core': true
