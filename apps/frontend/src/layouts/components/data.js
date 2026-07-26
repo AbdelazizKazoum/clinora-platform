@@ -6,9 +6,9 @@ export const menuItems = [
     'isTitle': true,
     'children': [
       {
-        'url': '/dashboard/ecommerce',
-        'slug': 'pages:dashboard-ecommerce',
-        'label': 'Ecommerce',
+        'url': '/dashboard',
+        'slug': 'pages:dashboard',
+        'label': 'Dashboard',
         'icon': 'layout-dashboard',
       },
     ],

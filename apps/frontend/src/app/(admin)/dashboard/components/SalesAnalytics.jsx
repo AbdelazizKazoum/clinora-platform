@@ -10,7 +10,7 @@ const SalesAnalytics = () => {
   return (
     <div className="px-4 py-3">
       <div className="d-flex justify-content-between mb-3">
-        <CardTitle as="h4">Sales Analytics</CardTitle>
+        <CardTitle as="h4">Appointment Analytics</CardTitle>
         <Link href="" className="link-reset text-decoration-underline fw-semibold link-offset-3">
           View Reports <Icon icon="arrow-right"></Icon>
         </Link>

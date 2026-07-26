@@ -6,7 +6,7 @@ const nextConfig = {
     return [
       {
         source: '/',
-        destination: '/dashboard/ecommerce',
+        destination: '/dashboard',
         permanent: false,
       },
     ];

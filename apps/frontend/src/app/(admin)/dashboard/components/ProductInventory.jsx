@@ -1,5 +1,6 @@
 'use client'
 
+import Rating from '@/components/Rating'
 import DataTable from '@/components/table/DataTable'
 import TablePagination from '@/components/table/TablePagination'
 import Icon from '@/components/wrappers/Icon'
@@ -9,59 +10,67 @@ import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getPagination
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Button, Card, CardFooter, CardHeader, CardTitle, Dropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'react-bootstrap'
-import { orderData } from './data'
+import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Dropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'react-bootstrap'
+import { productData } from './data'
 const columnHelper = createColumnHelper()
-const RecentOrders = () => {
-  const [data] = useState(orderData)
+const ProductInventory = () => {
+  const [data] = useState(productData)
   const [sorting, setSorting] = useState([])
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 7,
   })
   const columns = [
-    columnHelper.accessor('userImage', {
+    columnHelper.accessor('image', {
       header: '',
       cell: ({ row }) => (
-        <div className="d-flex align-items-center">
-          <Image src={row.original.userImage} className="avatar-sm rounded-circle me-2" alt={row.original.userName} />
-          <div>
-            <span className="text-muted fs-xs">{row.original.userName}</span>
+        <>
+          <div className="d-flex align-items-center">
+            <Image src={row.original.image} className="avatar-sm rounded-circle me-2" alt={row.original.name} />
+            <div>
+              <span className="text-muted fs-xs">{row.original.category}</span>
 
-            <h5 className="fs-base mb-0">
-              <Link href="/orders/1" className="text-body">
-                #{row.original.id}
-              </Link>
-            </h5>
+              <h5 className="fs-base mb-0">
+                <Link href="" className="text-body">
+                  {row.original.name}
+                </Link>
+              </h5>
+            </div>
           </div>
-        </div>
-      ),
-      enableSorting: false,
-    }),
-    columnHelper.accessor('userName', {
-      header: 'userName',
-      cell: ({ row }) => (
-        <>
-          <span className="text-muted fs-xs">Product</span>
-          <h5 className="fs-base mb-0 fw-normal">{row.original.product}</h5>
         </>
       ),
     }),
-    columnHelper.accessor('date', {
-      header: 'Date',
+    columnHelper.accessor('name', {
+      header: 'Supply',
       cell: ({ row }) => (
         <>
-          <span className="text-muted fs-xs">Date</span>
-          <h5 className="fs-base mb-0 fw-normal">{row.original.date}</h5>
+          <span className="text-muted fs-xs">Stock</span>
+          <h5 className="fs-base mb-0 fw-normal">{row.original.stock}</h5>
         </>
       ),
     }),
-    columnHelper.accessor('amount', {
-      header: 'Amount',
+    columnHelper.accessor('price', {
+      header: 'Price',
       cell: ({ row }) => (
         <>
-          <span className="text-muted fs-xs">Amount</span>
-          <h5 className="fs-base mb-0 fw-normal">{row.original.amount}</h5>
+          <span className="text-muted fs-xs">Unit Cost</span>
+          <h5 className="fs-base mb-0 fw-normal">{row.original.price}</h5>
+        </>
+      ),
+    }),
+    columnHelper.accessor('ratings', {
+      header: 'Quantity',
+      cell: ({ row }) => (
+        <>
+          <span className="text-muted fs-xs">Usage</span>
+          <h5 className="fs-base mb-0 fw-normal">
+            <Rating rating={row.original.ratings} className={'d-inline-flex align-items-center gap-1'} />
+            <span className="ms-1">
+              <Link href="" className="link-reset fw-semibold">
+                ({row.original.reviews})
+              </Link>
+            </span>
+          </h5>
         </>
       ),
     }),
@@ -69,7 +78,7 @@ const RecentOrders = () => {
       header: 'Status',
       cell: ({ row }) => (
         <>
-          <span className="text-muted fs-xs ">Status</span>
+          <span className="text-muted fs-xs">Status</span>
           <h5 className="fs-base mb-0 fw-normal">
             <IconifyIcon icon="tabler:circle-filled" className={`fs-xs text-${row.original.statusVariant}`} /> {row.original.status}
           </h5>
@@ -86,7 +95,7 @@ const RecentOrders = () => {
           </DropdownToggle>
           <DropdownMenu align="end">
             <DropdownItem>View Details</DropdownItem>
-            <DropdownItem>Cancel Order</DropdownItem>
+            <DropdownItem>Archive Item</DropdownItem>
           </DropdownMenu>
         </Dropdown>
       ),
@@ -117,24 +126,28 @@ const RecentOrders = () => {
     <Card>
       <CardHeader className="justify-content-between align-items-center border-dashed">
         <CardTitle as="h4" className="mb-0">
-          Recent Orders
+          Clinic Inventory
         </CardTitle>
         <div className="d-flex gap-2">
-          <Button href="" variant="soft-secondary" size="sm">
-            <IconifyIcon icon="tabler:plus" className="me-1" /> Add Order
-          </Button>
+          <Link href="" passHref>
+            <Button variant="soft-secondary" size="sm">
+              <IconifyIcon icon="tabler:plus" className="me-1" /> Add Item
+            </Button>
+          </Link>
           <Button href="" variant="primary" size="sm">
             <IconifyIcon icon="tabler:file-export" className="me-1" /> Export CSV
           </Button>
         </div>
       </CardHeader>
-      <DataTable table={table} emptyMessage="No products found" className="table-centered table-hover" showHeaders={false} />
+      <CardBody className="p-0">
+        <DataTable table={table} emptyMessage="No inventory items found" className=" table-centered table-custom table-sm table-nowrap table-hover mb-0" showHeaders={false} />
+      </CardBody>
       <CardFooter className="border-0">
         <TablePagination
           totalItems={totalItems}
           start={start}
           end={end}
-          itemsName="orders"
+          itemsName="items"
           showInfo
           previousPage={table.previousPage}
           canPreviousPage={table.getCanPreviousPage()}
@@ -148,4 +161,4 @@ const RecentOrders = () => {
     </Card>
   )
 }
-export default RecentOrders
+export default ProductInventory

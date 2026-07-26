@@ -7,12 +7,12 @@ import RecentOrders from './components/RecentOrders'
 import SalesAnalytics from './components/SalesAnalytics'
 import TotalSales from './components/TotalSales'
 export const metadata = {
-  title: 'eCommerce Dashboard',
+  title: 'Clinora Dashboard',
 }
 const Page = () => {
   return (
     <>
-      <PageBreadcrumb title="eCommerce" subtitle="Dashboards" />
+      <PageBreadcrumb title="Clinic Dashboard" subtitle="Clinora" />
 
       <Row className="row-cols-xxl-4 row-cols-md-2 row-cols-1">
         {stateData.map((item, index) => (

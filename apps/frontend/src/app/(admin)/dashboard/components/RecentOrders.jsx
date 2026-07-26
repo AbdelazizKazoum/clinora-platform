@@ -1,6 +1,5 @@
 'use client'
 
-import Rating from '@/components/Rating'
 import DataTable from '@/components/table/DataTable'
 import TablePagination from '@/components/table/TablePagination'
 import Icon from '@/components/wrappers/Icon'
@@ -10,67 +9,59 @@ import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getPagination
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Dropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'react-bootstrap'
-import { productData } from './data'
+import { Button, Card, CardFooter, CardHeader, CardTitle, Dropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'react-bootstrap'
+import { orderData } from './data'
 const columnHelper = createColumnHelper()
-const ProductInventory = () => {
-  const [data] = useState(productData)
+const RecentOrders = () => {
+  const [data] = useState(orderData)
   const [sorting, setSorting] = useState([])
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 7,
   })
   const columns = [
-    columnHelper.accessor('image', {
+    columnHelper.accessor('userImage', {
       header: '',
       cell: ({ row }) => (
-        <>
-          <div className="d-flex align-items-center">
-            <Image src={row.original.image} className="avatar-sm rounded-circle me-2" alt={row.original.name} />
-            <div>
-              <span className="text-muted fs-xs">{row.original.category}</span>
+        <div className="d-flex align-items-center">
+          <Image src={row.original.userImage} className="avatar-sm rounded-circle me-2" alt={row.original.userName} />
+          <div>
+            <span className="text-muted fs-xs">{row.original.userName}</span>
 
-              <h5 className="fs-base mb-0">
-                <Link href="/apps/ecommerce/product-add" className="text-body">
-                  {row.original.name}
-                </Link>
-              </h5>
-            </div>
-          </div>
-        </>
-      ),
-    }),
-    columnHelper.accessor('name', {
-      header: 'Product',
-      cell: ({ row }) => (
-        <>
-          <span className="text-muted fs-xs">Stock</span>
-          <h5 className="fs-base mb-0 fw-normal">{row.original.stock}</h5>
-        </>
-      ),
-    }),
-    columnHelper.accessor('price', {
-      header: 'Price',
-      cell: ({ row }) => (
-        <>
-          <span className="text-muted fs-xs">Price</span>
-          <h5 className="fs-base mb-0 fw-normal">{row.original.price}</h5>
-        </>
-      ),
-    }),
-    columnHelper.accessor('ratings', {
-      header: 'Quantity',
-      cell: ({ row }) => (
-        <>
-          <span className="text-muted fs-xs">Ratings</span>
-          <h5 className="fs-base mb-0 fw-normal">
-            <Rating rating={row.original.ratings} className={'d-inline-flex align-items-center gap-1'} />
-            <span className="ms-1">
-              <Link href="/apps/ecommerce/reviews" className="link-reset fw-semibold">
-                ({row.original.reviews})
+            <h5 className="fs-base mb-0">
+              <Link href="" className="text-body">
+                #{row.original.id}
               </Link>
-            </span>
-          </h5>
+            </h5>
+          </div>
+        </div>
+      ),
+      enableSorting: false,
+    }),
+    columnHelper.accessor('userName', {
+      header: 'userName',
+      cell: ({ row }) => (
+        <>
+          <span className="text-muted fs-xs">Treatment</span>
+          <h5 className="fs-base mb-0 fw-normal">{row.original.product}</h5>
+        </>
+      ),
+    }),
+    columnHelper.accessor('date', {
+      header: 'Date',
+      cell: ({ row }) => (
+        <>
+          <span className="text-muted fs-xs">Date</span>
+          <h5 className="fs-base mb-0 fw-normal">{row.original.date}</h5>
+        </>
+      ),
+    }),
+    columnHelper.accessor('amount', {
+      header: 'Amount',
+      cell: ({ row }) => (
+        <>
+          <span className="text-muted fs-xs">Fee</span>
+          <h5 className="fs-base mb-0 fw-normal">{row.original.amount}</h5>
         </>
       ),
     }),
@@ -78,7 +69,7 @@ const ProductInventory = () => {
       header: 'Status',
       cell: ({ row }) => (
         <>
-          <span className="text-muted fs-xs">Status</span>
+          <span className="text-muted fs-xs ">Status</span>
           <h5 className="fs-base mb-0 fw-normal">
             <IconifyIcon icon="tabler:circle-filled" className={`fs-xs text-${row.original.statusVariant}`} /> {row.original.status}
           </h5>
@@ -95,7 +86,7 @@ const ProductInventory = () => {
           </DropdownToggle>
           <DropdownMenu align="end">
             <DropdownItem>View Details</DropdownItem>
-            <DropdownItem>Cancel Order</DropdownItem>
+            <DropdownItem>Cancel Appointment</DropdownItem>
           </DropdownMenu>
         </Dropdown>
       ),
@@ -126,28 +117,24 @@ const ProductInventory = () => {
     <Card>
       <CardHeader className="justify-content-between align-items-center border-dashed">
         <CardTitle as="h4" className="mb-0">
-          Product Inventory
+          Recent Appointments
         </CardTitle>
         <div className="d-flex gap-2">
-          <Link href="/apps/ecommerce/product-add" passHref>
-            <Button variant="soft-secondary" size="sm">
-              <IconifyIcon icon="tabler:plus" className="me-1" /> Add Product
-            </Button>
-          </Link>
+          <Button href="" variant="soft-secondary" size="sm">
+            <IconifyIcon icon="tabler:plus" className="me-1" /> Add Appointment
+          </Button>
           <Button href="" variant="primary" size="sm">
             <IconifyIcon icon="tabler:file-export" className="me-1" /> Export CSV
           </Button>
         </div>
       </CardHeader>
-      <CardBody className="p-0">
-        <DataTable table={table} emptyMessage="No products found" className=" table-centered table-custom table-sm table-nowrap table-hover mb-0" showHeaders={false} />
-      </CardBody>
+      <DataTable table={table} emptyMessage="No appointments found" className="table-centered table-hover" showHeaders={false} />
       <CardFooter className="border-0">
         <TablePagination
           totalItems={totalItems}
           start={start}
           end={end}
-          itemsName="products"
+          itemsName="appointments"
           showInfo
           previousPage={table.previousPage}
           canPreviousPage={table.getCanPreviousPage()}
@@ -161,4 +148,4 @@ const ProductInventory = () => {
     </Card>
   )
 }
-export default ProductInventory
+export default RecentOrders
