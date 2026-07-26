@@ -1,0 +1,8 @@
+{
+  "name": "contracts-clinic",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/contracts/clinic/src",
+  "projectType": "library",
+  "tags": ["platform:contracts", "type:lib", "scope:clinic"],
+  "targets": {}
+}

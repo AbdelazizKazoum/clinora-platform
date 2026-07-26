@@ -107,6 +107,49 @@ services:
     networks:
       - clinora-backend
 
+  clinic-service:
+    build:
+      context: ../..
+      dockerfile: apps/backend/services/clinic-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      GRPC_PORT: 5002
+      AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
+      CLINIC_PROTO_PATH: /workspace/libs/contracts/clinic/src/lib/clinic.proto
+      AUTH_SERVICE_GRPC_URL: auth-service:5001
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: clinora_clinic
+      DB_PASSWORD: clinora_clinic_local_password
+      DB_NAME: clinora_clinic
+      DB_MIGRATIONS_RUN: "true"
+    ports:
+      - "127.0.0.1:3003:3003"
+      - "127.0.0.1:5002:5002"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3003/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - clinora-backend
+
   api-gateway:
     build:
       context: ../..

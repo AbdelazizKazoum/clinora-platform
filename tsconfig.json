@@ -29,6 +29,12 @@
     },
     {
       "path": "./libs/contracts/patient"
+    },
+    {
+      "path": "./apps/backend/services/clinic-service"
+    },
+    {
+      "path": "./libs/contracts/clinic"
     }
   ]
 }
