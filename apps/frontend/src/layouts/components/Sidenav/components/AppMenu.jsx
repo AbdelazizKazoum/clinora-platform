@@ -11,8 +11,8 @@ const MenuItemWithChildren = ({ item, openMenuKey, setOpenMenuKey, level = 0 }) 
   const isTopLevel = level === 0
   const [localOpen, setLocalOpen] = useState(false)
   const [didAutoOpen, setDidAutoOpen] = useState(false)
-  const isChildActive = useCallback((children = []) => children.some((child) => (child.url && pathname.startsWith(child.url)) || (child.children && isChildActive(child.children))), [pathname])
-  const isActive = (item.url && pathname.startsWith(item.url)) || isChildActive(item.children)
+  const isChildActive = useCallback((children = []) => children.some((child) => (child.url && pathname === child.url) || (child.children && isChildActive(child.children))), [pathname])
+  const isActive = (item.url && pathname === item.url) || isChildActive(item.children)
   const isOpen = isTopLevel ? openMenuKey === item.slug : localOpen
   useEffect(() => {
     if (isActive && !didAutoOpen) {
@@ -62,7 +62,7 @@ const MenuItemWithChildren = ({ item, openMenuKey, setOpenMenuKey, level = 0 }) 
 const MenuItem = ({ item, level = 0 }) => {
   const pathname = usePathname()
   const isTopLevel = level === 0
-  const isActive = item.url && pathname.startsWith(item.url)
+  const isActive = item.url && pathname === item.url
   return (
     <li className={clsx('side-nav-item', isActive && 'active')}>
       <Link href={item.url ?? '/'} className={clsx('side-nav-link', isActive && 'active', item.isDisabled && 'disabled', item.isSpecial && 'special-menu')}>
