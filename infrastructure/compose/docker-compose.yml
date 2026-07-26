@@ -1,24 +1,22 @@
-name: clinora-auth
+name: clinora-backend
 
 services:
-  auth-db:
+  db:
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: clinora_auth
-      MYSQL_USER: clinora
-      MYSQL_PASSWORD: clinora_local_password
       MYSQL_ROOT_PASSWORD: clinora_local_root_password
       TZ: UTC
     ports:
       - "127.0.0.1:3306:3306"
     volumes:
-      - auth_db_data:/var/lib/mysql
+      - db_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h 127.0.0.1 -uclinora -pclinora_local_password --silent",
+          "mysqladmin ping -h 127.0.0.1 -uroot -pclinora_local_root_password --silent",
         ]
       interval: 5s
       timeout: 5s
@@ -37,10 +35,10 @@ services:
       PORT: 3002
       GRPC_PORT: 5001
       AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
-      DB_HOST: auth-db
+      DB_HOST: db
       DB_PORT: 3306
-      DB_USERNAME: clinora
-      DB_PASSWORD: clinora_local_password
+      DB_USERNAME: clinora_auth
+      DB_PASSWORD: clinora_auth_local_password
       DB_NAME: clinora_auth
       DB_MIGRATIONS_RUN: "true"
       JWT_SECRET: local-access-secret-change-before-production-123456
@@ -65,7 +63,46 @@ services:
       retries: 20
       start_period: 15s
     depends_on:
-      auth-db:
+      db:
+        condition: service_healthy
+    networks:
+      - clinora-backend
+
+  patient-service:
+    build:
+      context: ../..
+      dockerfile: apps/backend/services/patient-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      GRPC_PORT: 5003
+      PATIENT_PROTO_PATH: /workspace/libs/contracts/patient/src/lib/patient.proto
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: clinora_patient
+      DB_PASSWORD: clinora_patient_local_password
+      DB_NAME: clinora_patient
+      DB_MIGRATIONS_RUN: "true"
+    ports:
+      - "127.0.0.1:3004:3004"
+      - "127.0.0.1:5003:5003"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3004/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    depends_on:
+      db:
         condition: service_healthy
     networks:
       - clinora-backend
@@ -109,4 +146,4 @@ networks:
     driver: bridge
 
 volumes:
-  auth_db_data:
+  db_data:

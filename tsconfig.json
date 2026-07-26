@@ -23,6 +23,12 @@
     },
     {
       "path": "./libs/contracts/auth"
+    },
+    {
+      "path": "./apps/backend/services/patient-service"
+    },
+    {
+      "path": "./libs/contracts/patient"
     }
   ]
 }

@@ -1,0 +1,9 @@
+{
+  "name": "contracts-patient",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/contracts/patient/src",
+  "projectType": "library",
+  "tags": ["platform:contracts", "type:lib", "scope:patient"],
+  "// targets": "to see all targets run: nx show project contracts-patient --web",
+  "targets": {}
+}
