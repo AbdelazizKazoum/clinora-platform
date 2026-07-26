@@ -1,16 +1,14 @@
-import { apiClient, setApiAccessToken } from '@/lib/api';
-import { mapAuthSessionFromDto } from '../../model/auth.mapper';
+import { ApiError } from '@/lib/api';
+import { signIn } from 'next-auth/react';
 import type { LoginCommand } from '../../model';
-import type { AuthResponseDto } from '../dto/auth-response.dto';
 
-export const login = async (command: LoginCommand) => {
-  const response = await apiClient.post<AuthResponseDto>(
-    '/auth/login',
-    command,
-  );
-  const session = mapAuthSessionFromDto(response.data);
+export const login = async (command: LoginCommand): Promise<void> => {
+  const result = await signIn('credentials', {
+    ...command,
+    redirect: false,
+  });
 
-  setApiAccessToken(session.accessToken);
-
-  return session;
+  if (!result || result.error) {
+    throw new ApiError('Invalid email, password, or clinic', 401);
+  }
 };

@@ -623,6 +623,41 @@ A route slug or browser-provided clinic ID must never be trusted for authorizati
 
 The frontend may pass an effective clinic ID as part of a request when required, but the backend remains responsible for validating access.
 
+## Authentication And BFF
+
+Clinora uses Auth.js with the credentials provider to establish the frontend
+session against the API Gateway.
+
+The authentication flow is:
+
+```txt
+Login form
+  -> Auth.js credentials route
+  -> API Gateway auth endpoint
+  -> encrypted HttpOnly Auth.js session cookie
+  -> same-origin BFF route
+  -> API Gateway with a server-injected bearer token
+```
+
+Access and refresh tokens are server-only session data. They must not be
+returned by the public Auth.js session callback, stored in Web Storage, exposed
+through React state, or attached by browser-side Axios interceptors.
+
+The shared Axios client calls `/api/bff`. The BFF reads the encrypted Auth.js
+session, injects the access token for the gateway request, refreshes expired
+tokens server-side, and updates the encrypted session. Gateway `Set-Cookie`
+headers and authentication endpoints must not be forwarded through the generic
+BFF proxy.
+
+Required frontend environment variables:
+
+```txt
+AUTH_SECRET
+API_GATEWAY_URL
+API_GATEWAY_API_PREFIX
+NEXT_PUBLIC_DEFAULT_CLINIC_ID
+```
+
 ## Error Handling
 
 API errors should be normalized in shared infrastructure.

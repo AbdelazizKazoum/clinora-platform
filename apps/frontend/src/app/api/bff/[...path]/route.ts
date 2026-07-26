@@ -1,11 +1,28 @@
-import axios, { type AxiosRequestConfig } from 'axios';
+import { updateBackendAuthSession } from '@/auth';
+import { refreshGatewaySession } from '@/features/auth/api/server/gateway-auth';
+import { buildGatewayUrl } from '@/lib/api/server/gateway-url';
+import {
+  getServerAuthToken,
+  hasBackendTokens,
+  type BackendTokenUpdate,
+} from '@/lib/auth/auth-session';
+import axios, {
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-const DEFAULT_GATEWAY_URL = 'http://localhost:3001';
-const DEFAULT_GATEWAY_API_PREFIX = '/api/v1';
-const BFF_REFRESH_PATH = '/api/bff/auth/refresh';
+const ACCESS_TOKEN_REFRESH_WINDOW_MS = 30_000;
+const FORWARDED_REQUEST_HEADERS = [
+  'accept',
+  'accept-language',
+  'content-type',
+  'if-match',
+  'if-none-match',
+  'x-request-id',
+] as const;
 
 interface RouteContext {
   params: Promise<{
@@ -13,42 +30,24 @@ interface RouteContext {
   }>;
 }
 
-const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
-
-const buildGatewayUrl = (path: string[], requestUrl: string): string => {
-  const gatewayUrl = process.env.API_GATEWAY_URL ?? DEFAULT_GATEWAY_URL;
-  const gatewayApiPrefix =
-    process.env.API_GATEWAY_API_PREFIX ?? DEFAULT_GATEWAY_API_PREFIX;
-  const targetPath = [
-    trimSlashes(gatewayApiPrefix),
-    ...path.map(trimSlashes).filter(Boolean),
-  ].join('/');
-  const targetUrl = new URL(targetPath, `${gatewayUrl.replace(/\/+$/g, '')}/`);
-  targetUrl.search = new URL(requestUrl).search;
-
-  return targetUrl.toString();
-};
-
-const createProxyHeaders = (request: NextRequest): Record<string, string> => {
+const createProxyHeaders = (
+  request: NextRequest,
+  accessToken: string,
+): Record<string, string> => {
   const headers: Record<string, string> = {};
 
-  request.headers.forEach((value, key) => {
-    const normalizedKey = key.toLowerCase();
+  FORWARDED_REQUEST_HEADERS.forEach((key) => {
+    const value = request.headers.get(key);
 
-    if (
-      !['connection', 'content-length', 'host', 'transfer-encoding'].includes(
-        normalizedKey,
-      )
-    ) {
+    if (value) {
       headers[key] = value;
     }
   });
 
+  headers.Authorization = `Bearer ${accessToken}`;
+
   return headers;
 };
-
-const rewriteSetCookiePath = (cookie: string): string =>
-  cookie.replace(/Path=\/api\/v1\/auth\/refresh/gi, `Path=${BFF_REFRESH_PATH}`);
 
 const createResponseHeaders = (
   gatewayHeaders: Record<string, unknown>,
@@ -81,21 +80,6 @@ const createResponseHeaders = (
   return headers;
 };
 
-const appendSetCookieHeaders = (
-  response: NextResponse,
-  setCookie: string | string[] | undefined,
-): void => {
-  if (!setCookie) {
-    return;
-  }
-
-  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
-
-  cookies.forEach((cookie) => {
-    response.headers.append('set-cookie', rewriteSetCookiePath(cookie));
-  });
-};
-
 const readRequestBody = async (
   request: NextRequest,
 ): Promise<ArrayBuffer | undefined> => {
@@ -106,38 +90,105 @@ const readRequestBody = async (
   return request.arrayBuffer();
 };
 
+const sendGatewayRequest = async (
+  request: NextRequest,
+  path: string[],
+  body: ArrayBuffer | undefined,
+  accessToken: string,
+): Promise<AxiosResponse<ArrayBuffer>> => {
+  const config: AxiosRequestConfig = {
+    data: body,
+    headers: createProxyHeaders(request, accessToken),
+    maxRedirects: 0,
+    method: request.method,
+    responseType: 'arraybuffer',
+    transformResponse: [(data) => data],
+    url: buildGatewayUrl(path, new URL(request.url).search),
+    validateStatus: () => true,
+  };
+
+  return axios.request<ArrayBuffer>(config);
+};
+
+const refreshSession = async (
+  refreshToken: string,
+): Promise<BackendTokenUpdate> => {
+  const update = await refreshGatewaySession(refreshToken);
+  await updateBackendAuthSession(update);
+
+  return update;
+};
+
 async function proxyRequest(
   request: NextRequest,
   context: RouteContext,
 ): Promise<NextResponse> {
   const { path = [] } = await context.params;
-  const config: AxiosRequestConfig = {
-    data: await readRequestBody(request),
-    headers: createProxyHeaders(request),
-    maxRedirects: 0,
-    method: request.method,
-    responseType: 'arraybuffer',
-    transformResponse: [(data) => data],
-    url: buildGatewayUrl(path, request.url),
-    validateStatus: () => true,
-  };
+
+  if (path[0] === 'auth') {
+    return NextResponse.json(
+      { message: 'Auth endpoints are not available through the BFF proxy' },
+      { status: 404 },
+    );
+  }
 
   try {
-    const gatewayResponse = await axios.request<ArrayBuffer>(config);
-    const response = new NextResponse(gatewayResponse.data, {
+    const authToken = await getServerAuthToken(request);
+
+    if (!hasBackendTokens(authToken) || authToken.authError) {
+      return NextResponse.json(
+        { message: 'Authentication is required', statusCode: 401 },
+        { status: 401 },
+      );
+    }
+
+    const body = await readRequestBody(request);
+    let accessToken = authToken.accessToken;
+    let refreshToken = authToken.refreshToken;
+    let refreshed = false;
+
+    if (
+      authToken.accessTokenExpiresAt <=
+      Date.now() + ACCESS_TOKEN_REFRESH_WINDOW_MS
+    ) {
+      const update = await refreshSession(refreshToken);
+      accessToken = update.accessToken;
+      refreshToken = update.refreshToken;
+      refreshed = true;
+    }
+
+    let gatewayResponse = await sendGatewayRequest(
+      request,
+      path,
+      body,
+      accessToken,
+    );
+
+    if (gatewayResponse.status === 401 && !refreshed) {
+      const update = await refreshSession(refreshToken);
+      gatewayResponse = await sendGatewayRequest(
+        request,
+        path,
+        body,
+        update.accessToken,
+      );
+    }
+
+    return new NextResponse(gatewayResponse.data, {
       headers: createResponseHeaders(
         gatewayResponse.headers as Record<string, unknown>,
       ),
       status: gatewayResponse.status,
       statusText: gatewayResponse.statusText,
     });
-    appendSetCookieHeaders(
-      response,
-      gatewayResponse.headers['set-cookie'] as string | string[] | undefined,
-    );
-
-    return response;
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      return NextResponse.json(
+        { message: 'Authentication is required', statusCode: 401 },
+        { status: 401 },
+      );
+    }
+
     const message = axios.isAxiosError(error)
       ? error.message
       : 'Unable to reach the API gateway';

@@ -1,6 +1,5 @@
-import { apiClient, setApiAccessToken } from '@/lib/api';
+import { signOut } from 'next-auth/react';
 
 export const logout = async (): Promise<void> => {
-  await apiClient.post('/auth/logout');
-  setApiAccessToken(null);
+  await signOut({ redirect: false });
 };

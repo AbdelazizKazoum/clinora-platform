@@ -4,9 +4,28 @@ import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 
 const replace = jest.fn();
+const refresh = jest.fn();
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => ({ refresh, replace }),
+}));
+
+jest.mock('next-auth/react', () => ({
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  useSession: () => ({
+    data: {
+      user: {
+        clinicId: 'clinic-id',
+        email: 'admin@example.com',
+        fullName: 'Admin User',
+        id: 'user-id',
+        role: 'admin',
+      },
+    },
+    status: 'authenticated',
+    update: jest.fn(),
+  }),
 }));
 
 const AuthState = () => {
@@ -19,8 +38,6 @@ const AuthState = () => {
 
 describe('authentication hydration', () => {
   it('uses the same initial state on the server and client', async () => {
-    window.sessionStorage.setItem('clinora.accessToken', 'auth-token');
-
     const container = document.createElement('div');
     container.innerHTML = renderToString(<AuthState />);
     const recoverableErrors = [];
@@ -36,6 +53,5 @@ describe('authentication hydration', () => {
     expect(container.textContent).toBe('authenticated');
 
     await act(async () => root.unmount());
-    window.sessionStorage.clear();
   });
 });

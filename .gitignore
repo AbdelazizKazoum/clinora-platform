@@ -53,3 +53,10 @@ test-output
 
 # Local legacy backend reference code and environment files
 legacy/dentiflow/backend/
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example

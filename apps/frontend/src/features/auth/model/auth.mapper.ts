@@ -2,6 +2,7 @@ import type { AuthResponseDto } from '../api/dto/auth-response.dto';
 import {
   AUTH_USER_ROLES,
   type AuthSession,
+  type AuthUser,
   type AuthUserRole,
 } from './auth-user';
 
@@ -16,16 +17,18 @@ const mapAuthUserRole = (role: string): AuthUserRole => {
   throw new Error(`Unsupported auth user role: ${role}`);
 };
 
+export const mapAuthUserFromDto = (
+  response: AuthResponseDto['user'],
+): AuthUser => ({
+  id: response.id,
+  email: response.email,
+  fullName: response.fullName,
+  role: mapAuthUserRole(response.role),
+  clinicId: response.clinicId,
+});
+
 export const mapAuthSessionFromDto = (
   response: AuthResponseDto,
 ): AuthSession => ({
-  accessToken: response.accessToken,
-  refreshToken: response.refreshToken,
-  user: {
-    id: response.user.id,
-    email: response.user.email,
-    fullName: response.user.fullName,
-    role: mapAuthUserRole(response.user.role),
-    clinicId: response.user.clinicId,
-  },
+  user: mapAuthUserFromDto(response.user),
 });

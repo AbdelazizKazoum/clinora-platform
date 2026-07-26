@@ -1,23 +1,17 @@
 'use client';
-import { API_ACCESS_TOKEN_STORAGE_KEY } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useState } from 'react';
 import { login as loginCommand, logout as logoutCommand } from '../api';
 
 const DEFAULT_CLINIC_ID = process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID;
 
 export const useAuth = () => {
   const router = useRouter();
+  const { data: session, status, update } = useSession();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    setToken(window.sessionStorage.getItem(API_ACCESS_TOKEN_STORAGE_KEY));
-    setIsAuthReady(true);
-  }, []);
 
   const login = async (
     email: string,
@@ -32,9 +26,10 @@ export const useAuth = () => {
         throw new Error('Clinic context is required to sign in');
       }
 
-      const result = await loginCommand({ email, password, clinicId });
-      setToken(result.accessToken);
+      await loginCommand({ email, password, clinicId });
+      await update();
       router.replace('/');
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in');
     } finally {
@@ -43,18 +38,26 @@ export const useAuth = () => {
   };
 
   const logout = async () => {
-    await logoutCommand();
-    setToken(null);
-    router.replace('/auth/split/sign-in');
+    try {
+      setLoading(true);
+      setError(null);
+      await logoutCommand();
+      router.replace('/auth/split/sign-in');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign out');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const isAuthenticated = token;
-
   return {
+    user: session?.user ?? null,
     login,
     logout,
-    isAuthenticated,
-    isAuthReady,
+    isAuthenticated:
+      status === 'authenticated' && session.authError !== 'RefreshTokenError',
+    isAuthReady: status !== 'loading',
     loading,
     error,
   };
