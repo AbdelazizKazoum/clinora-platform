@@ -5,14 +5,10 @@ import useScrollEvent from '@/hooks/useScrollEvent'
 import clsx from 'clsx'
 import Link from 'next/link'
 import { Container } from 'react-bootstrap'
-import AppsDropdownGrid from './components/AppsDropdownGrid'
 import CustomizerToggler from './components/CustomizerToggler'
 import FullscreenToggler from './components/FullscreenToggler'
 import LanguageSelectorRounded from './components/LanguageSelectorRounded'
-import LootBox from './components/LootBox'
-import MegamenuPages from './components/MegamenuPages'
 import MenuToggler from './components/MenuToggler'
-import MonochromeToggler from './components/MonochromeToggler'
 import NotificationDropdownPeople from './components/NotificationDropdownPeople'
 import SearchBoxRoundedRight from './components/SearchBoxRoundedRight'
 import SimpleUserDropdown from './components/SimpleUserDropdown'
@@ -47,23 +43,15 @@ const TopBar = () => {
           </div>
 
           <MenuToggler />
-
-          <LootBox />
-
-          <MegamenuPages />
         </div>
         <div className="d-flex align-items-center gap-2">
           <SearchBoxRoundedRight />
 
           <ThemeDropdown />
 
-          <AppsDropdownGrid />
-
           <NotificationDropdownPeople />
 
           <FullscreenToggler />
-
-          <MonochromeToggler />
 
           <CustomizerToggler />
 

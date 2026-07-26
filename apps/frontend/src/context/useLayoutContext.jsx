@@ -79,10 +79,8 @@ export const useLayoutContext = () => {
   return context
 }
 export const LayoutProvider = ({ children }) => {
-  const queryConfig = useMemo(() => getQueryParams(INIT_STATE), [])
-  const [settings, setSettings] = useSessionStorage('__THEME_CONFIG__', {
-    ...INIT_STATE,
-    ...queryConfig,
+  const [settings, setSettings] = useSessionStorage('__THEME_CONFIG__', INIT_STATE, {
+    initializeWithValue: false,
   })
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false)
   const updateSettings = useCallback(
@@ -101,10 +99,11 @@ export const LayoutProvider = ({ children }) => {
     setSettings(INIT_STATE)
   }, [setSettings])
   useEffect(() => {
+    const queryConfig = getQueryParams(INIT_STATE)
     if (Object.keys(queryConfig).length > 0) {
       updateSettings(queryConfig)
     }
-  }, [queryConfig, updateSettings])
+  }, [updateSettings])
   useEffect(() => {
     if (!settings.sidenavSize?.includes('on-hover')) hideBackdrop()
     toggleAttribute('data-layout', settings.orientation === 'horizontal' ? 'topnav' : '')

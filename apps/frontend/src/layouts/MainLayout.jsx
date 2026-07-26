@@ -6,8 +6,8 @@ import HorizontalLayout from '@/layouts/HorizontalLayout'
 import VerticalLayout from '@/layouts/VerticalLayout'
 const MainLayout = ({ children }) => {
   const { orientation } = useLayoutContext()
-  const { isAuthenticated } = useAuth()
-  if (!isAuthenticated) {
+  const { isAuthenticated, isAuthReady } = useAuth()
+  if (!isAuthReady || !isAuthenticated) {
     return null
   }
   return (

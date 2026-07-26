@@ -7,12 +7,12 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 const AppProvidersWrapper = ({ children }) => {
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isAuthReady } = useAuth()
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isAuthReady && !isAuthenticated) {
       router.replace('/auth/sign-in')
     }
-  }, [])
+  }, [isAuthReady, isAuthenticated, router])
   return (
     <LayoutProvider>
       <NotificationProvider>{children}</NotificationProvider>

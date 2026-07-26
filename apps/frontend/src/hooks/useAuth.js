@@ -1,13 +1,19 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSessionStorage } from 'usehooks-ts'
 export const useAuth = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [token, setToken, removeToken] = useSessionStorage('token', null)
+  const [isAuthReady, setIsAuthReady] = useState(false)
+  const [token, setToken, removeToken] = useSessionStorage('token', null, {
+    initializeWithValue: false,
+  })
+  useEffect(() => {
+    setIsAuthReady(true)
+  }, [])
   const dummyUser = {
     email: 'admin@example.com',
     password: 'password',
@@ -38,6 +44,7 @@ export const useAuth = () => {
     login,
     logout,
     isAuthenticated,
+    isAuthReady,
     loading,
     error,
   }
