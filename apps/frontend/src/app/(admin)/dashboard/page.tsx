@@ -1,0 +1,57 @@
+import PageBreadcrumb from '@/components/PageBreadcrumb'
+import type { Metadata } from 'next'
+import { Card, CardBody, Col, Row } from 'react-bootstrap'
+import { stateData } from './components/data'
+import DashboardStatCard from './components/DashboardStatCard'
+import ProductInventory from './components/ProductInventory'
+import RecentOrders from './components/RecentOrders'
+import SalesAnalytics from './components/SalesAnalytics'
+import TotalSales from './components/TotalSales'
+
+export const metadata: Metadata = { title: 'Clinora Dashboard' }
+
+const Page = () => {
+  return (
+    <>
+      <PageBreadcrumb title="Clinic Dashboard" subtitle="Clinora" />
+
+      <Row className="row-cols-xxl-4 row-cols-md-2 row-cols-1">
+        {stateData.map((item, index) => (
+          <Col key={index}>
+            <DashboardStatCard item={item} />
+          </Col>
+        ))}
+      </Row>
+
+      <Row>
+        <Col xs={12}>
+          <Card>
+            <CardBody className="p-0">
+              <Row className="g-0">
+                <Col xxl={3} xl={6} className="order-xl-1 order-xxl-0">
+                  <TotalSales />
+                  <hr className="d-xxl-none border-light m-0" />
+                </Col>
+
+                <Col xxl={9} className="order-xl-3 order-xxl-1">
+                  <SalesAnalytics />
+                </Col>
+              </Row>
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col xxl={6}>
+          <ProductInventory />
+        </Col>
+        <Col xxl={6}>
+          <RecentOrders />
+        </Col>
+      </Row>
+    </>
+  )
+}
+
+export default Page

@@ -12,10 +12,15 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@types/lodash": "^4.17.24",
+    "@types/node": "^25.5.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.3",
     "prettier": "^3.6.2",
-    "sass": "1.77.6"
+    "sass": "1.77.6",
+    "typescript": "^6.0.2"
   },
   "dependencies": {
     "@iconify/react": "^6.0.2",

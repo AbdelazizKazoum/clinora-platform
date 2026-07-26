@@ -1,0 +1,18 @@
+import PageBreadcrumb from '@/components/PageBreadcrumb'
+import type { Metadata } from 'next'
+import LayoutInfo from '../LayoutInfo'
+import LayoutSwitcher from '../LayoutSwitcher'
+
+export const metadata: Metadata = { title: 'Gradient Topbar' }
+
+const Page = () => {
+  return (
+    <>
+      <PageBreadcrumb title="Gradient Topbar" subtitle="Layouts" />
+      <LayoutSwitcher attribute="topbarColor" value="gradient" />
+      <LayoutInfo option="topbarColor" value="gradient" />
+    </>
+  )
+}
+
+export default Page
