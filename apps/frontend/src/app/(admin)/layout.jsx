@@ -1,4 +1,4 @@
-import MainLayout from '@/layouts/MainLayout'
+import MainLayout from '@/components/layout/shell/MainLayout'
 const Layout = ({ children }) => {
   return <MainLayout>{children}</MainLayout>
 }

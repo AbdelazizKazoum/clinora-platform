@@ -1,7 +1,7 @@
 import favicon from '@/assets/images/favicon.ico'
 import '@/assets/scss/app.scss'
-import AppProvidersWrapper from '@/components/wrappers/AppProvidersWrapper'
 import { META_DATA } from '@/config/constants'
+import Providers from './providers'
 export const metadata = {
   title: {
     default: META_DATA.title,
@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <AppProvidersWrapper>{children}</AppProvidersWrapper>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

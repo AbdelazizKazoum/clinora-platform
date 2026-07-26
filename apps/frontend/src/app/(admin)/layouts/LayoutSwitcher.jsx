@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutContext } from '@/context/useLayoutContext'
+import { useLayoutContext } from '@/components/layout/context/useLayoutContext'
 import { useEffect, useEffectEvent } from 'react'
 const LayoutSwitcher = ({ attribute, value }) => {
   const { updateSettings } = useLayoutContext()

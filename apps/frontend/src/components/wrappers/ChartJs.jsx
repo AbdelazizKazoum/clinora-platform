@@ -1,7 +1,7 @@
 'use client'
 
-import { useLayoutContext } from '@/context/useLayoutContext'
-import { getColor } from '@/utils/helpers'
+import { useLayoutContext } from '@/components/layout/context/useLayoutContext'
+import { getColor } from '@/lib/utils/helpers'
 import { CategoryScale, Chart as ChartJS, Decimation, Legend, LinearScale, SubTitle, Title, Tooltip } from 'chart.js'
 import { merge } from 'lodash'
 import { useEffect, useState } from 'react'

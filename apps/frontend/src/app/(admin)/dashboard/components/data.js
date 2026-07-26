@@ -17,7 +17,7 @@ import user6 from '@/assets/images/users/user-6.jpg'
 import user7 from '@/assets/images/users/user-7.jpg'
 import user8 from '@/assets/images/users/user-8.jpg'
 import user9 from '@/assets/images/users/user-9.jpg'
-import { getColor, getFont } from '@/utils/helpers'
+import { getColor, getFont } from '@/lib/utils/helpers'
 export const stateData = [
   {
     icon: 'tabler:credit-card',
