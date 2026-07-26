@@ -1,0 +1,112 @@
+name: clinora-auth
+
+services:
+  auth-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: clinora_auth
+      MYSQL_USER: clinora
+      MYSQL_PASSWORD: clinora_local_password
+      MYSQL_ROOT_PASSWORD: clinora_local_root_password
+      TZ: UTC
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - auth_db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uclinora -pclinora_local_password --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - clinora-backend
+
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: apps/backend/services/auth-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      GRPC_PORT: 5001
+      AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
+      DB_HOST: auth-db
+      DB_PORT: 3306
+      DB_USERNAME: clinora
+      DB_PASSWORD: clinora_local_password
+      DB_NAME: clinora_auth
+      DB_MIGRATIONS_RUN: "true"
+      JWT_SECRET: local-access-secret-change-before-production-123456
+      JWT_EXPIRES_IN: 900
+      REFRESH_TOKEN_SECRET: local-refresh-secret-change-before-production-1234
+      REFRESH_TOKEN_EXPIRES_IN: 604800
+    ports:
+      - "127.0.0.1:3002:3002"
+      - "127.0.0.1:5001:5001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3002/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - clinora-backend
+
+  api-gateway:
+    build:
+      context: ../..
+      dockerfile: apps/backend/api-gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      COOKIE_SECURE: "false"
+      PORT: 3001
+      AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
+      AUTH_SERVICE_GRPC_URL: auth-service:5001
+      FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3001/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      auth-service:
+        condition: service_healthy
+    networks:
+      - clinora-backend
+
+networks:
+  clinora-backend:
+    driver: bridge
+
+volumes:
+  auth_db_data:

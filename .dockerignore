@@ -1,0 +1,13 @@
+.git
+.github
+.nx
+.next
+coverage
+node_modules
+test-output
+tmp
+**/dist
+**/out-tsc
+apps/frontend
+apps/frontend-e2e
+legacy

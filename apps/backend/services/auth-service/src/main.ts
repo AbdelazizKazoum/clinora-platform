@@ -1,21 +1,53 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
+import 'reflect-metadata';
 
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app/app.module';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
-async function bootstrap() {
+import {
+  AUTH_PACKAGE_NAME,
+  resolveAuthProtoPath,
+} from '@clinora/contracts-auth';
+
+import { AppModule } from './app.module';
+
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  const globalPrefix = 'api';
-  app.setGlobalPrefix(globalPrefix);
-  const port = process.env.PORT || 3000;
-  await app.listen(port);
+  const config = app.get(ConfigService);
+  const httpPort = config.getOrThrow<number>('PORT');
+  const grpcPort = config.getOrThrow<number>('GRPC_PORT');
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      forbidNonWhitelisted: true,
+      transform: true,
+      whitelist: true,
+    }),
+  );
+
+  app.connectMicroservice<MicroserviceOptions>(
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: AUTH_PACKAGE_NAME,
+        protoPath: resolveAuthProtoPath(),
+        url: `0.0.0.0:${grpcPort}`,
+      },
+    },
+    { inheritAppConfig: true },
+  );
+
+  await app.startAllMicroservices();
+  await app.listen(httpPort, '0.0.0.0');
+
   Logger.log(
-    `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`,
+    `Auth service listening on HTTP ${httpPort} and gRPC ${grpcPort}`,
+    'Bootstrap',
   );
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  Logger.error('Auth service failed to start', error, 'Bootstrap');
+  process.exit(1);
+});
