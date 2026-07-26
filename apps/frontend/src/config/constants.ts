@@ -1,12 +1,14 @@
 export const META_DATA = {
-  name: 'UBold',
-  title: 'UBold - Multipurpose Admin & Dashboard Template',
-  description: 'UBold is a modern, responsive admin dashboard available on ThemeForest. Ideal for building CRM, CMS, project management tools, and custom web applications with a clean UI, flexible layouts, and rich features.',
-  author: 'Coderthemes',
-  username: 'Geneva K.',
-  keywords: 'UBold, admin dashboard, ThemeForest, Bootstrap 5 admin, Tailwind CSS, responsive admin, CRM dashboard, CMS admin, web app UI, admin theme, premium admin template',
+  name: 'Clinora',
+  title: 'Clinora - Dental Clinic Management Platform',
+  description:
+    'Clinora is a modern multi-tenant dental clinic management platform for care teams, operations, patients, and practice administration.',
+  author: 'Clinora',
+  username: 'Clinora',
+  keywords:
+    'Clinora, dental clinic management, dental SaaS, patient management, clinic operations, practice administration',
   version: '8.0.0',
-  buyUrl: 'https://1.envato.market/uboldadmin',
-}
+  buyUrl: '',
+};
 
-export const currentYear = new Date().getFullYear()
+export const currentYear = new Date().getFullYear();

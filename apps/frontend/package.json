@@ -7,8 +7,9 @@
   },
   "dependencies": {
     "@iconify/react": "^6.0.2",
-    "@tanstack/table-core": "^8.21.3",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/table-core": "^8.21.3",
+    "axios": "^1.16.1",
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
