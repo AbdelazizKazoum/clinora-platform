@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/use-auth';
 
 const RequireAuth = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const { isAuthenticated, isAuthReady } = useAuth();
+  const { isAuthenticated, isAuthReady, loading, logout } = useAuth();
 
   useEffect(() => {
     if (isAuthReady && !isAuthenticated) {
@@ -19,7 +19,11 @@ const RequireAuth = ({ children }: { children: ReactNode }) => {
     return null;
   }
 
-  return <MainLayout>{children}</MainLayout>;
+  return (
+    <MainLayout isLoggingOut={loading} onLogout={logout}>
+      {children}
+    </MainLayout>
+  );
 };
 
 export default RequireAuth;

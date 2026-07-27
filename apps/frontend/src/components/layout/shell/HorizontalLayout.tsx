@@ -6,11 +6,17 @@ import { type ReactNode } from 'react'
 import { Container } from 'react-bootstrap'
 import ResponsiveNav from './components/ResponsiveNav'
 
-const HorizontalLayout = ({ children }: { children: ReactNode }) => {
+interface HorizontalLayoutProps {
+  children: ReactNode
+  isLoggingOut: boolean
+  onLogout: () => Promise<void>
+}
+
+const HorizontalLayout = ({ children, isLoggingOut, onLogout }: HorizontalLayoutProps) => {
   return (
     <>
       <div className="wrapper">
-        <TopBar />
+        <TopBar isLoggingOut={isLoggingOut} onLogout={onLogout} />
         <ResponsiveNav />
         <div className="content-page">
           <Container fluid>{children}</Container>

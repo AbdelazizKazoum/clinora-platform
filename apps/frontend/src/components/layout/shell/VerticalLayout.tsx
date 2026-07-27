@@ -5,12 +5,18 @@ import TopBar from '@/components/layout/shell/components/TopBar'
 import { type ReactNode } from 'react'
 import { Container } from 'react-bootstrap'
 
-const VerticalLayout = ({ children }: { children: ReactNode }) => {
+interface VerticalLayoutProps {
+  children: ReactNode
+  isLoggingOut: boolean
+  onLogout: () => Promise<void>
+}
+
+const VerticalLayout = ({ children, isLoggingOut, onLogout }: VerticalLayoutProps) => {
   return (
     <>
       <div className="wrapper">
         <Sidenav />
-        <TopBar />
+        <TopBar isLoggingOut={isLoggingOut} onLogout={onLogout} />
         <div className="content-page">
           <Container fluid>{children}</Container>
           <Footer />

@@ -21,7 +21,12 @@ import logoBlack from '@/assets/images/logo-black.png'
 import logoSm from '@/assets/images/logo-sm.png'
 import logo from '@/assets/images/logo.png'
 
-const TopBar = () => {
+interface TopBarProps {
+  isLoggingOut: boolean
+  onLogout: () => Promise<void>
+}
+
+const TopBar = ({ isLoggingOut, onLogout }: TopBarProps) => {
   const { scrollY } = useScrollEvent()
   return (
     <header className={clsx('app-topbar', { 'topbar-active': scrollY > 50 })}>
@@ -61,7 +66,10 @@ const TopBar = () => {
 
           <LanguageSelectorRounded />
 
-          <SimpleUserDropdown />
+          <SimpleUserDropdown
+            isLoggingOut={isLoggingOut}
+            onLogout={onLogout}
+          />
         </div>
       </Container>
     </header>

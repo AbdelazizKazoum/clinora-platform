@@ -4,7 +4,12 @@ import { META_DATA } from '@/config/constants'
 import Image from 'next/image'
 import { Dropdown, DropdownDivider, DropdownHeader, DropdownItem, DropdownMenu, DropdownToggle } from 'react-bootstrap'
 
-const UserDropdown = () => {
+interface UserDropdownProps {
+  isLoggingOut: boolean
+  onLogout: () => Promise<void>
+}
+
+const UserDropdown = ({ isLoggingOut, onLogout }: UserDropdownProps) => {
   return (
     <div id="simple-user-dropdown" className="topbar-item nav-user">
       <Dropdown>
@@ -54,9 +59,17 @@ const UserDropdown = () => {
             <span className="align-middle">Lock Screen</span>
           </DropdownItem>
 
-          <DropdownItem href="" className="text-danger fw-semibold">
+          <DropdownItem
+            as="button"
+            type="button"
+            className="text-danger fw-semibold"
+            disabled={isLoggingOut}
+            onClick={() => void onLogout()}
+          >
             <Icon icon="log-out" className="me-1 fs-lg align-middle" />
-            <span className="align-middle">Log Out</span>
+            <span className="align-middle">
+              {isLoggingOut ? 'Logging Out...' : 'Log Out'}
+            </span>
           </DropdownItem>
         </DropdownMenu>
       </Dropdown>
