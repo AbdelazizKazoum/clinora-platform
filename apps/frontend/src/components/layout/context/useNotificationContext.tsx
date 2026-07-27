@@ -1,24 +1,18 @@
 'use client'
+import { useNotificationStore, type ShowNotificationInput } from '@/store'
 import { type ChildrenType } from '@/types'
-import { createContext, use, useState } from 'react'
+import { createContext, use, useEffect, useMemo } from 'react'
 import { ToastBody, ToastHeader } from 'react-bootstrap'
-import Toast, { type ToastProps } from 'react-bootstrap/Toast'
+import Toast from 'react-bootstrap/Toast'
 import ToastContainer from 'react-bootstrap/ToastContainer'
-
-type ShowNotificationType = {
-  title?: string
-  message: string
-  variant?: ToastProps['bg']
-  delay?: number
-}
 
 type ToastrProps = {
   show: boolean
   onClose?: () => void
-} & ShowNotificationType
+} & ShowNotificationInput
 
 type NotificationContextType = {
-  showNotification: ({ title, message, variant }: ShowNotificationType) => void
+  showNotification: (notification: ShowNotificationInput) => void
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
@@ -47,36 +41,29 @@ export function useNotificationContext() {
 }
 
 export function NotificationProvider({ children }: ChildrenType) {
-  const defaultConfig = {
-    show: false,
-    message: '',
-    title: '',
-    delay: 2000,
-  }
+  const show = useNotificationStore((state) => state.show)
+  const title = useNotificationStore((state) => state.title)
+  const message = useNotificationStore((state) => state.message)
+  const variant = useNotificationStore((state) => state.variant)
+  const delay = useNotificationStore((state) => state.delay)
+  const showNotification = useNotificationStore((state) => state.showNotification)
+  const hideNotification = useNotificationStore((state) => state.hideNotification)
 
-  const [config, setConfig] = useState<ToastrProps>(defaultConfig)
-  const hideNotification = () => {
-    setConfig({ show: false, message: '', title: '' })
-  }
+  useEffect(() => {
+    if (!show) return
 
-  const showNotification = ({ title, message, variant, delay = 2000 }: ShowNotificationType) => {
-    setConfig({
-      show: true,
-      title,
-      message,
-      variant: variant ?? 'light',
-      onClose: hideNotification,
-      delay,
-    })
-
-    setTimeout(() => {
-      setConfig(defaultConfig)
+    const timeoutId = window.setTimeout(() => {
+      hideNotification()
     }, delay)
-  }
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [delay, hideNotification, show])
 
   return (
-    <NotificationContext value={{ showNotification }}>
-      <Toastr {...config} />
+    <NotificationContext value={useMemo(() => ({ showNotification }), [showNotification])}>
+      <Toastr show={show} title={title} message={message} variant={variant} delay={delay} onClose={hideNotification} />
       {children}
     </NotificationContext>
   )
