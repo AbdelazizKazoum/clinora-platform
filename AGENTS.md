@@ -73,6 +73,26 @@ When integrating Ubold:
 - Do not let template folders dictate application boundaries.
 - Place components, pages, layouts, hooks, and services according to Clinora's frontend architecture.
 
+### Ubold Full Template Reference
+
+The full Ubold template source is available as reference code at:
+
+```txt
+legacy/dentiflow/frontend/ubold-full-template-source-here
+```
+
+When building or modifying frontend UI pages or components, first inspect relevant Ubold full-template pages/components from that folder when a matching pattern likely exists.
+
+Use the full template only as a visual and interaction reference. Extract or adapt useful UI patterns into Clinora's frontend architecture instead of copying Ubold's application structure.
+
+Frontend adaptation rules:
+
+- App routes stay under `apps/frontend/src/app`.
+- Feature-specific UI, hooks, models, and API code stay under `apps/frontend/src/features/<feature>`.
+- Shared components stay under `apps/frontend/src/components` or `libs/frontend/` only when reuse is real.
+- API communication stays through Clinora's BFF/API client architecture.
+- Remove mock/demo-only template behavior when adapting a screen.
+
 Frontend rules:
 
 - Use Next.js App Router.

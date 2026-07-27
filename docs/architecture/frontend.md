@@ -677,6 +677,12 @@ Do not repeat low-level response parsing in every endpoint file. Do not expose r
 
 Ubold is a styling and design reference.
 
+The full Ubold template source is available as reference code at:
+
+```txt
+legacy/dentiflow/frontend/ubold-full-template-source-here
+```
+
 Use Ubold for:
 
 - Visual language
@@ -688,6 +694,16 @@ Use Ubold for:
 Do not use Ubold to define Clinora's feature boundaries, routing structure, data flow, or domain model organization.
 
 Do not dump the full template into `apps/frontend`. Bring in only the assets, styles, and component patterns needed for the current step.
+
+When creating or modifying a UI page/component, use this workflow:
+
+1. Inspect the closest matching Ubold full-template page or component.
+2. Identify useful visual, layout, and interaction patterns.
+3. Rebuild or adapt those patterns inside the correct Clinora route or feature folder.
+4. Connect the UI to Clinora frontend models, hooks, and BFF-backed API functions.
+5. Remove Ubold demo data, fake navigation, unused options, and template-only behavior.
+
+For example, a patients page may borrow patterns from Ubold contacts, customers, CRM, profile, form, or data-table screens, but the resulting code still belongs in Clinora's patients feature and App Router structure.
 
 ## Avoid These Patterns
 
