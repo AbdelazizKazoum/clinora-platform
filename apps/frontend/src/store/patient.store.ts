@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  archivePatient as archivePatientCommand,
+  createPatient as createPatientCommand,
+  deletePatient as deletePatientCommand,
+  restorePatient as restorePatientCommand,
+  updatePatient as updatePatientCommand,
+} from '@/features/patients/api';
 import { MOCK_PATIENTS } from '@/features/patients/mocks/patients.mock';
 import type {
   ArchivePatientCommand,
@@ -16,11 +23,11 @@ interface PatientState {
 }
 
 interface PatientActions {
-  createPatient: (command: CreatePatientCommand) => void;
-  updatePatient: (command: UpdatePatientCommand) => void;
-  archivePatient: (command: ArchivePatientCommand) => void;
-  restorePatient: (command: RestorePatientCommand) => void;
-  deletePatient: (command: DeletePatientCommand) => void;
+  createPatient: (command: CreatePatientCommand) => Promise<void>;
+  updatePatient: (command: UpdatePatientCommand) => Promise<void>;
+  archivePatient: (command: ArchivePatientCommand) => Promise<void>;
+  restorePatient: (command: RestorePatientCommand) => Promise<void>;
+  deletePatient: (command: DeletePatientCommand) => Promise<void>;
   resetPatients: () => void;
 }
 
@@ -32,79 +39,28 @@ const createInitialPatients = (): Patient[] =>
 export const usePatientStore = create<PatientStore>((set) => ({
   patients: createInitialPatients(),
 
-  createPatient: (command) => {
-    const now = new Date();
-    const patient: Patient = {
-      id: globalThis.crypto.randomUUID(),
-      clinicId: command.clinicId,
-      userId: command.userId ?? null,
-      firstName: command.firstName,
-      lastName: command.lastName,
-      phone: command.phone ?? null,
-      email: command.email ?? null,
-      dateOfBirth: command.dateOfBirth ?? null,
-      gender: command.gender ?? null,
-      address: command.address ?? null,
-      notes: command.notes ?? null,
-      allergies: command.allergies ?? null,
-      chronicConditions: command.chronicConditions ?? null,
-      currentMedications: command.currentMedications ?? null,
-      medicalNotes: command.medicalNotes ?? null,
-      status: command.status ?? 'ACTIVE',
-      deletedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    };
+  createPatient: async (command) => {
+    const patient = await createPatientCommand(command);
 
     set((state) => ({ patients: [patient, ...state.patients] }));
   },
 
-  updatePatient: (command) => {
-    set((state) => ({
-      patients: state.patients.map((patient) => {
-        if (
-          patient.id !== command.patientId ||
-          patient.clinicId !== command.clinicId
-        ) {
-          return patient;
-        }
+  updatePatient: async (command) => {
+    const updatedPatient = await updatePatientCommand(command);
 
-        return {
-          ...patient,
-          ...(command.firstName !== undefined && {
-            firstName: command.firstName,
-          }),
-          ...(command.lastName !== undefined && {
-            lastName: command.lastName,
-          }),
-          ...(command.phone !== undefined && { phone: command.phone }),
-          ...(command.email !== undefined && { email: command.email }),
-          ...(command.dateOfBirth !== undefined && {
-            dateOfBirth: command.dateOfBirth,
-          }),
-          ...(command.gender !== undefined && { gender: command.gender }),
-          ...(command.address !== undefined && { address: command.address }),
-          ...(command.notes !== undefined && { notes: command.notes }),
-          ...(command.allergies !== undefined && {
-            allergies: command.allergies,
-          }),
-          ...(command.chronicConditions !== undefined && {
-            chronicConditions: command.chronicConditions,
-          }),
-          ...(command.currentMedications !== undefined && {
-            currentMedications: command.currentMedications,
-          }),
-          ...(command.medicalNotes !== undefined && {
-            medicalNotes: command.medicalNotes,
-          }),
-          ...(command.status !== undefined && { status: command.status }),
-          updatedAt: new Date(),
-        };
-      }),
+    set((state) => ({
+      patients: state.patients.map((patient) =>
+        patient.id === updatedPatient.id &&
+        patient.clinicId === updatedPatient.clinicId
+          ? updatedPatient
+          : patient,
+      ),
     }));
   },
 
-  archivePatient: ({ clinicId, patientId }) => {
+  archivePatient: async ({ clinicId, patientId }) => {
+    await archivePatientCommand({ clinicId, patientId });
+
     const now = new Date();
 
     set((state) => ({
@@ -121,22 +77,22 @@ export const usePatientStore = create<PatientStore>((set) => ({
     }));
   },
 
-  restorePatient: ({ clinicId, patientId }) => {
+  restorePatient: async (command) => {
+    const restoredPatient = await restorePatientCommand(command);
+
     set((state) => ({
       patients: state.patients.map((patient) =>
-        patient.id === patientId && patient.clinicId === clinicId
-          ? {
-              ...patient,
-              status: 'ACTIVE',
-              deletedAt: null,
-              updatedAt: new Date(),
-            }
+        patient.id === restoredPatient.id &&
+        patient.clinicId === restoredPatient.clinicId
+          ? restoredPatient
           : patient,
       ),
     }));
   },
 
-  deletePatient: ({ clinicId, patientId }) => {
+  deletePatient: async ({ clinicId, patientId }) => {
+    await deletePatientCommand({ clinicId, patientId });
+
     set((state) => ({
       patients: state.patients.filter(
         (patient) => patient.id !== patientId || patient.clinicId !== clinicId,

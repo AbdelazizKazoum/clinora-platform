@@ -10,7 +10,7 @@ import DataTable from '@/components/table/DataTable';
 import DeleteConfirmationModal from '@/components/table/delete-confirmation-modal';
 import TablePagination from '@/components/table/TablePagination';
 import Icon from '@/components/wrappers/Icon';
-import { usePatientStore } from '@/store';
+import { useNotificationStore, usePatientStore } from '@/store';
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -111,10 +111,16 @@ const patientGlobalFilter: FilterFn<Patient> = (row, _columnId, value) => {
   ].some((field) => field?.toLowerCase().includes(search));
 };
 
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : 'Unable to update patients.';
+
 const PatientTable = () => {
   const patients = usePatientStore((state) => state.patients);
   const updatePatient = usePatientStore((state) => state.updatePatient);
   const deletePatient = usePatientStore((state) => state.deletePatient);
+  const showNotification = useNotificationStore(
+    (state) => state.showNotification,
+  );
   const [globalFilter, setGlobalFilter] = useState('');
   const [dateFilter, setDateFilter] = useState<PatientDateFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<PatientStatus | 'ALL'>(
@@ -320,25 +326,43 @@ const PatientTable = () => {
 
   const resetPage = () => table.setPageIndex(0);
 
-  const handleDelete = () => {
-    Object.keys(selectedRowIds).forEach((patientId) => {
-      const patient = patients.find((item) => item.id === patientId);
-      if (patient) {
-        deletePatient({
-          clinicId: patient.clinicId,
-          patientId: patient.id,
-        });
-      }
-    });
+  const handleDelete = async () => {
+    try {
+      await Promise.all(
+        Object.keys(selectedRowIds).map(async (patientId) => {
+          const patient = patients.find((item) => item.id === patientId);
+          if (!patient) return;
 
-    setSelectedRowIds({});
-    setShowDeleteModal(false);
-    resetPage();
+          await deletePatient({
+            clinicId: patient.clinicId,
+            patientId: patient.id,
+          });
+        }),
+      );
+
+      setSelectedRowIds({});
+      setShowDeleteModal(false);
+      resetPage();
+    } catch (error) {
+      showNotification({
+        message: getErrorMessage(error),
+        title: 'Patient request failed',
+        variant: 'danger',
+      });
+    }
   };
 
-  const handleUpdate = (command: UpdatePatientCommand) => {
-    updatePatient(command);
-    setEditedPatient(null);
+  const handleUpdate = async (command: UpdatePatientCommand) => {
+    try {
+      await updatePatient(command);
+      setEditedPatient(null);
+    } catch (error) {
+      showNotification({
+        message: getErrorMessage(error),
+        title: 'Patient request failed',
+        variant: 'danger',
+      });
+    }
   };
 
   return (

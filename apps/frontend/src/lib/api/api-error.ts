@@ -23,6 +23,7 @@ export const toApiError = (error: AxiosError<ApiErrorBody>): ApiError => {
   const message = Array.isArray(body?.message)
     ? body.message.join(', ')
     : (body?.message ?? error.message);
+  const status = error.response?.status ?? body?.statusCode;
 
-  return new ApiError(message, error.response?.status, body);
+  return new ApiError(message, status, body);
 };
