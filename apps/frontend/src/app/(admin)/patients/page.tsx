@@ -1,12 +1,12 @@
-import PageBreadcrumb from '@/components/PageBreadcrumb'
-import type { Metadata } from 'next'
+import { PatientsPage } from '@/features/patients';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Patients',
-}
+};
 
 const Page = () => {
-  return <PageBreadcrumb title="All Patients" subtitle="Patients" />
-}
+  return <PatientsPage />;
+};
 
-export default Page
+export default Page;
