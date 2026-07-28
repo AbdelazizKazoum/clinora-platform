@@ -13,8 +13,10 @@ export type {
   PatientSortOrder,
 } from './patient.queries';
 export {
+  mapListPatientsQueryToDto,
   mapCreatePatientCommandToDto,
   mapPatientFromDto,
+  mapPatientListItemFromDto,
   mapUpdatePatientCommandToDto,
 } from './patient.mapper';
 export {

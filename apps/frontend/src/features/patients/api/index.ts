@@ -5,3 +5,4 @@ export {
   restorePatient,
   updatePatient,
 } from './commands';
+export { listPatients } from './queries';

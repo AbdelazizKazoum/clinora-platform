@@ -25,13 +25,16 @@ import {
 } from '@tanstack/react-table';
 import Image, { type StaticImageData } from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
   CardFooter,
   CardHeader,
   FormSelect,
+  Placeholder,
+  Table,
 } from 'react-bootstrap';
 import {
   PATIENT_STATUSES,
@@ -114,10 +117,94 @@ const patientGlobalFilter: FilterFn<Patient> = (row, _columnId, value) => {
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : 'Unable to update patients.';
 
+const PatientTableSkeleton = () => (
+  <div className="table-responsive">
+    <Table
+      responsive
+      hover
+      className="table table-custom table-centered table-select w-100 mb-0"
+      aria-hidden="true"
+    >
+      <thead className="bg-light align-middle bg-opacity-25 thead-sm">
+        <tr className="text-uppercase fs-xxs">
+          <th>
+            <Placeholder className="col-5" />
+          </th>
+          <th>
+            <Placeholder className="col-7" />
+          </th>
+          <th>
+            <Placeholder className="col-6" />
+          </th>
+          <th>
+            <Placeholder className="col-6" />
+          </th>
+          <th>
+            <Placeholder className="col-8" />
+          </th>
+          <th>
+            <Placeholder className="col-7" />
+          </th>
+          <th>
+            <Placeholder className="col-5" />
+          </th>
+          <th>
+            <Placeholder className="col-6" />
+          </th>
+        </tr>
+      </thead>
+      <tbody className="placeholder-glow">
+        {Array.from({ length: 8 }, (_, index) => (
+          <tr key={index}>
+            <td>
+              <Placeholder className="col-4" />
+            </td>
+            <td>
+              <div className="d-flex align-items-center gap-2">
+                <Placeholder
+                  className="rounded-circle"
+                  style={{ height: 32, width: 32 }}
+                />
+                <div className="w-100">
+                  <Placeholder className="col-7 d-block mb-1" />
+                  <Placeholder size="xs" className="col-9" />
+                </div>
+              </div>
+            </td>
+            <td>
+              <Placeholder className="col-8" />
+            </td>
+            <td>
+              <Placeholder className="col-5" />
+            </td>
+            <td>
+              <Placeholder className="col-7" />
+            </td>
+            <td>
+              <Placeholder className="col-7" />
+            </td>
+            <td>
+              <Placeholder className="col-6" />
+            </td>
+            <td>
+              <Placeholder className="col-8" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  </div>
+);
+
 const PatientTable = () => {
+  const { data: session, status: sessionStatus } = useSession();
+  const clinicId = session?.user.clinicId;
+  const error = usePatientStore((state) => state.error);
+  const isLoading = usePatientStore((state) => state.isLoading);
+  const loadPatients = usePatientStore((state) => state.loadPatients);
   const patients = usePatientStore((state) => state.patients);
   const updatePatient = usePatientStore((state) => state.updatePatient);
-  const deletePatient = usePatientStore((state) => state.deletePatient);
+  const archivePatient = usePatientStore((state) => state.archivePatient);
   const showNotification = useNotificationStore(
     (state) => state.showNotification,
   );
@@ -137,6 +224,26 @@ const PatientTable = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
   const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+  const isInitialLoading =
+    sessionStatus === 'loading' || (isLoading && patients.length === 0);
+
+  useEffect(() => {
+    if (sessionStatus !== 'authenticated' || !clinicId) return;
+
+    loadPatients({
+      clinicId,
+      limit: 100,
+      page: 1,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }).catch((loadError: unknown) => {
+      showNotification({
+        message: getErrorMessage(loadError),
+        title: 'Unable to load patients',
+        variant: 'danger',
+      });
+    });
+  }, [clinicId, loadPatients, sessionStatus, showNotification]);
 
   const visiblePatients = useMemo(() => {
     const today = new Date();
@@ -333,7 +440,7 @@ const PatientTable = () => {
           const patient = patients.find((item) => item.id === patientId);
           if (!patient) return;
 
-          await deletePatient({
+          await archivePatient({
             clinicId: patient.clinicId,
             patientId: patient.id,
           });
@@ -453,7 +560,14 @@ const PatientTable = () => {
         </div>
       </CardHeader>
 
-      <DataTable<Patient> table={table} emptyMessage="No patients found." />
+      {isInitialLoading ? (
+        <PatientTableSkeleton />
+      ) : (
+        <DataTable<Patient>
+          table={table}
+          emptyMessage={error ?? 'No patients found.'}
+        />
+      )}
 
       {totalItems > 0 && (
         <CardFooter className="border-0">
@@ -479,8 +593,14 @@ const PatientTable = () => {
         onHide={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
         selectedCount={selectedCount}
+        confirmLabel="Archive"
         itemName="patient"
-      />
+        title="Confirm archive"
+      >
+        {selectedCount > 1
+          ? `Are you sure you want to archive these ${selectedCount} patients?`
+          : 'Are you sure you want to archive this patient?'}
+      </DeleteConfirmationModal>
 
       <PatientDetailsModal
         patient={viewedPatient}

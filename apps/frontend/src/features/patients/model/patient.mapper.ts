@@ -1,5 +1,7 @@
 import type {
   CreatePatientRequestDto,
+  ListPatientsQueryDto,
+  PatientListItemResponseDto,
   PatientResponseDto,
   UpdatePatientRequestDto,
 } from '../api/dto';
@@ -7,6 +9,7 @@ import type {
   CreatePatientCommand,
   UpdatePatientCommand,
 } from './patient.commands';
+import type { ListPatientsQuery } from './patient.queries';
 import type { Patient } from './patient';
 
 const emptyStringToNull = (value: string): string | null =>
@@ -57,6 +60,45 @@ export const mapPatientFromDto = (dto: PatientResponseDto): Patient => ({
   deletedAt: dateStringToDate(dto.deletedAt),
   createdAt: new Date(dto.createdAt),
   updatedAt: new Date(dto.updatedAt),
+});
+
+export const mapPatientListItemFromDto = (
+  dto: PatientListItemResponseDto,
+): Patient => ({
+  id: dto.id,
+  clinicId: dto.clinicId,
+  userId: null,
+  firstName: dto.firstName,
+  lastName: dto.lastName,
+  phone: emptyStringToNull(dto.phone),
+  email: emptyStringToNull(dto.email),
+  dateOfBirth: dateStringToDate(dto.dateOfBirth),
+  gender: dto.gender === '' ? null : dto.gender,
+  address: null,
+  notes: null,
+  allergies: null,
+  chronicConditions: null,
+  currentMedications: null,
+  medicalNotes: null,
+  status: dto.status,
+  deletedAt: null,
+  createdAt: new Date(dto.createdAt),
+  updatedAt: new Date(dto.updatedAt),
+});
+
+export const mapListPatientsQueryToDto = (
+  query: ListPatientsQuery,
+): ListPatientsQueryDto => ({
+  page: query.page,
+  limit: query.limit,
+  status: query.status,
+  gender: query.gender,
+  search: query.search,
+  isNew: query.isNew,
+  createdFrom: query.createdFrom?.toISOString(),
+  createdTo: query.createdTo?.toISOString(),
+  sortBy: query.sortBy,
+  sortOrder: query.sortOrder,
 });
 
 export const mapCreatePatientCommandToDto = (

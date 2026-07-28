@@ -4,14 +4,15 @@ import {
   archivePatient as archivePatientCommand,
   createPatient as createPatientCommand,
   deletePatient as deletePatientCommand,
+  listPatients,
   restorePatient as restorePatientCommand,
   updatePatient as updatePatientCommand,
 } from '@/features/patients/api';
-import { MOCK_PATIENTS } from '@/features/patients/mocks/patients.mock';
 import type {
   ArchivePatientCommand,
   CreatePatientCommand,
   DeletePatientCommand,
+  ListPatientsQuery,
   Patient,
   RestorePatientCommand,
   UpdatePatientCommand,
@@ -19,10 +20,13 @@ import type {
 import { create } from 'zustand';
 
 interface PatientState {
+  error: string | null;
+  isLoading: boolean;
   patients: Patient[];
 }
 
 interface PatientActions {
+  loadPatients: (query: ListPatientsQuery) => Promise<void>;
   createPatient: (command: CreatePatientCommand) => Promise<void>;
   updatePatient: (command: UpdatePatientCommand) => Promise<void>;
   archivePatient: (command: ArchivePatientCommand) => Promise<void>;
@@ -33,11 +37,26 @@ interface PatientActions {
 
 export type PatientStore = PatientState & PatientActions;
 
-const createInitialPatients = (): Patient[] =>
-  MOCK_PATIENTS.map((patient) => ({ ...patient }));
-
 export const usePatientStore = create<PatientStore>((set) => ({
-  patients: createInitialPatients(),
+  error: null,
+  isLoading: false,
+  patients: [],
+
+  loadPatients: async (query) => {
+    set({ error: null, isLoading: true });
+
+    try {
+      const patients = await listPatients(query);
+      set({ patients });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to load patients.';
+      set({ error: message });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   createPatient: async (command) => {
     const patient = await createPatientCommand(command);
@@ -61,18 +80,9 @@ export const usePatientStore = create<PatientStore>((set) => ({
   archivePatient: async ({ clinicId, patientId }) => {
     await archivePatientCommand({ clinicId, patientId });
 
-    const now = new Date();
-
     set((state) => ({
-      patients: state.patients.map((patient) =>
-        patient.id === patientId && patient.clinicId === clinicId
-          ? {
-              ...patient,
-              status: 'ARCHIVED',
-              deletedAt: now,
-              updatedAt: now,
-            }
-          : patient,
+      patients: state.patients.filter(
+        (patient) => patient.id !== patientId || patient.clinicId !== clinicId,
       ),
     }));
   },
@@ -101,6 +111,6 @@ export const usePatientStore = create<PatientStore>((set) => ({
   },
 
   resetPatients: () => {
-    set({ patients: createInitialPatients() });
+    set({ error: null, patients: [] });
   },
 }));

@@ -13,7 +13,9 @@ interface DeleteConfirmationModalProps {
   onHide: () => void;
   onConfirm: () => void;
   selectedCount: number;
+  confirmLabel?: string;
   itemName?: string;
+  title?: string;
   children?: ReactNode;
 }
 
@@ -22,7 +24,9 @@ const DeleteConfirmationModal = ({
   onHide,
   onConfirm,
   selectedCount,
+  confirmLabel = 'Delete',
   itemName = 'record',
+  title = 'Confirm deletion',
   children,
 }: DeleteConfirmationModalProps) => {
   const message =
@@ -33,7 +37,7 @@ const DeleteConfirmationModal = ({
   return (
     <Modal show={show} onHide={onHide} centered>
       <ModalHeader closeButton>
-        <ModalTitle as="h5">Confirm deletion</ModalTitle>
+        <ModalTitle as="h5">{title}</ModalTitle>
       </ModalHeader>
       <ModalBody>{children ?? message}</ModalBody>
       <ModalFooter>
@@ -41,7 +45,7 @@ const DeleteConfirmationModal = ({
           Cancel
         </Button>
         <Button variant="danger" onClick={onConfirm}>
-          Delete
+          {confirmLabel}
         </Button>
       </ModalFooter>
     </Modal>
