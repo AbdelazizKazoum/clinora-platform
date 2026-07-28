@@ -2,7 +2,7 @@ import type {
   CreatePatientCommand,
   UpdatePatientCommand,
 } from './patient.commands';
-import type { PatientGender, PatientStatus } from './patient';
+import type { Patient, PatientGender, PatientStatus } from './patient';
 
 export interface PatientQuickInfoFormModel {
   firstName: string;
@@ -41,6 +41,31 @@ export const createEmptyPatientMedicalAlertsForm =
     currentMedications: '',
     medicalNotes: '',
   });
+
+const dateToInputValue = (value: Date | null): string =>
+  value ? value.toISOString().slice(0, 10) : '';
+
+export const mapPatientToQuickInfoForm = (
+  patient: Patient,
+): PatientQuickInfoFormModel => ({
+  firstName: patient.firstName,
+  lastName: patient.lastName,
+  phone: patient.phone ?? '',
+  email: patient.email ?? '',
+  dateOfBirth: dateToInputValue(patient.dateOfBirth),
+  gender: patient.gender ?? '',
+  address: patient.address ?? '',
+  status: patient.status,
+});
+
+export const mapPatientToMedicalAlertsForm = (
+  patient: Patient,
+): PatientMedicalAlertsFormModel => ({
+  allergies: patient.allergies ?? '',
+  chronicConditions: patient.chronicConditions ?? '',
+  currentMedications: patient.currentMedications ?? '',
+  medicalNotes: patient.medicalNotes ?? '',
+});
 
 const trimmedOrUndefined = (value: string): string | undefined => {
   const trimmed = value.trim();

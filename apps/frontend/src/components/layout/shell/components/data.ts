@@ -1,4 +1,4 @@
-import { type MenuItemType } from '@/types'
+import { type MenuItemType } from '@/types';
 
 export const menuItems: MenuItemType[] = [
   {
@@ -36,11 +36,6 @@ export const menuItems: MenuItemType[] = [
             url: '/patients',
             slug: 'pages:patients',
             label: 'All Patients',
-          },
-          {
-            url: '/patients/new',
-            slug: 'pages:patients-new',
-            label: 'Add Patient',
           },
         ],
       },
@@ -100,4 +95,4 @@ export const menuItems: MenuItemType[] = [
       },
     ],
   },
-]
+];

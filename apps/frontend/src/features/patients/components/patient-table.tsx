@@ -20,7 +20,6 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import Image, { type StaticImageData } from 'next/image';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -37,11 +36,10 @@ import {
   type Patient,
   type PatientSortField,
   type PatientStatus,
-  type UpdatePatientCommand,
 } from '../model';
 import { formatPatientDate, formatPatientEnum } from '../utils/patient-display';
 import PatientDetailsModal from './patient-details-modal';
-import PatientEditModal from './patient-edit-modal';
+import PatientIntakeModal from './patient-intake/patient-intake-modal';
 
 const columnHelper = createColumnHelper<Patient>();
 const patientAvatars = [user1, user2, user3, user4, user5, user6];
@@ -220,7 +218,6 @@ const PatientTable = () => {
   const loadPatients = usePatientStore((state) => state.loadPatients);
   const meta = usePatientStore((state) => state.meta);
   const patients = usePatientStore((state) => state.patients);
-  const updatePatient = usePatientStore((state) => state.updatePatient);
   const archivePatient = usePatientStore((state) => state.archivePatient);
   const showNotification = useNotificationStore(
     (state) => state.showNotification,
@@ -240,7 +237,8 @@ const PatientTable = () => {
   );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
-  const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+  const [intakePatient, setIntakePatient] = useState<Patient | null>(null);
+  const [showIntakeModal, setShowIntakeModal] = useState(false);
   const lastQueryKeyRef = useRef<string | null>(null);
   const isInitialLoading =
     sessionStatus === 'loading' || (isLoading && patients.length === 0);
@@ -406,7 +404,10 @@ const PatientTable = () => {
               <Button
                 aria-label={`Edit ${fullName}`}
                 className="btn-default btn-icon rounded-circle"
-                onClick={() => setEditedPatient(patient)}
+                onClick={() => {
+                  setIntakePatient(patient);
+                  setShowIntakeModal(true);
+                }}
                 size="sm"
                 title="Edit patient"
               >
@@ -506,18 +507,9 @@ const PatientTable = () => {
     }
   };
 
-  const handleUpdate = async (command: UpdatePatientCommand) => {
-    try {
-      await updatePatient(command);
-      setEditedPatient(null);
-      await refreshCurrentPage();
-    } catch (error) {
-      showNotification({
-        message: getErrorMessage(error),
-        title: 'Patient request failed',
-        variant: 'danger',
-      });
-    }
+  const handleHideIntakeModal = () => {
+    setShowIntakeModal(false);
+    setIntakePatient(null);
   };
 
   return (
@@ -538,10 +530,16 @@ const PatientTable = () => {
             <Icon icon="search" className="app-search-icon text-muted" />
           </div>
 
-          <Link className="btn btn-primary" href="/patients/new">
+          <Button
+            onClick={() => {
+              setIntakePatient(null);
+              setShowIntakeModal(true);
+            }}
+            variant="primary"
+          >
             <Icon icon="plus" className="me-1" />
             New Patient
-          </Link>
+          </Button>
 
           {selectedCount > 0 && (
             <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
@@ -661,10 +659,11 @@ const PatientTable = () => {
         onHide={() => setViewedPatient(null)}
       />
 
-      <PatientEditModal
-        patient={editedPatient}
-        onHide={() => setEditedPatient(null)}
-        onSave={handleUpdate}
+      <PatientIntakeModal
+        patient={intakePatient}
+        show={showIntakeModal}
+        onHide={handleHideIntakeModal}
+        onSaved={refreshCurrentPage}
       />
     </Card>
   );

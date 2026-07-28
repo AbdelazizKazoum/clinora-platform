@@ -25,6 +25,8 @@ export {
   createEmptyPatientMedicalAlertsForm,
   createEmptyPatientQuickInfoForm,
   mapMedicalAlertsFormToUpdateCommand,
+  mapPatientToMedicalAlertsForm,
+  mapPatientToQuickInfoForm,
   mapQuickInfoFormToCreateCommand,
   mapQuickInfoFormToUpdateCommand,
   type PatientMedicalAlertsFormModel,
