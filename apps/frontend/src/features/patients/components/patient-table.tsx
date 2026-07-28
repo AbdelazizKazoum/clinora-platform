@@ -31,7 +31,6 @@ import {
   Card,
   CardFooter,
   CardHeader,
-  FormControl,
   FormSelect,
 } from 'react-bootstrap';
 import {
@@ -51,6 +50,41 @@ const statusClassName: Record<PatientStatus, string> = {
   ACTIVE: 'bg-success-subtle text-success',
   INACTIVE: 'bg-warning-subtle text-warning',
   ARCHIVED: 'bg-secondary-subtle text-secondary',
+};
+
+type PatientDateFilter =
+  | 'ALL'
+  | 'TODAY'
+  | 'LAST_7_DAYS'
+  | 'LAST_30_DAYS'
+  | 'OLDER_THAN_30_DAYS';
+
+const matchesDateFilter = (
+  createdAt: Date,
+  filter: PatientDateFilter,
+  today: Date,
+): boolean => {
+  if (filter === 'ALL') return true;
+
+  const createdDate = new Date(createdAt);
+  createdDate.setHours(0, 0, 0, 0);
+
+  const last7Days = new Date(today);
+  last7Days.setDate(last7Days.getDate() - 6);
+
+  const last30Days = new Date(today);
+  last30Days.setDate(last30Days.getDate() - 29);
+
+  switch (filter) {
+    case 'TODAY':
+      return createdDate.getTime() === today.getTime();
+    case 'LAST_7_DAYS':
+      return createdDate >= last7Days && createdDate <= today;
+    case 'LAST_30_DAYS':
+      return createdDate >= last30Days && createdDate <= today;
+    case 'OLDER_THAN_30_DAYS':
+      return createdDate < last30Days;
+  }
 };
 
 const getPatientAvatar = (patientId: string): StaticImageData => {
@@ -82,8 +116,7 @@ const PatientTable = () => {
   const updatePatient = usePatientStore((state) => state.updatePatient);
   const deletePatient = usePatientStore((state) => state.deletePatient);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [createdFrom, setCreatedFrom] = useState('');
-  const [createdTo, setCreatedTo] = useState('');
+  const [dateFilter, setDateFilter] = useState<PatientDateFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<PatientStatus | 'ALL'>(
     'ALL',
   );
@@ -99,19 +132,22 @@ const PatientTable = () => {
   const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
   const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
 
-  const visiblePatients = useMemo(
-    () =>
-      patients.filter((patient) => {
-        const createdDate = patient.createdAt.toISOString().slice(0, 10);
-        const matchesStatus =
-          statusFilter === 'ALL' || patient.status === statusFilter;
-        const matchesFrom = !createdFrom || createdDate >= createdFrom;
-        const matchesTo = !createdTo || createdDate <= createdTo;
+  const visiblePatients = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        return matchesStatus && matchesFrom && matchesTo;
-      }),
-    [createdFrom, createdTo, patients, statusFilter],
-  );
+    return patients.filter((patient) => {
+      const matchesStatus =
+        statusFilter === 'ALL' || patient.status === statusFilter;
+      const matchesDate = matchesDateFilter(
+        patient.createdAt,
+        dateFilter,
+        today,
+      );
+
+      return matchesStatus && matchesDate;
+    });
+  }, [dateFilter, patients, statusFilter]);
 
   const columns = useMemo(
     () => [
@@ -307,8 +343,8 @@ const PatientTable = () => {
 
   return (
     <Card>
-      <CardHeader className="border-light justify-content-between flex-wrap gap-2">
-        <div className="d-flex gap-2 flex-wrap">
+      <CardHeader className="border-light justify-content-between">
+        <div className="d-flex gap-2">
           <div className="app-search">
             <input
               className="form-control"
@@ -332,40 +368,26 @@ const PatientTable = () => {
           )}
         </div>
 
-        <div className="d-flex align-items-center gap-2 flex-wrap">
+        <div className="d-flex align-items-center gap-2">
           <span className="me-2 fw-semibold">Filter By:</span>
 
           <div className="app-search">
-            <FormControl
-              aria-label="Registered from date"
-              max={createdTo || undefined}
+            <FormSelect
+              aria-label="Filter patients by registration date"
+              className="form-control my-1 my-md-0"
               onChange={(event) => {
-                setCreatedFrom(event.target.value);
+                setDateFilter(event.target.value as PatientDateFilter);
                 resetPage();
               }}
-              title="Registered from"
-              type="date"
-              value={createdFrom}
-            />
+              value={dateFilter}
+            >
+              <option value="ALL">Registration Date</option>
+              <option value="TODAY">Today</option>
+              <option value="LAST_7_DAYS">Last 7 days</option>
+              <option value="LAST_30_DAYS">Last 30 days</option>
+              <option value="OLDER_THAN_30_DAYS">Older than 30 days</option>
+            </FormSelect>
             <Icon icon="calendar-days" className="app-search-icon text-muted" />
-          </div>
-
-          <div className="app-search">
-            <FormControl
-              aria-label="Registered to date"
-              min={createdFrom || undefined}
-              onChange={(event) => {
-                setCreatedTo(event.target.value);
-                resetPage();
-              }}
-              title="Registered to"
-              type="date"
-              value={createdTo}
-            />
-            <Icon
-              icon="calendar-check"
-              className="app-search-icon text-muted"
-            />
           </div>
 
           <div className="app-search">
@@ -388,18 +410,22 @@ const PatientTable = () => {
             <Icon icon="shuffle" className="app-search-icon text-muted" />
           </div>
 
-          <FormSelect
-            aria-label="Patients per page"
-            className="form-control my-1 my-md-0 w-auto"
-            onChange={(event) => table.setPageSize(Number(event.target.value))}
-            value={pageSize}
-          >
-            {[5, 8, 10, 15, 20].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </FormSelect>
+          <div>
+            <FormSelect
+              aria-label="Patients per page"
+              className="form-control my-1 my-md-0"
+              onChange={(event) =>
+                table.setPageSize(Number(event.target.value))
+              }
+              value={pageSize}
+            >
+              {[5, 8, 10, 15, 20].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </FormSelect>
+          </div>
         </div>
       </CardHeader>
 
