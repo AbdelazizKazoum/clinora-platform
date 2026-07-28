@@ -1,6 +1,13 @@
 'use client';
 
+import user1 from '@/assets/images/users/user-1.jpg';
+import user2 from '@/assets/images/users/user-2.jpg';
+import user3 from '@/assets/images/users/user-3.jpg';
+import user4 from '@/assets/images/users/user-4.jpg';
+import user5 from '@/assets/images/users/user-5.jpg';
+import user6 from '@/assets/images/users/user-6.jpg';
 import DataTable from '@/components/table/DataTable';
+import DeleteConfirmationModal from '@/components/table/delete-confirmation-modal';
 import TablePagination from '@/components/table/TablePagination';
 import Icon from '@/components/wrappers/Icon';
 import { usePatientStore } from '@/store';
@@ -10,40 +17,73 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type FilterFn,
+  type Row as TableRow,
   type SortingState,
+  type Table as TableType,
   useReactTable,
 } from '@tanstack/react-table';
+import Image, { type StaticImageData } from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
-  Badge,
   Button,
   Card,
   CardFooter,
   CardHeader,
+  FormControl,
   FormSelect,
 } from 'react-bootstrap';
-import { PATIENT_STATUSES, type Patient, type PatientStatus } from '../model';
+import {
+  PATIENT_STATUSES,
+  type Patient,
+  type PatientStatus,
+  type UpdatePatientCommand,
+} from '../model';
+import { formatPatientDate, formatPatientEnum } from '../utils/patient-display';
+import PatientDetailsModal from './patient-details-modal';
+import PatientEditModal from './patient-edit-modal';
 
 const columnHelper = createColumnHelper<Patient>();
+const patientAvatars = [user1, user2, user3, user4, user5, user6];
 
-const dateFormatter = new Intl.DateTimeFormat('en-GB', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-});
+const statusClassName: Record<PatientStatus, string> = {
+  ACTIVE: 'bg-success-subtle text-success',
+  INACTIVE: 'bg-warning-subtle text-warning',
+  ARCHIVED: 'bg-secondary-subtle text-secondary',
+};
 
-const statusVariant: Record<PatientStatus, string> = {
-  ACTIVE: 'success',
-  INACTIVE: 'warning',
-  ARCHIVED: 'secondary',
+const getPatientAvatar = (patientId: string): StaticImageData => {
+  const hash = Array.from(patientId).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return patientAvatars[hash % patientAvatars.length];
+};
+
+const patientGlobalFilter: FilterFn<Patient> = (row, _columnId, value) => {
+  const search = String(value).trim().toLowerCase();
+  if (!search) return true;
+
+  const patient = row.original;
+  return [
+    patient.firstName,
+    patient.lastName,
+    patient.email,
+    patient.phone,
+    patient.gender,
+    patient.status,
+  ].some((field) => field?.toLowerCase().includes(search));
 };
 
 const PatientTable = () => {
   const patients = usePatientStore((state) => state.patients);
-  const archivePatient = usePatientStore((state) => state.archivePatient);
-  const restorePatient = usePatientStore((state) => state.restorePatient);
+  const updatePatient = usePatientStore((state) => state.updatePatient);
+  const deletePatient = usePatientStore((state) => state.deletePatient);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
   const [statusFilter, setStatusFilter] = useState<PatientStatus | 'ALL'>(
     'ALL',
   );
@@ -52,32 +92,89 @@ const PatientTable = () => {
     pageIndex: 0,
     pageSize: 8,
   });
+  const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
+  const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
 
   const visiblePatients = useMemo(
     () =>
-      statusFilter === 'ALL'
-        ? patients
-        : patients.filter((patient) => patient.status === statusFilter),
-    [patients, statusFilter],
+      patients.filter((patient) => {
+        const createdDate = patient.createdAt.toISOString().slice(0, 10);
+        const matchesStatus =
+          statusFilter === 'ALL' || patient.status === statusFilter;
+        const matchesFrom = !createdFrom || createdDate >= createdFrom;
+        const matchesTo = !createdTo || createdDate <= createdTo;
+
+        return matchesStatus && matchesFrom && matchesTo;
+      }),
+    [createdFrom, createdTo, patients, statusFilter],
   );
 
   const columns = useMemo(
     () => [
+      columnHelper.display({
+        id: 'select',
+        header: ({ table }: { table: TableType<Patient> }) => (
+          <input
+            aria-label="Select all patients"
+            checked={table.getIsAllRowsSelected()}
+            className="form-check-input form-check-input-light fs-14"
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            type="checkbox"
+          />
+        ),
+        cell: ({ row }: { row: TableRow<Patient> }) => (
+          <input
+            aria-label={`Select ${row.original.firstName} ${row.original.lastName}`}
+            checked={row.getIsSelected()}
+            className="form-check-input form-check-input-light fs-14"
+            onChange={row.getToggleSelectedHandler()}
+            type="checkbox"
+          />
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+      }),
       columnHelper.accessor(
         (patient) => `${patient.firstName} ${patient.lastName}`,
         {
           id: 'patient',
-          header: 'Patient',
-          cell: ({ row }) => (
-            <div>
-              <h5 className="mb-1 fs-base">
-                {row.original.firstName} {row.original.lastName}
-              </h5>
-              <span className="text-muted fs-xs">
-                {row.original.email ?? 'No email'}
-              </span>
-            </div>
-          ),
+          header: 'Patient Name',
+          cell: ({ row }) => {
+            const patient = row.original;
+            const fullName = `${patient.firstName} ${patient.lastName}`;
+
+            return (
+              <div className="d-flex align-items-center gap-2">
+                <div className="avatar avatar-sm">
+                  <Image
+                    alt={fullName}
+                    className="img-fluid rounded-circle"
+                    height={32}
+                    src={getPatientAvatar(patient.id)}
+                    width={32}
+                  />
+                </div>
+                <div>
+                  <h5 className="mb-0 lh-base fs-base">
+                    <button
+                      className="link-reset border-0 bg-transparent p-0"
+                      onClick={() => setViewedPatient(patient)}
+                      type="button"
+                    >
+                      {fullName}
+                    </button>
+                  </h5>
+                  <p className="text-muted fs-xs mb-0">
+                    {patient.email ?? 'No email'}
+                  </p>
+                </div>
+              </div>
+            );
+          },
         },
       ),
       columnHelper.accessor('phone', {
@@ -86,79 +183,96 @@ const PatientTable = () => {
       }),
       columnHelper.accessor('gender', {
         header: 'Gender',
-        cell: ({ getValue }) => {
-          const gender = getValue();
-          return gender
-            ? gender.charAt(0) + gender.slice(1).toLowerCase()
-            : '—';
-        },
+        cell: ({ getValue }) => (
+          <span className="badge p-1 text-bg-light fs-sm">
+            {getValue() ? formatPatientEnum(getValue() as string) : 'Not set'}
+          </span>
+        ),
+      }),
+      columnHelper.accessor('dateOfBirth', {
+        header: 'Date of Birth',
+        cell: ({ getValue }) => formatPatientDate(getValue()),
       }),
       columnHelper.accessor('createdAt', {
         header: 'Registered',
-        cell: ({ getValue }) => dateFormatter.format(getValue()),
+        cell: ({ getValue }) => formatPatientDate(getValue()),
       }),
       columnHelper.accessor('status', {
         header: 'Status',
         cell: ({ getValue }) => (
-          <Badge bg={statusVariant[getValue()]}>{getValue()}</Badge>
+          <span className={`badge badge-label ${statusClassName[getValue()]}`}>
+            {formatPatientEnum(getValue())}
+          </span>
         ),
       }),
       columnHelper.display({
         id: 'actions',
         header: 'Actions',
-        enableSorting: false,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: TableRow<Patient> }) => {
           const patient = row.original;
+          const fullName = `${patient.firstName} ${patient.lastName}`;
 
-          return patient.status === 'ARCHIVED' ? (
-            <Button
-              aria-label={`Restore ${patient.firstName} ${patient.lastName}`}
-              onClick={() =>
-                restorePatient({
-                  clinicId: patient.clinicId,
-                  patientId: patient.id,
-                })
-              }
-              size="sm"
-              title="Restore patient"
-              variant="soft-success"
-            >
-              <Icon icon="rotate-ccw" />
-            </Button>
-          ) : (
-            <Button
-              aria-label={`Archive ${patient.firstName} ${patient.lastName}`}
-              onClick={() =>
-                archivePatient({
-                  clinicId: patient.clinicId,
-                  patientId: patient.id,
-                })
-              }
-              size="sm"
-              title="Archive patient"
-              variant="soft-secondary"
-            >
-              <Icon icon="archive" />
-            </Button>
+          return (
+            <div className="d-flex align-items-center justify-content-center gap-1">
+              <Button
+                aria-label={`View ${fullName}`}
+                className="btn-default btn-icon rounded-circle"
+                onClick={() => setViewedPatient(patient)}
+                size="sm"
+                title="View patient"
+              >
+                <Icon icon="eye" className="fs-lg" />
+              </Button>
+              <Button
+                aria-label={`Edit ${fullName}`}
+                className="btn-default btn-icon rounded-circle"
+                onClick={() => setEditedPatient(patient)}
+                size="sm"
+                title="Edit patient"
+              >
+                <Icon icon="square-pen" className="fs-lg" />
+              </Button>
+              <Button
+                aria-label={`Delete ${fullName}`}
+                className="btn-default btn-icon rounded-circle"
+                onClick={() => {
+                  setSelectedRowIds({ [patient.id]: true });
+                  setShowDeleteModal(true);
+                }}
+                size="sm"
+                title="Delete patient"
+              >
+                <Icon icon="trash-2" className="fs-lg" />
+              </Button>
+            </div>
           );
         },
       }),
     ],
-    [archivePatient, restorePatient],
+    [],
   );
 
   const table = useReactTable({
     data: visiblePatients,
     columns,
-    state: { globalFilter, pagination, sorting },
+    state: {
+      globalFilter,
+      pagination,
+      rowSelection: selectedRowIds,
+      sorting,
+    },
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setSelectedRowIds,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    globalFilterFn: 'includesString',
+    getRowId: (patient) => patient.id,
+    globalFilterFn: patientGlobalFilter,
+    enableColumnFilters: true,
+    enableRowSelection: true,
   });
 
   const pageIndex = table.getState().pagination.pageIndex;
@@ -166,49 +280,130 @@ const PatientTable = () => {
   const totalItems = table.getFilteredRowModel().rows.length;
   const start = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
   const end = Math.min(start + pageSize - 1, totalItems);
+  const selectedCount = Object.keys(selectedRowIds).length;
 
-  const handleStatusChange = (value: string) => {
-    setStatusFilter(value as PatientStatus | 'ALL');
-    table.setPageIndex(0);
+  const resetPage = () => table.setPageIndex(0);
+
+  const handleDelete = () => {
+    Object.keys(selectedRowIds).forEach((patientId) => {
+      const patient = patients.find((item) => item.id === patientId);
+      if (patient) {
+        deletePatient({
+          clinicId: patient.clinicId,
+          patientId: patient.id,
+        });
+      }
+    });
+
+    setSelectedRowIds({});
+    setShowDeleteModal(false);
+    resetPage();
+  };
+
+  const handleUpdate = (command: UpdatePatientCommand) => {
+    updatePatient(command);
+    setEditedPatient(null);
   };
 
   return (
     <Card>
-      <CardHeader className="border-light d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-2 flex-wrap">
+      <CardHeader className="border-light justify-content-between flex-wrap gap-2">
+        <div className="d-flex gap-2 flex-wrap">
           <div className="app-search">
             <input
               className="form-control"
               onChange={(event) => setGlobalFilter(event.target.value)}
               placeholder="Search patients..."
-              type="search"
+              type="text"
               value={globalFilter}
             />
             <Icon icon="search" className="app-search-icon text-muted" />
           </div>
 
+          <Link className="btn btn-primary" href="/patients/new">
+            <Icon icon="plus" className="me-1" />
+            New Patient
+          </Link>
+
+          {selectedCount > 0 && (
+            <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+              Delete
+            </Button>
+          )}
+        </div>
+
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span className="me-2 fw-semibold">Filter By:</span>
+
+          <div className="app-search">
+            <FormControl
+              aria-label="Registered from date"
+              max={createdTo || undefined}
+              onChange={(event) => {
+                setCreatedFrom(event.target.value);
+                resetPage();
+              }}
+              title="Registered from"
+              type="date"
+              value={createdFrom}
+            />
+            <Icon icon="calendar-days" className="app-search-icon text-muted" />
+          </div>
+
+          <div className="app-search">
+            <FormControl
+              aria-label="Registered to date"
+              min={createdFrom || undefined}
+              onChange={(event) => {
+                setCreatedTo(event.target.value);
+                resetPage();
+              }}
+              title="Registered to"
+              type="date"
+              value={createdTo}
+            />
+            <Icon
+              icon="calendar-check"
+              className="app-search-icon text-muted"
+            />
+          </div>
+
+          <div className="app-search">
+            <FormSelect
+              aria-label="Filter patients by status"
+              className="form-control my-1 my-md-0"
+              onChange={(event) => {
+                setStatusFilter(event.target.value as PatientStatus | 'ALL');
+                resetPage();
+              }}
+              value={statusFilter}
+            >
+              <option value="ALL">Patient Status</option>
+              {PATIENT_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {formatPatientEnum(status)}
+                </option>
+              ))}
+            </FormSelect>
+            <Icon icon="shuffle" className="app-search-icon text-muted" />
+          </div>
+
           <FormSelect
-            aria-label="Filter patients by status"
-            className="w-auto"
-            onChange={(event) => handleStatusChange(event.target.value)}
-            value={statusFilter}
+            aria-label="Patients per page"
+            className="form-control my-1 my-md-0 w-auto"
+            onChange={(event) => table.setPageSize(Number(event.target.value))}
+            value={pageSize}
           >
-            <option value="ALL">All statuses</option>
-            {PATIENT_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status.charAt(0) + status.slice(1).toLowerCase()}
+            {[5, 8, 10, 15, 20].map((size) => (
+              <option key={size} value={size}>
+                {size}
               </option>
             ))}
           </FormSelect>
         </div>
-
-        <Link className="btn btn-primary" href="/patients/new">
-          <Icon icon="plus" className="me-1" />
-          Add patient
-        </Link>
       </CardHeader>
 
-      <DataTable table={table} emptyMessage="No patients found." />
+      <DataTable<Patient> table={table} emptyMessage="No patients found." />
 
       {totalItems > 0 && (
         <CardFooter className="border-0">
@@ -228,6 +423,25 @@ const PatientTable = () => {
           />
         </CardFooter>
       )}
+
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        selectedCount={selectedCount}
+        itemName="patient"
+      />
+
+      <PatientDetailsModal
+        patient={viewedPatient}
+        onHide={() => setViewedPatient(null)}
+      />
+
+      <PatientEditModal
+        patient={editedPatient}
+        onHide={() => setEditedPatient(null)}
+        onSave={handleUpdate}
+      />
     </Card>
   );
 };

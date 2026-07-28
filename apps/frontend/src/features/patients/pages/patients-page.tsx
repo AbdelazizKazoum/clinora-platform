@@ -7,8 +7,8 @@ const PatientsPage = () => {
     <>
       <PageBreadcrumb title="All Patients" subtitle="Patients" />
 
-      <Row className="justify-content-center">
-        <Col xxl={12}>
+      <Row>
+        <Col xs={12}>
           <PatientTable />
         </Col>
       </Row>
