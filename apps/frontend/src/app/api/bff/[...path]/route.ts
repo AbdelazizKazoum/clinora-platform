@@ -20,9 +20,11 @@ const FORWARDED_REQUEST_HEADERS = [
   'accept-language',
   'content-type',
   'if-match',
-  'if-none-match',
   'x-request-id',
 ] as const;
+
+const inFlightRefreshes = new Map<string, Promise<BackendTokenUpdate>>();
+const NO_BODY_STATUS_CODES = new Set([204, 205, 304]);
 
 interface RouteContext {
   params: Promise<{
@@ -77,6 +79,8 @@ const createResponseHeaders = (
     );
   });
 
+  headers.set('Cache-Control', 'no-store');
+
   return headers;
 };
 
@@ -110,13 +114,79 @@ const sendGatewayRequest = async (
   return axios.request<ArrayBuffer>(config);
 };
 
+const createGatewayResponse = (
+  gatewayResponse: AxiosResponse<ArrayBuffer>,
+): NextResponse => {
+  const status = gatewayResponse.status;
+
+  return new NextResponse(
+    NO_BODY_STATUS_CODES.has(status) ? null : gatewayResponse.data,
+    {
+      headers: createResponseHeaders(
+        gatewayResponse.headers as Record<string, unknown>,
+      ),
+      status,
+      statusText: gatewayResponse.statusText,
+    },
+  );
+};
+
+const describeProxyError = (error: unknown): Record<string, unknown> => {
+  if (axios.isAxiosError(error)) {
+    return {
+      code: error.code,
+      message: error.message,
+      status: error.response?.status,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+    };
+  }
+
+  return {
+    message: 'Unknown proxy error',
+  };
+};
+
+const persistBackendAuthSession = async (
+  update: BackendTokenUpdate,
+): Promise<void> => {
+  try {
+    await updateBackendAuthSession(update);
+  } catch (error) {
+    console.warn(
+      '[BFF] Refreshed gateway session could not be persisted',
+      describeProxyError(error),
+    );
+  }
+};
+
 const refreshSession = async (
   refreshToken: string,
 ): Promise<BackendTokenUpdate> => {
-  const update = await refreshGatewaySession(refreshToken);
-  await updateBackendAuthSession(update);
+  const existingRefresh = inFlightRefreshes.get(refreshToken);
 
-  return update;
+  if (existingRefresh) {
+    return existingRefresh;
+  }
+
+  const refresh = refreshGatewaySession(refreshToken)
+    .then(async (update) => {
+      await persistBackendAuthSession(update);
+
+      return update;
+    })
+    .finally(() => {
+      inFlightRefreshes.delete(refreshToken);
+    });
+
+  inFlightRefreshes.set(refreshToken, refresh);
+
+  return refresh;
 };
 
 async function proxyRequest(
@@ -174,14 +244,14 @@ async function proxyRequest(
       );
     }
 
-    return new NextResponse(gatewayResponse.data, {
-      headers: createResponseHeaders(
-        gatewayResponse.headers as Record<string, unknown>,
-      ),
-      status: gatewayResponse.status,
-      statusText: gatewayResponse.statusText,
-    });
+    return createGatewayResponse(gatewayResponse);
   } catch (error) {
+    console.error('[BFF] Gateway proxy request failed', {
+      ...describeProxyError(error),
+      method: request.method,
+      path: path.join('/'),
+    });
+
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       return NextResponse.json(
         { message: 'Authentication is required', statusCode: 401 },

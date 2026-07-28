@@ -14,10 +14,6 @@ import { useNotificationStore, usePatientStore } from '@/store';
 import {
   createColumnHelper,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type FilterFn,
   type Row as TableRow,
   type SortingState,
   type Table as TableType,
@@ -39,6 +35,7 @@ import {
 import {
   PATIENT_STATUSES,
   type Patient,
+  type PatientSortField,
   type PatientStatus,
   type UpdatePatientCommand,
 } from '../model';
@@ -62,34 +59,6 @@ type PatientDateFilter =
   | 'LAST_30_DAYS'
   | 'OLDER_THAN_30_DAYS';
 
-const matchesDateFilter = (
-  createdAt: Date,
-  filter: PatientDateFilter,
-  today: Date,
-): boolean => {
-  if (filter === 'ALL') return true;
-
-  const createdDate = new Date(createdAt);
-  createdDate.setHours(0, 0, 0, 0);
-
-  const last7Days = new Date(today);
-  last7Days.setDate(last7Days.getDate() - 6);
-
-  const last30Days = new Date(today);
-  last30Days.setDate(last30Days.getDate() - 29);
-
-  switch (filter) {
-    case 'TODAY':
-      return createdDate.getTime() === today.getTime();
-    case 'LAST_7_DAYS':
-      return createdDate >= last7Days && createdDate <= today;
-    case 'LAST_30_DAYS':
-      return createdDate >= last30Days && createdDate <= today;
-    case 'OLDER_THAN_30_DAYS':
-      return createdDate < last30Days;
-  }
-};
-
 const getPatientAvatar = (patientId: string): StaticImageData => {
   const hash = Array.from(patientId).reduce(
     (total, character) => total + character.charCodeAt(0),
@@ -99,19 +68,66 @@ const getPatientAvatar = (patientId: string): StaticImageData => {
   return patientAvatars[hash % patientAvatars.length];
 };
 
-const patientGlobalFilter: FilterFn<Patient> = (row, _columnId, value) => {
-  const search = String(value).trim().toLowerCase();
-  if (!search) return true;
+const startOfDay = (date: Date): Date => {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
 
-  const patient = row.original;
-  return [
-    patient.firstName,
-    patient.lastName,
-    patient.email,
-    patient.phone,
-    patient.gender,
-    patient.status,
-  ].some((field) => field?.toLowerCase().includes(search));
+  return result;
+};
+
+const endOfDay = (date: Date): Date => {
+  const result = new Date(date);
+  result.setHours(23, 59, 59, 999);
+
+  return result;
+};
+
+const addDays = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+
+  return result;
+};
+
+const getDateFilterRange = (
+  filter: PatientDateFilter,
+): { createdFrom?: Date; createdTo?: Date } => {
+  if (filter === 'ALL') return {};
+
+  const today = startOfDay(new Date());
+
+  switch (filter) {
+    case 'TODAY':
+      return { createdFrom: today, createdTo: endOfDay(today) };
+    case 'LAST_7_DAYS':
+      return { createdFrom: addDays(today, -6), createdTo: endOfDay(today) };
+    case 'LAST_30_DAYS':
+      return { createdFrom: addDays(today, -29), createdTo: endOfDay(today) };
+    case 'OLDER_THAN_30_DAYS':
+      return { createdTo: endOfDay(addDays(today, -30)) };
+  }
+};
+
+const SERVER_SORT_FIELDS = new Set<PatientSortField>([
+  'firstName',
+  'lastName',
+  'createdAt',
+  'updatedAt',
+]);
+
+const getServerSort = (
+  sorting: SortingState,
+): { sortBy: PatientSortField; sortOrder: 'asc' | 'desc' } => {
+  const sort = sorting[0];
+
+  if (sort && SERVER_SORT_FIELDS.has(sort.id as PatientSortField)) {
+    return {
+      sortBy: sort.id as PatientSortField,
+      sortOrder: sort.desc ? 'desc' : 'asc',
+    };
+  }
+
+  return { sortBy: 'createdAt', sortOrder: 'desc' };
 };
 
 const getErrorMessage = (error: unknown): string =>
@@ -202,6 +218,7 @@ const PatientTable = () => {
   const error = usePatientStore((state) => state.error);
   const isLoading = usePatientStore((state) => state.isLoading);
   const loadPatients = usePatientStore((state) => state.loadPatients);
+  const meta = usePatientStore((state) => state.meta);
   const patients = usePatientStore((state) => state.patients);
   const updatePatient = usePatientStore((state) => state.updatePatient);
   const archivePatient = usePatientStore((state) => state.archivePatient);
@@ -224,49 +241,57 @@ const PatientTable = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
   const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
-  const loadedClinicIdRef = useRef<string | null>(null);
+  const lastQueryKeyRef = useRef<string | null>(null);
   const isInitialLoading =
     sessionStatus === 'loading' || (isLoading && patients.length === 0);
 
-  useEffect(() => {
-    if (sessionStatus !== 'authenticated' || !clinicId) return;
-    if (loadedClinicIdRef.current === clinicId) return;
+  const patientListQuery = useMemo(() => {
+    if (!clinicId) return null;
 
-    loadedClinicIdRef.current = clinicId;
+    const { sortBy, sortOrder } = getServerSort(sorting);
+    const search = globalFilter.trim();
 
-    loadPatients({
+    return {
       clinicId,
-      limit: 100,
-      page: 1,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-    }).catch((loadError: unknown) => {
-      loadedClinicIdRef.current = null;
+      limit: pagination.pageSize,
+      page: pagination.pageIndex + 1,
+      search: search || undefined,
+      sortBy,
+      sortOrder,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+      ...getDateFilterRange(dateFilter),
+    };
+  }, [
+    clinicId,
+    dateFilter,
+    globalFilter,
+    pagination.pageIndex,
+    pagination.pageSize,
+    sorting,
+    statusFilter,
+  ]);
 
+  useEffect(() => {
+    if (sessionStatus !== 'authenticated' || !patientListQuery) return;
+
+    const queryKey = JSON.stringify(patientListQuery);
+    if (lastQueryKeyRef.current === queryKey) return;
+
+    lastQueryKeyRef.current = queryKey;
+
+    loadPatients(patientListQuery).catch((loadError: unknown) => {
+      lastQueryKeyRef.current = null;
       showNotification({
         message: getErrorMessage(loadError),
         title: 'Unable to load patients',
         variant: 'danger',
       });
     });
-  }, [clinicId, loadPatients, sessionStatus, showNotification]);
+  }, [loadPatients, patientListQuery, sessionStatus, showNotification]);
 
-  const visiblePatients = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return patients.filter((patient) => {
-      const matchesStatus =
-        statusFilter === 'ALL' || patient.status === statusFilter;
-      const matchesDate = matchesDateFilter(
-        patient.createdAt,
-        dateFilter,
-        today,
-      );
-
-      return matchesStatus && matchesDate;
-    });
-  }, [dateFilter, patients, statusFilter]);
+  useEffect(() => {
+    setSelectedRowIds({});
+  }, [patientListQuery]);
 
   const columns = useMemo(
     () => [
@@ -293,51 +318,49 @@ const PatientTable = () => {
         enableSorting: false,
         enableColumnFilter: false,
       }),
-      columnHelper.accessor(
-        (patient) => `${patient.firstName} ${patient.lastName}`,
-        {
-          id: 'patient',
-          header: 'Patient Name',
-          cell: ({ row }) => {
-            const patient = row.original;
-            const fullName = `${patient.firstName} ${patient.lastName}`;
+      columnHelper.accessor('lastName', {
+        header: 'Patient Name',
+        cell: ({ row }) => {
+          const patient = row.original;
+          const fullName = `${patient.firstName} ${patient.lastName}`;
 
-            return (
-              <div className="d-flex align-items-center gap-2">
-                <div className="avatar avatar-sm">
-                  <Image
-                    alt={fullName}
-                    className="img-fluid rounded-circle"
-                    height={32}
-                    src={getPatientAvatar(patient.id)}
-                    width={32}
-                  />
-                </div>
-                <div>
-                  <h5 className="mb-0 lh-base fs-base">
-                    <button
-                      className="link-reset border-0 bg-transparent p-0"
-                      onClick={() => setViewedPatient(patient)}
-                      type="button"
-                    >
-                      {fullName}
-                    </button>
-                  </h5>
-                  <p className="text-muted fs-xs mb-0">
-                    {patient.email ?? 'No email'}
-                  </p>
-                </div>
+          return (
+            <div className="d-flex align-items-center gap-2">
+              <div className="avatar avatar-sm">
+                <Image
+                  alt={fullName}
+                  className="img-fluid rounded-circle"
+                  height={32}
+                  src={getPatientAvatar(patient.id)}
+                  width={32}
+                />
               </div>
-            );
-          },
+              <div>
+                <h5 className="mb-0 lh-base fs-base">
+                  <button
+                    className="link-reset border-0 bg-transparent p-0"
+                    onClick={() => setViewedPatient(patient)}
+                    type="button"
+                  >
+                    {fullName}
+                  </button>
+                </h5>
+                <p className="text-muted fs-xs mb-0">
+                  {patient.email ?? 'No email'}
+                </p>
+              </div>
+            </div>
+          );
         },
-      ),
+      }),
       columnHelper.accessor('phone', {
         header: 'Phone',
+        enableSorting: false,
         cell: ({ getValue }) => getValue() ?? '—',
       }),
       columnHelper.accessor('gender', {
         header: 'Gender',
+        enableSorting: false,
         cell: ({ getValue }) => (
           <span className="badge p-1 text-bg-light fs-sm">
             {getValue() ? formatPatientEnum(getValue() as string) : 'Not set'}
@@ -346,6 +369,7 @@ const PatientTable = () => {
       }),
       columnHelper.accessor('dateOfBirth', {
         header: 'Date of Birth',
+        enableSorting: false,
         cell: ({ getValue }) => formatPatientDate(getValue()),
       }),
       columnHelper.accessor('createdAt', {
@@ -354,6 +378,7 @@ const PatientTable = () => {
       }),
       columnHelper.accessor('status', {
         header: 'Status',
+        enableSorting: false,
         cell: ({ getValue }) => (
           <span className={`badge badge-label ${statusClassName[getValue()]}`}>
             {formatPatientEnum(getValue())}
@@ -408,8 +433,12 @@ const PatientTable = () => {
   );
 
   const table = useReactTable({
-    data: visiblePatients,
+    data: patients,
     columns,
+    manualFiltering: true,
+    manualPagination: true,
+    manualSorting: true,
+    pageCount: meta.totalPages,
     state: {
       globalFilter,
       pagination,
@@ -419,25 +448,37 @@ const PatientTable = () => {
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
     onRowSelectionChange: setSelectedRowIds,
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting((current) =>
+        typeof updater === 'function' ? updater(current) : updater,
+      );
+      resetPage();
+    },
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (patient) => patient.id,
-    globalFilterFn: patientGlobalFilter,
     enableColumnFilters: true,
     enableRowSelection: true,
   });
 
   const pageIndex = table.getState().pagination.pageIndex;
   const pageSize = table.getState().pagination.pageSize;
-  const totalItems = table.getFilteredRowModel().rows.length;
+  const totalItems = meta.total;
   const start = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
-  const end = Math.min(start + pageSize - 1, totalItems);
+  const end = Math.min(start + patients.length - 1, totalItems);
   const selectedCount = Object.keys(selectedRowIds).length;
 
-  const resetPage = () => table.setPageIndex(0);
+  const resetPage = () =>
+    setPagination((current) => ({
+      ...current,
+      pageIndex: 0,
+    }));
+
+  const refreshCurrentPage = async () => {
+    if (!patientListQuery) return;
+
+    lastQueryKeyRef.current = null;
+    await loadPatients(patientListQuery);
+  };
 
   const handleDelete = async () => {
     try {
@@ -455,7 +496,7 @@ const PatientTable = () => {
 
       setSelectedRowIds({});
       setShowDeleteModal(false);
-      resetPage();
+      await refreshCurrentPage();
     } catch (error) {
       showNotification({
         message: getErrorMessage(error),
@@ -469,6 +510,7 @@ const PatientTable = () => {
     try {
       await updatePatient(command);
       setEditedPatient(null);
+      await refreshCurrentPage();
     } catch (error) {
       showNotification({
         message: getErrorMessage(error),
@@ -485,7 +527,10 @@ const PatientTable = () => {
           <div className="app-search">
             <input
               className="form-control"
-              onChange={(event) => setGlobalFilter(event.target.value)}
+              onChange={(event) => {
+                setGlobalFilter(event.target.value);
+                resetPage();
+              }}
               placeholder="Search patients..."
               type="text"
               value={globalFilter}
@@ -500,7 +545,7 @@ const PatientTable = () => {
 
           {selectedCount > 0 && (
             <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
-              Delete
+              Archive
             </Button>
           )}
         </div>
@@ -552,7 +597,10 @@ const PatientTable = () => {
               aria-label="Patients per page"
               className="form-control my-1 my-md-0"
               onChange={(event) =>
-                table.setPageSize(Number(event.target.value))
+                setPagination({
+                  pageIndex: 0,
+                  pageSize: Number(event.target.value),
+                })
               }
               value={pageSize}
             >

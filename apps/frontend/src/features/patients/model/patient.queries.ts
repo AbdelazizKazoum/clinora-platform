@@ -1,4 +1,5 @@
 import type { PatientGender, PatientStatus } from './patient';
+import type { Patient } from './patient';
 
 export type PatientSortField =
   | 'firstName'
@@ -20,6 +21,18 @@ export interface ListPatientsQuery {
   createdTo?: Date;
   sortBy?: PatientSortField;
   sortOrder?: PatientSortOrder;
+}
+
+export interface PatientPageMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ListPatientsResult {
+  patients: Patient[];
+  meta: PatientPageMeta;
 }
 
 export interface GetPatientQuery {

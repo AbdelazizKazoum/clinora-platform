@@ -3,14 +3,14 @@ import {
   mapListPatientsQueryToDto,
   mapPatientListItemFromDto,
   type ListPatientsQuery,
-  type Patient,
+  type ListPatientsResult,
 } from '../../model';
 import type { ListPatientsResponseDto } from '../dto';
 import { patientApiPaths } from '../patient-api-paths';
 
 export const listPatients = async (
   query: ListPatientsQuery,
-): Promise<Patient[]> => {
+): Promise<ListPatientsResult> => {
   const response = await apiClient.get<ListPatientsResponseDto>(
     patientApiPaths.patients(query.clinicId),
     {
@@ -18,5 +18,8 @@ export const listPatients = async (
     },
   );
 
-  return response.data.items.map(mapPatientListItemFromDto);
+  return {
+    patients: response.data.items.map(mapPatientListItemFromDto),
+    meta: response.data.meta,
+  };
 };

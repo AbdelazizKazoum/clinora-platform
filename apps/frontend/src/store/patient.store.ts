@@ -14,6 +14,7 @@ import type {
   DeletePatientCommand,
   ListPatientsQuery,
   Patient,
+  PatientPageMeta,
   RestorePatientCommand,
   UpdatePatientCommand,
 } from '@/features/patients/model';
@@ -22,6 +23,7 @@ import { create } from 'zustand';
 interface PatientState {
   error: string | null;
   isLoading: boolean;
+  meta: PatientPageMeta;
   patients: Patient[];
 }
 
@@ -40,14 +42,20 @@ export type PatientStore = PatientState & PatientActions;
 export const usePatientStore = create<PatientStore>((set) => ({
   error: null,
   isLoading: false,
+  meta: {
+    limit: 8,
+    page: 1,
+    total: 0,
+    totalPages: 0,
+  },
   patients: [],
 
   loadPatients: async (query) => {
     set({ error: null, isLoading: true });
 
     try {
-      const patients = await listPatients(query);
-      set({ patients });
+      const result = await listPatients(query);
+      set({ meta: result.meta, patients: result.patients });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to load patients.';
@@ -111,6 +119,15 @@ export const usePatientStore = create<PatientStore>((set) => ({
   },
 
   resetPatients: () => {
-    set({ error: null, patients: [] });
+    set({
+      error: null,
+      meta: {
+        limit: 8,
+        page: 1,
+        total: 0,
+        totalPages: 0,
+      },
+      patients: [],
+    });
   },
 }));

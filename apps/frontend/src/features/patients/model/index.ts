@@ -9,6 +9,8 @@ export type {
 export type {
   GetPatientQuery,
   ListPatientsQuery,
+  ListPatientsResult,
+  PatientPageMeta,
   PatientSortField,
   PatientSortOrder,
 } from './patient.queries';
