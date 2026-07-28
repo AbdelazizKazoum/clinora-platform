@@ -10,6 +10,7 @@ import { PatientDocumentTypeOrmEntity } from './patient/infrastructure/persisten
 import { PatientInsuranceTypeOrmEntity } from './patient/infrastructure/persistence/entities/patient-insurance.typeorm-entity';
 import { PatientTypeOrmEntity } from './patient/infrastructure/persistence/entities/patient.typeorm-entity';
 import { CreatePatientTables20260726010000 } from './patient/infrastructure/persistence/migrations/20260726010000-create-patient-tables';
+import { SeedDemoPatients20260728010000 } from './patient/infrastructure/persistence/migrations/20260728010000-seed-demo-patients';
 import { PatientModule } from './patient/patient.module';
 
 @Module({
@@ -34,7 +35,10 @@ import { PatientModule } from './patient/patient.module';
           PatientInsuranceTypeOrmEntity,
           PatientDocumentTypeOrmEntity,
         ],
-        migrations: [CreatePatientTables20260726010000],
+        migrations: [
+          CreatePatientTables20260726010000,
+          SeedDemoPatients20260728010000,
+        ],
         migrationsRun: config.getOrThrow<boolean>('DB_MIGRATIONS_RUN'),
         synchronize: false,
       }),
