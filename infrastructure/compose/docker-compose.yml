@@ -160,7 +160,9 @@ services:
       COOKIE_SECURE: "false"
       PORT: 3001
       AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
+      PATIENT_PROTO_PATH: /workspace/libs/contracts/patient/src/lib/patient.proto
       AUTH_SERVICE_GRPC_URL: auth-service:5001
+      PATIENT_SERVICE_GRPC_URL: patient-service:5003
       FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "127.0.0.1:3001:3001"
@@ -180,6 +182,8 @@ services:
       start_period: 10s
     depends_on:
       auth-service:
+        condition: service_healthy
+      patient-service:
         condition: service_healthy
     networks:
       - clinora-backend

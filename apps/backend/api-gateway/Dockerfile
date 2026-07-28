@@ -21,6 +21,9 @@ COPY --from=builder /workspace/apps/backend/api-gateway/dist ./apps/backend/api-
 COPY --from=builder /workspace/libs/contracts/auth/package.json ./libs/contracts/auth/package.json
 COPY --from=builder /workspace/libs/contracts/auth/dist ./libs/contracts/auth/dist
 COPY --from=builder /workspace/libs/contracts/auth/src/lib/auth.proto ./libs/contracts/auth/src/lib/auth.proto
+COPY --from=builder /workspace/libs/contracts/patient/package.json ./libs/contracts/patient/package.json
+COPY --from=builder /workspace/libs/contracts/patient/dist ./libs/contracts/patient/dist
+COPY --from=builder /workspace/libs/contracts/patient/src/lib/patient.proto ./libs/contracts/patient/src/lib/patient.proto
 
 USER node
 
