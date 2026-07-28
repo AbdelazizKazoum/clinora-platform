@@ -29,6 +29,9 @@
   "references": [
     {
       "path": "../../../libs/contracts/auth/tsconfig.lib.json"
+    },
+    {
+      "path": "../../../libs/contracts/patient/tsconfig.lib.json"
     }
   ]
 }

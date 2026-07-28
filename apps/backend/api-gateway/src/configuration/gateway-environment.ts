@@ -3,6 +3,7 @@ interface GatewayEnvironment {
   COOKIE_SECURE: boolean;
   PORT: number;
   AUTH_SERVICE_GRPC_URL: string;
+  PATIENT_SERVICE_GRPC_URL: string;
   FRONTEND_ORIGINS: string[];
 }
 
@@ -19,6 +20,10 @@ export function validateGatewayEnvironment(
     typeof environment['AUTH_SERVICE_GRPC_URL'] === 'string'
       ? environment['AUTH_SERVICE_GRPC_URL']
       : 'localhost:5001';
+  const patientServiceUrl =
+    typeof environment['PATIENT_SERVICE_GRPC_URL'] === 'string'
+      ? environment['PATIENT_SERVICE_GRPC_URL']
+      : 'localhost:5003';
   const frontendOrigins = String(
     environment['FRONTEND_ORIGINS'] ?? 'http://localhost:3000',
   )
@@ -34,6 +39,7 @@ export function validateGatewayEnvironment(
         : environment['COOKIE_SECURE'] === 'true',
     PORT: port,
     AUTH_SERVICE_GRPC_URL: authServiceUrl,
+    PATIENT_SERVICE_GRPC_URL: patientServiceUrl,
     FRONTEND_ORIGINS: frontendOrigins,
   };
 }
