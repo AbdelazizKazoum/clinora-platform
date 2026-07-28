@@ -26,7 +26,7 @@ import {
 import Image, { type StaticImageData } from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -224,11 +224,15 @@ const PatientTable = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
   const [editedPatient, setEditedPatient] = useState<Patient | null>(null);
+  const loadedClinicIdRef = useRef<string | null>(null);
   const isInitialLoading =
     sessionStatus === 'loading' || (isLoading && patients.length === 0);
 
   useEffect(() => {
     if (sessionStatus !== 'authenticated' || !clinicId) return;
+    if (loadedClinicIdRef.current === clinicId) return;
+
+    loadedClinicIdRef.current = clinicId;
 
     loadPatients({
       clinicId,
@@ -237,6 +241,8 @@ const PatientTable = () => {
       sortBy: 'createdAt',
       sortOrder: 'desc',
     }).catch((loadError: unknown) => {
+      loadedClinicIdRef.current = null;
+
       showNotification({
         message: getErrorMessage(loadError),
         title: 'Unable to load patients',
