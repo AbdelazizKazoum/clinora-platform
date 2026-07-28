@@ -29,8 +29,8 @@ interface PatientState {
 
 interface PatientActions {
   loadPatients: (query: ListPatientsQuery) => Promise<void>;
-  createPatient: (command: CreatePatientCommand) => Promise<void>;
-  updatePatient: (command: UpdatePatientCommand) => Promise<void>;
+  createPatient: (command: CreatePatientCommand) => Promise<Patient>;
+  updatePatient: (command: UpdatePatientCommand) => Promise<Patient>;
   archivePatient: (command: ArchivePatientCommand) => Promise<void>;
   restorePatient: (command: RestorePatientCommand) => Promise<void>;
   deletePatient: (command: DeletePatientCommand) => Promise<void>;
@@ -70,6 +70,8 @@ export const usePatientStore = create<PatientStore>((set) => ({
     const patient = await createPatientCommand(command);
 
     set((state) => ({ patients: [patient, ...state.patients] }));
+
+    return patient;
   },
 
   updatePatient: async (command) => {
@@ -83,6 +85,8 @@ export const usePatientStore = create<PatientStore>((set) => ({
           : patient,
       ),
     }));
+
+    return updatedPatient;
   },
 
   archivePatient: async ({ clinicId, patientId }) => {

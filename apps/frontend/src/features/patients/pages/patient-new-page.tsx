@@ -5,10 +5,10 @@ import PatientCreateForm from '../components/patient-create-form';
 const PatientNewPage = () => {
   return (
     <>
-      <PageBreadcrumb title="Add Patient" subtitle="Patients" />
+      <PageBreadcrumb title="Add/Edit Patient" subtitle="Patients" />
 
-      <Row>
-        <Col xl={9}>
+      <Row className="justify-content-center">
+        <Col lg={11} xl={10} xxl={8}>
           <PatientCreateForm />
         </Col>
       </Row>

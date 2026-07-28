@@ -22,6 +22,15 @@ export {
   mapUpdatePatientCommandToDto,
 } from './patient.mapper';
 export {
+  createEmptyPatientMedicalAlertsForm,
+  createEmptyPatientQuickInfoForm,
+  mapMedicalAlertsFormToUpdateCommand,
+  mapQuickInfoFormToCreateCommand,
+  mapQuickInfoFormToUpdateCommand,
+  type PatientMedicalAlertsFormModel,
+  type PatientQuickInfoFormModel,
+} from './patient-intake-form';
+export {
   PATIENT_GENDERS,
   PATIENT_STATUSES,
   type Patient,
