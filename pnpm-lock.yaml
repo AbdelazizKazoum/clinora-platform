@@ -198,6 +198,9 @@ importers:
       '@clinora/contracts-auth':
         specifier: workspace:*
         version: link:../../../libs/contracts/auth
+      '@clinora/contracts-clinic':
+        specifier: workspace:*
+        version: link:../../../libs/contracts/clinic
       '@clinora/contracts-patient':
         specifier: workspace:*
         version: link:../../../libs/contracts/patient

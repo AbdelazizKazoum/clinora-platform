@@ -160,8 +160,10 @@ services:
       COOKIE_SECURE: "false"
       PORT: 3001
       AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
+      CLINIC_PROTO_PATH: /workspace/libs/contracts/clinic/src/lib/clinic.proto
       PATIENT_PROTO_PATH: /workspace/libs/contracts/patient/src/lib/patient.proto
       AUTH_SERVICE_GRPC_URL: auth-service:5001
+      CLINIC_SERVICE_GRPC_URL: clinic-service:5002
       PATIENT_SERVICE_GRPC_URL: patient-service:5003
       JWT_SECRET: local-access-secret-change-before-production-123456
       FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
@@ -183,6 +185,8 @@ services:
       start_period: 10s
     depends_on:
       auth-service:
+        condition: service_healthy
+      clinic-service:
         condition: service_healthy
       patient-service:
         condition: service_healthy

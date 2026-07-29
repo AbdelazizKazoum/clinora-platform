@@ -15,6 +15,7 @@ module.exports = {
       compiler: 'tsc',
       externalDependencies: [
         '@clinora/contracts-auth',
+        '@clinora/contracts-clinic',
         '@clinora/contracts-patient',
         '@grpc/grpc-js',
         '@nestjs/common',
