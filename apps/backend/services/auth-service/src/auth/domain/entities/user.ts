@@ -11,6 +11,13 @@ export interface UserProperties {
   createdAt: Date;
 }
 
+export interface UserIdentityChanges {
+  email?: string;
+  fullName?: string;
+  role?: UserRole;
+  isActive?: boolean;
+}
+
 export class User {
   readonly id: string;
   readonly clinicId: string;
@@ -45,6 +52,19 @@ export class User {
       fullName: this.fullName,
       role: this.role,
       isActive,
+      createdAt: this.createdAt,
+    });
+  }
+
+  updateIdentity(changes: UserIdentityChanges): User {
+    return new User({
+      id: this.id,
+      clinicId: this.clinicId,
+      email: changes.email ?? this.email,
+      passwordHash: this.passwordHash,
+      fullName: changes.fullName ?? this.fullName,
+      role: changes.role ?? this.role,
+      isActive: changes.isActive ?? this.isActive,
       createdAt: this.createdAt,
     });
   }

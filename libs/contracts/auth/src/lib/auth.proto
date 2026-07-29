@@ -6,6 +6,9 @@ service AuthService {
   rpc Login (LoginRequest) returns (AuthReply);
   rpc Register (RegisterRequest) returns (AuthReply);
   rpc RefreshToken (RefreshTokenRequest) returns (RefreshTokenReply);
+  rpc ProvisionStaffIdentity (ProvisionStaffIdentityRequest) returns (UserProfile);
+  rpc UpdateStaffIdentity (UpdateStaffIdentityRequest) returns (UserProfile);
+  rpc DeleteProvisionedIdentity (DeleteProvisionedIdentityRequest) returns (DeleteProvisionedIdentityReply);
 }
 
 message LoginRequest {
@@ -43,4 +46,30 @@ message RefreshTokenRequest {
 message RefreshTokenReply {
   string access_token = 1;
   string refresh_token = 2;
+}
+
+message ProvisionStaffIdentityRequest {
+  string email = 1;
+  string password = 2;
+  string full_name = 3;
+  string role = 4;
+  string clinic_id = 5;
+}
+
+message UpdateStaffIdentityRequest {
+  string user_id = 1;
+  string clinic_id = 2;
+  optional string email = 3;
+  optional string full_name = 4;
+  optional string role = 5;
+  optional bool is_active = 6;
+}
+
+message DeleteProvisionedIdentityRequest {
+  string user_id = 1;
+  string clinic_id = 2;
+}
+
+message DeleteProvisionedIdentityReply {
+  bool deleted = 1;
 }

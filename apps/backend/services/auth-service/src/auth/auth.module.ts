@@ -4,8 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { LoginUserUseCase } from './application/use-cases/login-user.use-case';
+import { DeleteProvisionedIdentityUseCase } from './application/use-cases/delete-provisioned-identity.use-case';
+import { ProvisionStaffIdentityUseCase } from './application/use-cases/provision-staff-identity.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
 import { RegisterUserUseCase } from './application/use-cases/register-user.use-case';
+import { UpdateStaffIdentityUseCase } from './application/use-cases/update-staff-identity.use-case';
 import {
   JWT_SERVICE,
   PASSWORD_HASHER,
@@ -25,6 +28,9 @@ import { AuthGrpcController } from './presentation/grpc/auth.grpc-controller';
     LoginUserUseCase,
     RegisterUserUseCase,
     RefreshTokenUseCase,
+    ProvisionStaffIdentityUseCase,
+    UpdateStaffIdentityUseCase,
+    DeleteProvisionedIdentityUseCase,
     {
       provide: USER_REPOSITORY,
       useClass: TypeOrmUserRepository,

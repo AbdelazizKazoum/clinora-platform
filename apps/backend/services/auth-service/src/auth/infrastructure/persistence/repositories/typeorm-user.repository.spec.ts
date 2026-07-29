@@ -40,6 +40,7 @@ describe(TypeOrmUserRepository.name, () => {
   const ormRepository = {
     findOneBy: jest.fn(),
     save: jest.fn(),
+    delete: jest.fn(),
   };
   let users: TypeOrmUserRepository;
 
@@ -84,6 +85,36 @@ describe(TypeOrmUserRepository.name, () => {
       expect.objectContaining({ isActive: false }),
     );
     expect(savedUser?.isActive).toBe(false);
+  });
+
+  it('finds an identity by user and clinic', async () => {
+    ormRepository.findOneBy.mockResolvedValue(createEntity());
+
+    const user = await users.findByIdAndClinic(
+      '00000000-0000-4000-8000-0000000000a1',
+      '00000000-0000-4000-8000-000000000001',
+    );
+
+    expect(ormRepository.findOneBy).toHaveBeenCalledWith({
+      id: '00000000-0000-4000-8000-0000000000a1',
+      clinicId: '00000000-0000-4000-8000-000000000001',
+    });
+    expect(user?.id).toBe('00000000-0000-4000-8000-0000000000a1');
+  });
+
+  it('deletes an identity by user and clinic', async () => {
+    ormRepository.delete.mockResolvedValue({ affected: 1 });
+
+    await expect(
+      users.deleteByIdAndClinic(
+        '00000000-0000-4000-8000-0000000000a1',
+        '00000000-0000-4000-8000-000000000001',
+      ),
+    ).resolves.toBe(true);
+    expect(ormRepository.delete).toHaveBeenCalledWith({
+      id: '00000000-0000-4000-8000-0000000000a1',
+      clinicId: '00000000-0000-4000-8000-000000000001',
+    });
   });
 
   it('returns null when updating availability for a missing identity', async () => {

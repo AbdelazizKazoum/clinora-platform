@@ -58,8 +58,43 @@ export interface RefreshTokenReply {
   refreshToken: string;
 }
 
+export interface ProvisionStaffIdentityRequest {
+  email: string;
+  password: string;
+  fullName: string;
+  role: AuthUserRole;
+  clinicId: string;
+}
+
+export interface UpdateStaffIdentityRequest {
+  userId: string;
+  clinicId: string;
+  email?: string;
+  fullName?: string;
+  role?: AuthUserRole;
+  isActive?: boolean;
+}
+
+export interface DeleteProvisionedIdentityRequest {
+  userId: string;
+  clinicId: string;
+}
+
+export interface DeleteProvisionedIdentityReply {
+  deleted: boolean;
+}
+
 export interface AuthServiceClient {
   login(request: LoginRequest): Observable<AuthReply>;
   register(request: RegisterRequest): Observable<AuthReply>;
   refreshToken(request: RefreshTokenRequest): Observable<RefreshTokenReply>;
+  provisionStaffIdentity(
+    request: ProvisionStaffIdentityRequest,
+  ): Observable<UserProfile>;
+  updateStaffIdentity(
+    request: UpdateStaffIdentityRequest,
+  ): Observable<UserProfile>;
+  deleteProvisionedIdentity(
+    request: DeleteProvisionedIdentityRequest,
+  ): Observable<DeleteProvisionedIdentityReply>;
 }

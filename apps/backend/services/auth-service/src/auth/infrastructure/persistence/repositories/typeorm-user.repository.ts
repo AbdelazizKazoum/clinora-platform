@@ -30,6 +30,14 @@ export class TypeOrmUserRepository implements UserRepository {
     return entity ? UserMapper.toDomain(entity) : null;
   }
 
+  async findByIdAndClinic(
+    userId: string,
+    clinicId: string,
+  ): Promise<User | null> {
+    const entity = await this.repository.findOneBy({ id: userId, clinicId });
+    return entity ? UserMapper.toDomain(entity) : null;
+  }
+
   async save(user: User): Promise<User> {
     const saved = await this.repository.save(UserMapper.toPersistence(user));
     return UserMapper.toDomain(saved);
@@ -38,18 +46,26 @@ export class TypeOrmUserRepository implements UserRepository {
   async updateAvailability(
     input: UpdateUserAvailabilityInput,
   ): Promise<User | null> {
-    const entity = await this.repository.findOneBy({
-      id: input.userId,
-      clinicId: input.clinicId,
-    });
+    const existingUser = await this.findByIdAndClinic(
+      input.userId,
+      input.clinicId,
+    );
 
-    if (!entity) {
+    if (!existingUser) {
       return null;
     }
 
-    const user = UserMapper.toDomain(entity).changeAvailability(input.isActive);
+    const user = existingUser.changeAvailability(input.isActive);
     const saved = await this.repository.save(UserMapper.toPersistence(user));
 
     return UserMapper.toDomain(saved);
+  }
+
+  async deleteByIdAndClinic(
+    userId: string,
+    clinicId: string,
+  ): Promise<boolean> {
+    const result = await this.repository.delete({ id: userId, clinicId });
+    return Boolean(result.affected && result.affected > 0);
   }
 }

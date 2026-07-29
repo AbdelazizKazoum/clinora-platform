@@ -183,7 +183,7 @@ The browser-provided URL clinic ID remains request context only. The verified
 - [x] Microtask 2: Prepare role and clinic-scope authorization primitives
 - [x] Microtask 3: Add auth account availability persistence
 - [x] Microtask 4: Enforce account availability during login and refresh
-- [ ] Microtask 5: Add internal auth identity-management operations
+- [x] Microtask 5: Add internal auth identity-management operations
 - [ ] Microtask 6: Extend the clinic service auth port
 - [ ] Microtask 7: Make staff status canonical
 - [ ] Microtask 8: Compensate failed staff creation

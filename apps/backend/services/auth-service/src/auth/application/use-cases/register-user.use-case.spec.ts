@@ -9,8 +9,10 @@ describe(RegisterUserUseCase.name, () => {
   const users: jest.Mocked<UserRepository> = {
     findByEmailAndClinic: jest.fn(),
     findById: jest.fn(),
+    findByIdAndClinic: jest.fn(),
     save: jest.fn(),
     updateAvailability: jest.fn(),
+    deleteByIdAndClinic: jest.fn(),
   };
   const tokens: jest.Mocked<JwtServicePort> = {
     signAccessToken: jest.fn(),
