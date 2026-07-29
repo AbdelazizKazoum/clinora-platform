@@ -239,6 +239,10 @@ frontend.
 
 ## API Shape
 
+Frontend-facing API guide:
+
+- [Clinic and staff API contract](../../api/clinic-service.md)
+
 Recommended API Gateway routes:
 
 ```txt

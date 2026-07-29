@@ -15,6 +15,14 @@ the clinic service synchronizes with the auth service internally.
 
 Implementation sources:
 
+- API Gateway staff controller:
+  `apps/backend/api-gateway/src/modules/staff/staff.controller.ts`
+- API Gateway staff facade:
+  `apps/backend/api-gateway/src/modules/staff/staff.facade.ts`
+- API Gateway staff validation DTOs:
+  `apps/backend/api-gateway/src/modules/staff/dto/staff.dto.ts`
+- API Gateway clinic gRPC client:
+  `apps/backend/api-gateway/src/clients/clinic`
 - Internal clinic contract:
   `libs/contracts/clinic/src/lib/clinic.contract.ts`
 - Internal gRPC contract:
@@ -54,6 +62,12 @@ The BFF should forward to the API Gateway:
 
 ```txt
 {API_GATEWAY_URL}/api/v1/clinics/{clinicId}/staff
+```
+
+For local server-side checks, the direct Gateway base is:
+
+```txt
+http://localhost:3001/api/v1/clinics/{clinicId}/staff
 ```
 
 The API Gateway staff routes are implemented. Role-aware authorization and
@@ -173,6 +187,16 @@ All paths below are relative to `/api/bff`.
 Do not expose permanent staff deletion to the frontend yet. The internal gRPC
 contract has `DeleteStaffMember`, but Task 9 must first define identity and
 audit behavior for removal.
+
+Gateway implementation notes:
+
+- The Gateway module is `StaffModule`.
+- The Gateway delegates to the clinic service through `ClinicClientModule`.
+- The Gateway does not create auth identities itself; staff creation remains
+  one clinic-service operation.
+- The `PATCH` route requires JWT authentication now because the Gateway must
+  derive `actorUserId` from trusted token claims for self-deactivation rules.
+- Admin-role and clinic-scope guards are pending Task 3.
 
 ## 5. Create staff
 
