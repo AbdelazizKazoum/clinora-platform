@@ -19,7 +19,7 @@ export const listPatients = async (
   );
 
   return {
-    patients: response.data.items.map(mapPatientListItemFromDto),
+    patients: (response.data.items ?? []).map(mapPatientListItemFromDto),
     meta: response.data.meta,
   };
 };

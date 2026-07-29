@@ -45,7 +45,7 @@ export interface PageMetaResponseDto {
 }
 
 export interface ListPatientsResponseDto {
-  items: PatientListItemResponseDto[];
+  items?: PatientListItemResponseDto[];
   meta: PageMetaResponseDto;
 }
 
