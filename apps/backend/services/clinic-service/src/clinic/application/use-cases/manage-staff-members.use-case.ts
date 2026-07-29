@@ -7,7 +7,10 @@ import {
   CLINIC_REPOSITORY,
   STAFF_MEMBER_REPOSITORY,
 } from '../../clinic.tokens';
-import { StaffMember } from '../../domain/entities/staff-member';
+import {
+  deriveStaffMemberIsActive,
+  StaffMember,
+} from '../../domain/entities/staff-member';
 import type { ClinicRepository } from '../../domain/repositories/clinic-repository.interface';
 import type {
   CreateStaffMember,
@@ -24,6 +27,13 @@ import {
 export interface CreateStaffMemberWithCredentials
   extends Omit<CreateStaffMember, 'userId'> {
   password: string;
+}
+
+interface ProposedStaffIdentity {
+  email: string;
+  fullName: string;
+  role: StaffMember['properties']['role'];
+  isActive: boolean;
 }
 
 @Injectable()
@@ -120,7 +130,71 @@ export class ManageStaffMembersUseCase {
     id: string,
     input: UpdateStaffMember,
   ): Promise<StaffMember> {
-    const member = await this.staffMembers.update(clinicId, id, input);
+    const existingMember = await this.staffMembers.findById(clinicId, id);
+    if (!existingMember) {
+      throw new ClinicRecordNotFoundError('Staff member', id);
+    }
+
+    const previousIdentity = this.toStaffIdentity(existingMember);
+    const proposedIdentity = this.buildProposedIdentity(
+      existingMember,
+      input,
+    );
+    const identityChanged = this.hasIdentityChanged(
+      previousIdentity,
+      proposedIdentity,
+    );
+
+    if (!identityChanged) {
+      const member = await this.staffMembers.update(clinicId, id, input);
+      if (!member) {
+        throw new ClinicRecordNotFoundError('Staff member', id);
+      }
+      return member;
+    }
+
+    const correlationId = randomUUID();
+    await this.auth.updateStaffIdentity({
+      userId: existingMember.properties.userId,
+      clinicId,
+      ...proposedIdentity,
+    });
+
+    let member: StaffMember | null;
+    try {
+      member = await this.staffMembers.update(clinicId, id, input);
+      if (!member) {
+        throw new ClinicRecordNotFoundError('Staff member', id);
+      }
+    } catch (error: unknown) {
+      try {
+        await this.auth.updateStaffIdentity({
+          userId: existingMember.properties.userId,
+          clinicId,
+          ...previousIdentity,
+        });
+      } catch (rollbackError: unknown) {
+        const operation = 'updateStaffIdentityRollback';
+        this.logger.error(
+          JSON.stringify({
+            operation,
+            correlationId,
+            identityId: existingMember.properties.userId,
+            clinicId,
+          }),
+          rollbackError instanceof Error ? rollbackError.stack : undefined,
+        );
+        throw new ClinicIdentityConsistencyError(
+          existingMember.properties.userId,
+          clinicId,
+          correlationId,
+          operation,
+        );
+      }
+
+      throw error;
+    }
+
     if (!member) {
       throw new ClinicRecordNotFoundError('Staff member', id);
     }
@@ -137,5 +211,42 @@ export class ManageStaffMembersUseCase {
     if (!(await this.clinics.findById(clinicId))) {
       throw new ClinicRecordNotFoundError('Clinic', clinicId);
     }
+  }
+
+  private toStaffIdentity(member: StaffMember): ProposedStaffIdentity {
+    return {
+      email: member.properties.email.trim().toLowerCase(),
+      fullName: member.fullName.trim(),
+      role: member.properties.role,
+      isActive: deriveStaffMemberIsActive(member.properties.status),
+    };
+  }
+
+  private buildProposedIdentity(
+    member: StaffMember,
+    input: UpdateStaffMember,
+  ): ProposedStaffIdentity {
+    const firstName = input.firstName ?? member.properties.firstName;
+    const lastName = input.lastName ?? member.properties.lastName;
+    const status = input.status ?? member.properties.status;
+
+    return {
+      email: (input.email ?? member.properties.email).trim().toLowerCase(),
+      fullName: `${firstName.trim()} ${lastName.trim()}`,
+      role: input.role ?? member.properties.role,
+      isActive: deriveStaffMemberIsActive(status),
+    };
+  }
+
+  private hasIdentityChanged(
+    previousIdentity: ProposedStaffIdentity,
+    proposedIdentity: ProposedStaffIdentity,
+  ): boolean {
+    return (
+      previousIdentity.email !== proposedIdentity.email ||
+      previousIdentity.fullName !== proposedIdentity.fullName ||
+      previousIdentity.role !== proposedIdentity.role ||
+      previousIdentity.isActive !== proposedIdentity.isActive
+    );
   }
 }
