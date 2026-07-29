@@ -186,7 +186,7 @@ The browser-provided URL clinic ID remains request context only. The verified
 - [x] Microtask 5: Add internal auth identity-management operations
 - [x] Microtask 6: Extend the clinic service auth port
 - [x] Microtask 7: Make staff status canonical
-- [ ] Microtask 8: Compensate failed staff creation
+- [x] Microtask 8: Compensate failed staff creation
 - [ ] Microtask 9: Synchronize staff identity updates
 - [ ] Microtask 10: Enforce self-deactivation and last-admin rules
 - [ ] Microtask 11: Complete lifecycle integration verification

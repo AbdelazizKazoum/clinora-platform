@@ -25,3 +25,12 @@ export class ClinicDependencyError extends Error {
     this.name = ClinicDependencyError.name;
   }
 }
+
+export class ClinicIdentityConsistencyError extends ClinicDependencyError {
+  constructor(identityId: string, clinicId: string, correlationId: string) {
+    super(
+      `Staff identity compensation failed for auth identity "${identityId}" in clinic "${clinicId}" (correlationId: ${correlationId})`,
+    );
+    this.name = ClinicIdentityConsistencyError.name;
+  }
+}

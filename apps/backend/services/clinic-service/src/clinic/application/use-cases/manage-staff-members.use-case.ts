@@ -1,4 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
   AUTH_SERVICE_PORT,
@@ -14,6 +16,7 @@ import type {
 } from '../../domain/repositories/staff-member-repository.interface';
 import type { AuthServicePort } from '../ports/auth-service.port';
 import {
+  ClinicIdentityConsistencyError,
   ClinicRecordConflictError,
   ClinicRecordNotFoundError,
 } from '../errors/clinic.errors';
@@ -25,6 +28,8 @@ export interface CreateStaffMemberWithCredentials
 
 @Injectable()
 export class ManageStaffMembersUseCase {
+  private readonly logger = new Logger(ManageStaffMembersUseCase.name);
+
   constructor(
     @Inject(CLINIC_REPOSITORY)
     private readonly clinics: ClinicRepository,
@@ -44,7 +49,8 @@ export class ManageStaffMembersUseCase {
       );
     }
 
-    const user = await this.auth.registerStaff({
+    const correlationId = randomUUID();
+    const identity = await this.auth.provisionStaffIdentity({
       clinicId: input.clinicId,
       email: input.email,
       password: input.password,
@@ -52,10 +58,45 @@ export class ManageStaffMembersUseCase {
       role: input.role,
     });
 
-    return this.staffMembers.create({
-      ...input,
-      userId: user.id,
-    });
+    try {
+      return await this.staffMembers.create({
+        clinicId: input.clinicId,
+        userId: identity.id,
+        role: input.role,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        phone: input.phone,
+        email: input.email,
+        specialization: input.specialization,
+        avatar: input.avatar,
+      });
+    } catch (error: unknown) {
+      try {
+        await this.auth.deleteProvisionedIdentity({
+          userId: identity.id,
+          clinicId: input.clinicId,
+        });
+      } catch (compensationError: unknown) {
+        this.logger.error(
+          JSON.stringify({
+            operation: 'deleteProvisionedIdentity',
+            correlationId,
+            identityId: identity.id,
+            clinicId: input.clinicId,
+          }),
+          compensationError instanceof Error
+            ? compensationError.stack
+            : undefined,
+        );
+        throw new ClinicIdentityConsistencyError(
+          identity.id,
+          input.clinicId,
+          correlationId,
+        );
+      }
+
+      throw error;
+    }
   }
 
   async getByUserId(
