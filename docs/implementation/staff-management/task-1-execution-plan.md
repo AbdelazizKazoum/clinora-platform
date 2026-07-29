@@ -180,7 +180,7 @@ The browser-provided URL clinic ID remains request context only. The verified
 ## Microtask Status
 
 - [x] Microtask 1: Prepare API Gateway JWT authentication
-- [ ] Microtask 2: Prepare role and clinic-scope authorization primitives
+- [x] Microtask 2: Prepare role and clinic-scope authorization primitives
 - [ ] Microtask 3: Add auth account availability persistence
 - [ ] Microtask 4: Enforce account availability during login and refresh
 - [ ] Microtask 5: Add internal auth identity-management operations
