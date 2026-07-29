@@ -18,6 +18,10 @@ export interface StaffMemberProperties {
   updatedAt: Date;
 }
 
+export function deriveStaffMemberIsActive(status: StaffStatus): boolean {
+  return status !== StaffStatus.Inactive;
+}
+
 export class StaffMember {
   constructor(readonly properties: StaffMemberProperties) {}
 

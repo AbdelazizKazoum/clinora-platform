@@ -23,7 +23,6 @@ export interface UpdateStaffMember {
   email?: string;
   specialization?: string | null;
   avatar?: string | null;
-  isActive?: boolean;
 }
 
 export interface StaffMemberRepository {

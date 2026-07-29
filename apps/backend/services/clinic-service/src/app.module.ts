@@ -8,6 +8,7 @@ import { StaffMemberTypeOrmEntity } from './clinic/infrastructure/persistence/en
 import { WorkingHoursTypeOrmEntity } from './clinic/infrastructure/persistence/entities/working-hours.typeorm-entity';
 import { CreateClinicTables20260726020000 } from './clinic/infrastructure/persistence/migrations/20260726020000-create-clinic-tables';
 import { SeedDefaultClinic20260726021000 } from './clinic/infrastructure/persistence/migrations/20260726021000-seed-default-clinic';
+import { NormalizeStaffStatusIsActive20260729010000 } from './clinic/infrastructure/persistence/migrations/20260729010000-normalize-staff-status-is-active';
 import { validateClinicEnvironment } from './configuration/clinic-environment';
 import { HealthModule } from './health/health.module';
 
@@ -34,6 +35,7 @@ import { HealthModule } from './health/health.module';
         migrations: [
           CreateClinicTables20260726020000,
           SeedDefaultClinic20260726021000,
+          NormalizeStaffStatusIsActive20260729010000,
         ],
         migrationsRun: config.getOrThrow<boolean>('DB_MIGRATIONS_RUN'),
         synchronize: false,

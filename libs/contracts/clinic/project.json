@@ -4,5 +4,11 @@
   "sourceRoot": "libs/contracts/clinic/src",
   "projectType": "library",
   "tags": ["platform:contracts", "type:lib", "scope:clinic"],
-  "targets": {}
+  "targets": {
+    "test": {
+      "options": {
+        "passWithNoTests": true
+      }
+    }
+  }
 }

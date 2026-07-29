@@ -111,6 +111,7 @@ message CreateStaffMemberRequest {
 }
 
 message UpdateStaffMemberRequest {
+  reserved 11;
   string clinic_id = 1;
   string staff_member_id = 2;
   optional string role = 3;
@@ -121,7 +122,6 @@ message UpdateStaffMemberRequest {
   optional string email = 8;
   optional string specialization = 9;
   optional string avatar = 10;
-  optional bool is_active = 11;
 }
 
 message DeleteStaffMemberRequest {

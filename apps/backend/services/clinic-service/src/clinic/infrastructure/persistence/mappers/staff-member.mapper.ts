@@ -1,4 +1,7 @@
-import { StaffMember } from '../../../domain/entities/staff-member';
+import {
+  deriveStaffMemberIsActive,
+  StaffMember,
+} from '../../../domain/entities/staff-member';
 import { StaffMemberTypeOrmEntity } from '../entities/staff-member.typeorm-entity';
 
 export class StaffMemberMapper {
@@ -15,7 +18,7 @@ export class StaffMemberMapper {
       email: entity.email,
       specialization: entity.specialization,
       avatar: entity.avatar,
-      isActive: entity.isActive,
+      isActive: deriveStaffMemberIsActive(entity.status),
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     });

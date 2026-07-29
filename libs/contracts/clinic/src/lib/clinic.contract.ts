@@ -133,7 +133,6 @@ export interface UpdateStaffMemberRequest {
   email?: string;
   specialization?: string;
   avatar?: string;
-  isActive?: boolean;
 }
 
 export interface DeleteStaffMemberRequest {

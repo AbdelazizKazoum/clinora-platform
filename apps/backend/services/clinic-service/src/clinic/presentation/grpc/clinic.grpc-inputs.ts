@@ -201,10 +201,6 @@ export class UpdateStaffMemberInput {
   @IsUrl()
   @MaxLength(500)
   avatar?: string | null;
-
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 }
 
 export class DeleteStaffMemberInput {

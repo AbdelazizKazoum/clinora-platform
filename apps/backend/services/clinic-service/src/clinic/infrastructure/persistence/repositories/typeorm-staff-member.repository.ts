@@ -4,7 +4,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { StaffMember } from '../../../domain/entities/staff-member';
+import {
+  deriveStaffMemberIsActive,
+  StaffMember,
+} from '../../../domain/entities/staff-member';
 import { StaffStatus } from '../../../domain/enums/staff-status.enum';
 import type {
   CreateStaffMember,
@@ -37,7 +40,7 @@ export class TypeOrmStaffMemberRepository
       email: input.email.trim().toLowerCase(),
       specialization: input.specialization?.trim() || null,
       avatar: input.avatar?.trim() || null,
-      isActive: true,
+      isActive: deriveStaffMemberIsActive(StaffStatus.Active),
     });
     try {
       return StaffMemberMapper.toDomain(
@@ -108,7 +111,7 @@ export class TypeOrmStaffMemberRepository
       entity.specialization = input.specialization;
     }
     if (input.avatar !== undefined) entity.avatar = input.avatar;
-    if (input.isActive !== undefined) entity.isActive = input.isActive;
+    entity.isActive = deriveStaffMemberIsActive(entity.status);
 
     try {
       return StaffMemberMapper.toDomain(
