@@ -159,6 +159,9 @@ export class UpdateStaffMemberInput {
   @IsUUID()
   staffMemberId!: string;
 
+  @IsUUID()
+  actorUserId!: string;
+
   @IsOptional()
   @IsEnum(StaffRole)
   role?: StaffRole;

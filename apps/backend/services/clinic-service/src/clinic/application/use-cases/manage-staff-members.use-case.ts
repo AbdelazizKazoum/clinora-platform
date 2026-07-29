@@ -9,8 +9,10 @@ import {
 } from '../../clinic.tokens';
 import {
   deriveStaffMemberIsActive,
+  isEnabledStaffAdmin,
   StaffMember,
 } from '../../domain/entities/staff-member';
+import { StaffStatus } from '../../domain/enums/staff-status.enum';
 import type { ClinicRepository } from '../../domain/repositories/clinic-repository.interface';
 import type {
   CreateStaffMember,
@@ -20,13 +22,19 @@ import type {
 import type { AuthServicePort } from '../ports/auth-service.port';
 import {
   ClinicIdentityConsistencyError,
+  ClinicLastEnabledAdminError,
   ClinicRecordConflictError,
   ClinicRecordNotFoundError,
+  ClinicSelfDeactivationError,
 } from '../errors/clinic.errors';
 
 export interface CreateStaffMemberWithCredentials
   extends Omit<CreateStaffMember, 'userId'> {
   password: string;
+}
+
+export interface UpdateStaffMemberCommand extends UpdateStaffMember {
+  actorUserId: string;
 }
 
 interface ProposedStaffIdentity {
@@ -128,29 +136,35 @@ export class ManageStaffMembersUseCase {
   async update(
     clinicId: string,
     id: string,
-    input: UpdateStaffMember,
+    input: UpdateStaffMemberCommand,
   ): Promise<StaffMember> {
+    const { actorUserId, ...updates } = input;
     const existingMember = await this.staffMembers.findById(clinicId, id);
     if (!existingMember) {
       throw new ClinicRecordNotFoundError('Staff member', id);
     }
 
+    this.assertNotSelfDeactivation(existingMember, actorUserId, updates);
+
     const previousIdentity = this.toStaffIdentity(existingMember);
     const proposedIdentity = this.buildProposedIdentity(
       existingMember,
-      input,
+      updates,
     );
     const identityChanged = this.hasIdentityChanged(
       previousIdentity,
       proposedIdentity,
     );
+    const requiresEnabledAdminGuard =
+      this.removesEnabledAdmin(existingMember, updates);
 
     if (!identityChanged) {
-      const member = await this.staffMembers.update(clinicId, id, input);
-      if (!member) {
-        throw new ClinicRecordNotFoundError('Staff member', id);
-      }
-      return member;
+      return this.persistStaffUpdate(
+        clinicId,
+        id,
+        updates,
+        requiresEnabledAdminGuard,
+      );
     }
 
     const correlationId = randomUUID();
@@ -162,10 +176,12 @@ export class ManageStaffMembersUseCase {
 
     let member: StaffMember | null;
     try {
-      member = await this.staffMembers.update(clinicId, id, input);
-      if (!member) {
-        throw new ClinicRecordNotFoundError('Staff member', id);
-      }
+      member = await this.persistStaffUpdate(
+        clinicId,
+        id,
+        updates,
+        requiresEnabledAdminGuard,
+      );
     } catch (error: unknown) {
       try {
         await this.auth.updateStaffIdentity({
@@ -195,9 +211,6 @@ export class ManageStaffMembersUseCase {
       throw error;
     }
 
-    if (!member) {
-      throw new ClinicRecordNotFoundError('Staff member', id);
-    }
     return member;
   }
 
@@ -236,6 +249,65 @@ export class ManageStaffMembersUseCase {
       role: input.role ?? member.properties.role,
       isActive: deriveStaffMemberIsActive(status),
     };
+  }
+
+  private assertNotSelfDeactivation(
+    member: StaffMember,
+    actorUserId: string,
+    input: UpdateStaffMember,
+  ): void {
+    if (
+      member.properties.userId === actorUserId &&
+      input.status === StaffStatus.Inactive
+    ) {
+      throw new ClinicSelfDeactivationError();
+    }
+  }
+
+  private removesEnabledAdmin(
+    member: StaffMember,
+    input: UpdateStaffMember,
+  ): boolean {
+    const proposedRole = input.role ?? member.properties.role;
+    const proposedStatus = input.status ?? member.properties.status;
+
+    return (
+      isEnabledStaffAdmin(
+        member.properties.role,
+        member.properties.status,
+      ) && !isEnabledStaffAdmin(proposedRole, proposedStatus)
+    );
+  }
+
+  private async persistStaffUpdate(
+    clinicId: string,
+    id: string,
+    input: UpdateStaffMember,
+    requiresEnabledAdminGuard: boolean,
+  ): Promise<StaffMember> {
+    if (!requiresEnabledAdminGuard) {
+      const member = await this.staffMembers.update(clinicId, id, input);
+      if (!member) {
+        throw new ClinicRecordNotFoundError('Staff member', id);
+      }
+      return member;
+    }
+
+    const result =
+      await this.staffMembers.updatePreservingEnabledAdmin(
+        clinicId,
+        id,
+        input,
+      );
+
+    if (result.outcome === 'not-found') {
+      throw new ClinicRecordNotFoundError('Staff member', id);
+    }
+    if (result.outcome === 'last-enabled-admin') {
+      throw new ClinicLastEnabledAdminError();
+    }
+
+    return result.member;
   }
 
   private hasIdentityChanged(

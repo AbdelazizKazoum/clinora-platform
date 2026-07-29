@@ -6,7 +6,9 @@ import type { ClinicRepository } from '../../domain/repositories/clinic-reposito
 import type { StaffMemberRepository } from '../../domain/repositories/staff-member-repository.interface';
 import {
   ClinicIdentityConsistencyError,
+  ClinicLastEnabledAdminError,
   ClinicRecordNotFoundError,
+  ClinicSelfDeactivationError,
 } from '../errors/clinic.errors';
 import type { AuthServicePort } from '../ports/auth-service.port';
 import { StaffRole } from '../../domain/enums/staff-role.enum';
@@ -68,6 +70,7 @@ function createStaffMembers(
     findByEmail: jest.fn().mockResolvedValue(null),
     list: jest.fn(),
     update: jest.fn(),
+    updatePreservingEnabledAdmin: jest.fn(),
     delete: jest.fn(),
     ...overrides,
   } as jest.Mocked<StaffMemberRepository>;
@@ -210,6 +213,7 @@ describe(ManageStaffMembersUseCase.name, () => {
 
     await expect(
       useCase.update(input.clinicId, existingStaffMember.id, {
+        actorUserId: 'another-user-id',
         phone: '+212600000000',
         specialization: 'Endodontics',
         avatar: null,
@@ -239,6 +243,7 @@ describe(ManageStaffMembersUseCase.name, () => {
     const useCase = createUseCase(createClinics(), staff, auth);
 
     await useCase.update(input.clinicId, existingStaffMember.id, {
+      actorUserId: 'another-user-id',
       email: ' Updated@Clinora.test ',
     });
 
@@ -266,6 +271,7 @@ describe(ManageStaffMembersUseCase.name, () => {
     const useCase = createUseCase(createClinics(), staff, auth);
 
     await useCase.update(input.clinicId, existingStaffMember.id, {
+      actorUserId: 'another-user-id',
       firstName: ' Nadia ',
       lastName: ' Alaoui ',
     });
@@ -288,6 +294,7 @@ describe(ManageStaffMembersUseCase.name, () => {
     const useCase = createUseCase(createClinics(), staff, auth);
 
     await useCase.update(input.clinicId, existingStaffMember.id, {
+      actorUserId: 'another-user-id',
       role: StaffRole.Admin,
     });
 
@@ -312,6 +319,7 @@ describe(ManageStaffMembersUseCase.name, () => {
     const useCase = createUseCase(createClinics(), staff, auth);
 
     await useCase.update(input.clinicId, existingStaffMember.id, {
+      actorUserId: 'another-user-id',
       status: StaffStatus.Inactive,
     });
 
@@ -335,6 +343,7 @@ describe(ManageStaffMembersUseCase.name, () => {
 
     await expect(
       useCase.update(input.clinicId, existingStaffMember.id, {
+        actorUserId: 'another-user-id',
         email: 'updated@clinora.test',
       }),
     ).rejects.toBe(authError);
@@ -352,6 +361,7 @@ describe(ManageStaffMembersUseCase.name, () => {
 
     await expect(
       useCase.update(input.clinicId, existingStaffMember.id, {
+        actorUserId: 'another-user-id',
         email: 'updated@clinora.test',
       }),
     ).rejects.toBe(persistenceError);
@@ -394,6 +404,7 @@ describe(ManageStaffMembersUseCase.name, () => {
 
     await expect(
       useCase.update(input.clinicId, existingStaffMember.id, {
+        actorUserId: 'another-user-id',
         status: StaffStatus.Inactive,
       }),
     ).rejects.toBeInstanceOf(ClinicIdentityConsistencyError);
@@ -404,5 +415,153 @@ describe(ManageStaffMembersUseCase.name, () => {
     expect(loggedText).toContain(input.clinicId);
     expect(loggedText).toContain('correlationId');
     expect(loggedText).not.toContain(input.password);
+  });
+
+  it('rejects self-deactivation before auth synchronization', async () => {
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(existingStaffMember),
+    });
+    const auth = createAuth();
+    const useCase = createUseCase(createClinics(), staff, auth);
+
+    await expect(
+      useCase.update(input.clinicId, existingStaffMember.id, {
+        actorUserId: existingStaffMember.properties.userId,
+        status: StaffStatus.Inactive,
+      }),
+    ).rejects.toBeInstanceOf(ClinicSelfDeactivationError);
+
+    expect(auth.updateStaffIdentity).not.toHaveBeenCalled();
+    expect(staff.update).not.toHaveBeenCalled();
+    expect(staff.updatePreservingEnabledAdmin).not.toHaveBeenCalled();
+  });
+
+  it('allows updating the acting member own non-lifecycle profile fields', async () => {
+    const updatedMember = updateStaffMember({ phone: '+212600000000' });
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(existingStaffMember),
+      update: jest.fn().mockResolvedValue(updatedMember),
+    });
+    const auth = createAuth();
+    const useCase = createUseCase(createClinics(), staff, auth);
+
+    await expect(
+      useCase.update(input.clinicId, existingStaffMember.id, {
+        actorUserId: existingStaffMember.properties.userId,
+        phone: '+212600000000',
+      }),
+    ).resolves.toBe(updatedMember);
+
+    expect(auth.updateStaffIdentity).not.toHaveBeenCalled();
+  });
+
+  it('deactivates an admin when another enabled admin exists', async () => {
+    const adminMember = updateStaffMember({
+      role: StaffRole.Admin,
+      status: StaffStatus.Active,
+    });
+    const updatedMember = updateStaffMember({
+      role: StaffRole.Admin,
+      status: StaffStatus.Inactive,
+      isActive: false,
+    });
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(adminMember),
+      updatePreservingEnabledAdmin: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'updated', member: updatedMember }),
+    });
+    const useCase = createUseCase(createClinics(), staff, createAuth());
+
+    await expect(
+      useCase.update(input.clinicId, adminMember.id, {
+        actorUserId: 'another-user-id',
+        status: StaffStatus.Inactive,
+      }),
+    ).resolves.toBe(updatedMember);
+
+    expect(staff.updatePreservingEnabledAdmin).toHaveBeenCalledWith(
+      input.clinicId,
+      adminMember.id,
+      { status: StaffStatus.Inactive },
+    );
+  });
+
+  it('rejects deactivation of the last enabled admin and rolls auth back', async () => {
+    const adminMember = updateStaffMember({
+      role: StaffRole.Admin,
+      status: StaffStatus.Active,
+    });
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(adminMember),
+      updatePreservingEnabledAdmin: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'last-enabled-admin' }),
+    });
+    const auth = createAuth();
+    const useCase = createUseCase(createClinics(), staff, auth);
+
+    await expect(
+      useCase.update(input.clinicId, adminMember.id, {
+        actorUserId: 'another-user-id',
+        status: StaffStatus.Inactive,
+      }),
+    ).rejects.toBeInstanceOf(ClinicLastEnabledAdminError);
+
+    expect(auth.updateStaffIdentity).toHaveBeenCalledTimes(2);
+    expect(auth.updateStaffIdentity).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        userId: adminMember.properties.userId,
+        role: StaffRole.Admin,
+        isActive: true,
+      }),
+    );
+  });
+
+  it('demotes an admin when another enabled admin exists', async () => {
+    const adminMember = updateStaffMember({
+      role: StaffRole.Admin,
+      status: StaffStatus.OnLeave,
+    });
+    const updatedMember = updateStaffMember({
+      role: StaffRole.Doctor,
+      status: StaffStatus.OnLeave,
+    });
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(adminMember),
+      updatePreservingEnabledAdmin: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'updated', member: updatedMember }),
+    });
+    const useCase = createUseCase(createClinics(), staff, createAuth());
+
+    await expect(
+      useCase.update(input.clinicId, adminMember.id, {
+        actorUserId: 'another-user-id',
+        role: StaffRole.Doctor,
+      }),
+    ).resolves.toBe(updatedMember);
+  });
+
+  it('rejects demotion of the last enabled admin', async () => {
+    const adminMember = updateStaffMember({
+      role: StaffRole.Admin,
+      status: StaffStatus.OnLeave,
+    });
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(adminMember),
+      updatePreservingEnabledAdmin: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'last-enabled-admin' }),
+    });
+    const useCase = createUseCase(createClinics(), staff, createAuth());
+
+    await expect(
+      useCase.update(input.clinicId, adminMember.id, {
+        actorUserId: 'another-user-id',
+        role: StaffRole.Doctor,
+      }),
+    ).rejects.toBeInstanceOf(ClinicLastEnabledAdminError);
   });
 });

@@ -25,6 +25,11 @@ export interface UpdateStaffMember {
   avatar?: string | null;
 }
 
+export type GuardedStaffMemberUpdateResult =
+  | { outcome: 'updated'; member: StaffMember }
+  | { outcome: 'not-found' }
+  | { outcome: 'last-enabled-admin' };
+
 export interface StaffMemberRepository {
   create(input: CreateStaffMember): Promise<StaffMember>;
   findById(clinicId: string, id: string): Promise<StaffMember | null>;
@@ -39,5 +44,10 @@ export interface StaffMemberRepository {
     id: string,
     input: UpdateStaffMember,
   ): Promise<StaffMember | null>;
+  updatePreservingEnabledAdmin(
+    clinicId: string,
+    id: string,
+    input: UpdateStaffMember,
+  ): Promise<GuardedStaffMemberUpdateResult>;
   delete(clinicId: string, id: string): Promise<boolean>;
 }

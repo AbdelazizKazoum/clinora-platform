@@ -9,10 +9,14 @@ describe('clinic staff lifecycle contract', () => {
     const request: UpdateStaffMemberRequest = {
       clinicId: '00000000-0000-4000-8000-000000000001',
       staffMemberId: '00000000-0000-4000-8000-0000000000a1',
+      actorUserId: '00000000-0000-4000-8000-0000000000b2',
       status: 'inactive',
     };
 
-    expect(request).toMatchObject({ status: 'inactive' });
+    expect(request).toMatchObject({
+      actorUserId: '00000000-0000-4000-8000-0000000000b2',
+      status: 'inactive',
+    });
     expect('isActive' in request).toBe(false);
   });
 

@@ -125,6 +125,7 @@ export interface CreateStaffMemberRequest {
 export interface UpdateStaffMemberRequest {
   clinicId: string;
   staffMemberId: string;
+  actorUserId: string;
   role?: StaffRole;
   status?: StaffStatus;
   firstName?: string;

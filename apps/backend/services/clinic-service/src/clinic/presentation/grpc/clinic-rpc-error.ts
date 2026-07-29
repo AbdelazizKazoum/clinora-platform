@@ -5,6 +5,8 @@ import {
   ClinicDependencyError,
   ClinicRecordConflictError,
   ClinicRecordNotFoundError,
+  ClinicLastEnabledAdminError,
+  ClinicSelfDeactivationError,
   ClinicValidationError,
 } from '../../application/errors/clinic.errors';
 
@@ -21,6 +23,15 @@ export function rethrowClinicRpcError(error: unknown): never {
   if (error instanceof ClinicValidationError) {
     throw new RpcException({
       code: status.INVALID_ARGUMENT,
+      message: error.message,
+    });
+  }
+  if (
+    error instanceof ClinicSelfDeactivationError ||
+    error instanceof ClinicLastEnabledAdminError
+  ) {
+    throw new RpcException({
+      code: status.FAILED_PRECONDITION,
       message: error.message,
     });
   }

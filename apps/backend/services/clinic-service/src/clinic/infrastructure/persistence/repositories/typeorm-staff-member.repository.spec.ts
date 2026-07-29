@@ -34,14 +34,28 @@ describe(TypeOrmStaffMemberRepository.name, () => {
   const ormRepository = {
     create: jest.fn(),
     save: jest.fn(),
+    findOne: jest.fn(),
     findOneBy: jest.fn(),
     find: jest.fn(),
     delete: jest.fn(),
+    manager: {
+      transaction: jest.fn(),
+    },
   };
   let staffMembers: TypeOrmStaffMemberRepository;
 
   beforeEach(() => {
     jest.resetAllMocks();
+    ormRepository.manager.transaction.mockImplementation(
+      async (
+        work: (manager: {
+          getRepository: () => typeof ormRepository;
+        }) => Promise<unknown>,
+      ) =>
+        work({
+          getRepository: () => ormRepository,
+        }),
+    );
     staffMembers = new TypeOrmStaffMemberRepository(
       ormRepository as unknown as Repository<StaffMemberTypeOrmEntity>,
     );
@@ -123,5 +137,73 @@ describe(TypeOrmStaffMemberRepository.name, () => {
       status: StaffStatus.Inactive,
       isActive: false,
     });
+  });
+
+  it('updates an enabled admin when another on-leave admin remains', async () => {
+    ormRepository.findOne.mockResolvedValue(
+      createEntity({
+        role: StaffRole.Admin,
+        status: StaffStatus.Active,
+      }),
+    );
+    ormRepository.find.mockResolvedValue([
+      createEntity({
+        id: staffMemberId,
+        role: StaffRole.Admin,
+        status: StaffStatus.Active,
+      }),
+      createEntity({
+        id: '00000000-0000-4000-8000-0000000000c3',
+        role: StaffRole.Admin,
+        status: StaffStatus.OnLeave,
+      }),
+    ]);
+    ormRepository.save.mockImplementation(
+      async (entity: StaffMemberTypeOrmEntity) => entity,
+    );
+
+    const result = await staffMembers.updatePreservingEnabledAdmin(
+      clinicId,
+      staffMemberId,
+      { status: StaffStatus.Inactive },
+    );
+
+    expect(ormRepository.manager.transaction).toHaveBeenCalledTimes(1);
+    expect(ormRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lock: { mode: 'pessimistic_write' },
+      }),
+    );
+    expect(ormRepository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lock: { mode: 'pessimistic_write' },
+      }),
+    );
+    expect(result.outcome).toBe('updated');
+  });
+
+  it('rejects a guarded update that would remove the last enabled admin', async () => {
+    ormRepository.findOne.mockResolvedValue(
+      createEntity({
+        role: StaffRole.Admin,
+        status: StaffStatus.OnLeave,
+      }),
+    );
+    ormRepository.find.mockResolvedValue([
+      createEntity({
+        id: staffMemberId,
+        role: StaffRole.Admin,
+        status: StaffStatus.OnLeave,
+      }),
+    ]);
+
+    const result = await staffMembers.updatePreservingEnabledAdmin(
+      clinicId,
+      staffMemberId,
+      { role: StaffRole.Doctor },
+    );
+
+    expect(result).toEqual({ outcome: 'last-enabled-admin' });
+    expect(ormRepository.save).not.toHaveBeenCalled();
   });
 });

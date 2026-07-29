@@ -22,6 +22,13 @@ export function deriveStaffMemberIsActive(status: StaffStatus): boolean {
   return status !== StaffStatus.Inactive;
 }
 
+export function isEnabledStaffAdmin(
+  role: StaffRole,
+  status: StaffStatus,
+): boolean {
+  return role === StaffRole.Admin && deriveStaffMemberIsActive(status);
+}
+
 export class StaffMember {
   constructor(readonly properties: StaffMemberProperties) {}
 

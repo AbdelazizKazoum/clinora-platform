@@ -2,15 +2,18 @@ import { randomUUID } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import {
   deriveStaffMemberIsActive,
+  isEnabledStaffAdmin,
   StaffMember,
 } from '../../../domain/entities/staff-member';
+import { StaffRole } from '../../../domain/enums/staff-role.enum';
 import { StaffStatus } from '../../../domain/enums/staff-status.enum';
 import type {
   CreateStaffMember,
+  GuardedStaffMemberUpdateResult,
   StaffMemberRepository,
   UpdateStaffMember,
 } from '../../../domain/repositories/staff-member-repository.interface';
@@ -95,6 +98,80 @@ export class TypeOrmStaffMemberRepository
     if (!entity) {
       return null;
     }
+    this.applyUpdate(entity, input);
+
+    try {
+      return StaffMemberMapper.toDomain(
+        await this.repository.save(entity),
+      );
+    } catch (error: unknown) {
+      rethrowPersistenceError(error);
+    }
+  }
+
+  async updatePreservingEnabledAdmin(
+    clinicId: string,
+    id: string,
+    input: UpdateStaffMember,
+  ): Promise<GuardedStaffMemberUpdateResult> {
+    try {
+      return await this.repository.manager.transaction(async (manager) => {
+        const repository = manager.getRepository(StaffMemberTypeOrmEntity);
+        const entity = await repository.findOne({
+          where: { clinicId, id },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!entity) {
+          return { outcome: 'not-found' };
+        }
+
+        const proposedRole = input.role ?? entity.role;
+        const proposedStatus = input.status ?? entity.status;
+        const removesEnabledAdmin =
+          isEnabledStaffAdmin(entity.role, entity.status) &&
+          !isEnabledStaffAdmin(proposedRole, proposedStatus);
+
+        if (removesEnabledAdmin) {
+          const enabledAdmins = await repository.find({
+            where: {
+              clinicId,
+              role: StaffRole.Admin,
+              status: In([StaffStatus.Active, StaffStatus.OnLeave]),
+            },
+            lock: { mode: 'pessimistic_write' },
+          });
+          const anotherEnabledAdmin = enabledAdmins.some(
+            (admin) => admin.id !== id,
+          );
+
+          if (!anotherEnabledAdmin) {
+            return { outcome: 'last-enabled-admin' };
+          }
+        }
+
+        this.applyUpdate(entity, input);
+        const saved = await repository.save(entity);
+
+        return {
+          outcome: 'updated',
+          member: StaffMemberMapper.toDomain(saved),
+        };
+      });
+    } catch (error: unknown) {
+      rethrowPersistenceError(error);
+    }
+  }
+
+  async delete(clinicId: string, id: string): Promise<boolean> {
+    const result = await this.repository.delete({ clinicId, id });
+    return (result.affected ?? 0) > 0;
+  }
+
+  private applyUpdate(
+    entity: StaffMemberTypeOrmEntity,
+    input: UpdateStaffMember,
+  ): void {
     if (input.role !== undefined) entity.role = input.role;
     if (input.status !== undefined) entity.status = input.status;
     if (input.firstName !== undefined) {
@@ -112,18 +189,5 @@ export class TypeOrmStaffMemberRepository
     }
     if (input.avatar !== undefined) entity.avatar = input.avatar;
     entity.isActive = deriveStaffMemberIsActive(entity.status);
-
-    try {
-      return StaffMemberMapper.toDomain(
-        await this.repository.save(entity),
-      );
-    } catch (error: unknown) {
-      rethrowPersistenceError(error);
-    }
-  }
-
-  async delete(clinicId: string, id: string): Promise<boolean> {
-    const result = await this.repository.delete({ clinicId, id });
-    return (result.affected ?? 0) > 0;
   }
 }

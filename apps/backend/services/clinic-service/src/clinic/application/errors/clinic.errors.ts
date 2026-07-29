@@ -39,3 +39,17 @@ export class ClinicIdentityConsistencyError extends ClinicDependencyError {
     this.name = ClinicIdentityConsistencyError.name;
   }
 }
+
+export class ClinicSelfDeactivationError extends Error {
+  constructor() {
+    super('Staff members cannot deactivate their own account');
+    this.name = ClinicSelfDeactivationError.name;
+  }
+}
+
+export class ClinicLastEnabledAdminError extends Error {
+  constructor() {
+    super('A clinic must retain at least one enabled administrator');
+    this.name = ClinicLastEnabledAdminError.name;
+  }
+}
