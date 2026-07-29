@@ -335,6 +335,10 @@ Acceptance criteria:
 
 Depends on Task 2.
 
+Execution plan:
+
+- [Task 3 role-aware access control](./task-3-execution-plan.md)
+
 Scope:
 
 - Require an authenticated `admin` role for staff create and update operations.
