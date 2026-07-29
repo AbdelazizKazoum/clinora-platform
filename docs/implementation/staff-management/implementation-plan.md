@@ -19,7 +19,7 @@ the next task.
 
 ## Implementation Status
 
-- [ ] Task 1: Define and enforce the staff identity lifecycle
+- [x] Task 1: Define and enforce the staff identity lifecycle
 - [ ] Task 2: Expose staff management through the API Gateway
 - [ ] Task 3: Add role-aware access control for staff management
 - [ ] Task 4: Add TanStack Query infrastructure to the frontend

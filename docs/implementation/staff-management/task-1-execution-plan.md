@@ -189,7 +189,7 @@ The browser-provided URL clinic ID remains request context only. The verified
 - [x] Microtask 8: Compensate failed staff creation
 - [x] Microtask 9: Synchronize staff identity updates
 - [x] Microtask 10: Enforce self-deactivation and last-admin rules
-- [ ] Microtask 11: Complete lifecycle integration verification
+- [x] Microtask 11: Complete lifecycle integration verification
 
 ## Microtask 1: Prepare API Gateway JWT Authentication
 

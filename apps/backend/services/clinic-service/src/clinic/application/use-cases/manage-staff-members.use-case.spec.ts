@@ -330,6 +330,35 @@ describe(ManageStaffMembersUseCase.name, () => {
     );
   });
 
+  it('synchronizes on-leave status as an enabled auth account', async () => {
+    const inactiveMember = updateStaffMember({
+      status: StaffStatus.Inactive,
+      isActive: false,
+    });
+    const staff = createStaffMembers({
+      findById: jest.fn().mockResolvedValue(inactiveMember),
+      update: jest.fn().mockResolvedValue(
+        updateStaffMember({
+          status: StaffStatus.OnLeave,
+          isActive: true,
+        }),
+      ),
+    });
+    const auth = createAuth();
+    const useCase = createUseCase(createClinics(), staff, auth);
+
+    await useCase.update(input.clinicId, inactiveMember.id, {
+      actorUserId: 'another-user-id',
+      status: StaffStatus.OnLeave,
+    });
+
+    expect(auth.updateStaffIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isActive: true,
+      }),
+    );
+  });
+
   it('does not persist clinic changes when auth synchronization fails first', async () => {
     const authError = new Error('Auth update failed');
     const staff = createStaffMembers({
