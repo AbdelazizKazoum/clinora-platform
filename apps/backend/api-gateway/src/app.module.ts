@@ -7,6 +7,7 @@ import { validateGatewayEnvironment } from './configuration/gateway-environment'
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PatientsModule } from './modules/patients/patients.module';
+import { StaffModule } from './modules/staff/staff.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PatientsModule } from './modules/patients/patients.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     AuthModule,
     PatientsModule,
+    StaffModule,
     HealthModule,
   ],
   providers: [JwtStrategy],

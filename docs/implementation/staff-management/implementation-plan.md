@@ -20,7 +20,7 @@ the next task.
 ## Implementation Status
 
 - [x] Task 1: Define and enforce the staff identity lifecycle
-- [ ] Task 2: Expose staff management through the API Gateway
+- [x] Task 2: Expose staff management through the API Gateway
 - [ ] Task 3: Add role-aware access control for staff management
 - [ ] Task 4: Add TanStack Query infrastructure to the frontend
 - [ ] Task 5: Create the frontend staff data boundary
@@ -227,14 +227,9 @@ before it saves the staff profile.
 
 Known gaps that must be handled before exposing all UI actions:
 
-- The API Gateway does not currently expose clinic/staff routes.
-- Updating staff email, name, or role does not update the auth identity.
+- Role-aware API Gateway authorization is pending Task 3.
+- Clinic-scope API Gateway authorization is pending Task 3.
 - Deleting the staff row does not disable or remove the auth identity.
-- Inactive staff are not currently prevented from authenticating.
-- `status` and `isActive` can be updated independently and can contradict each
-  other.
-- Auth creation can succeed before staff-profile persistence fails, leaving an
-  orphaned auth identity.
 - Current frontend route protection checks authentication, not the admin role.
 - The static sidebar currently exposes Staff routes to every authenticated
   role.

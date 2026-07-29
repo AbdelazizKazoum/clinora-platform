@@ -11,6 +11,18 @@ describe('validateGatewayEnvironment', () => {
     );
   });
 
+  it('validates the clinic service gRPC URL with a local default', () => {
+    expect(
+      validateGatewayEnvironment(validEnvironment).CLINIC_SERVICE_GRPC_URL,
+    ).toBe('localhost:5002');
+    expect(
+      validateGatewayEnvironment({
+        ...validEnvironment,
+        CLINIC_SERVICE_GRPC_URL: 'clinic-service:5002',
+      }).CLINIC_SERVICE_GRPC_URL,
+    ).toBe('clinic-service:5002');
+  });
+
   it('rejects a missing JWT secret', () => {
     expect(() => validateGatewayEnvironment({})).toThrow(
       'JWT_SECRET is required',

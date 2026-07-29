@@ -4,6 +4,7 @@ interface GatewayEnvironment {
   PORT: number;
   JWT_SECRET: string;
   AUTH_SERVICE_GRPC_URL: string;
+  CLINIC_SERVICE_GRPC_URL: string;
   PATIENT_SERVICE_GRPC_URL: string;
   FRONTEND_ORIGINS: string[];
 }
@@ -29,6 +30,10 @@ export function validateGatewayEnvironment(
     typeof environment['AUTH_SERVICE_GRPC_URL'] === 'string'
       ? environment['AUTH_SERVICE_GRPC_URL']
       : 'localhost:5001';
+  const clinicServiceUrl =
+    typeof environment['CLINIC_SERVICE_GRPC_URL'] === 'string'
+      ? environment['CLINIC_SERVICE_GRPC_URL']
+      : 'localhost:5002';
   const patientServiceUrl =
     typeof environment['PATIENT_SERVICE_GRPC_URL'] === 'string'
       ? environment['PATIENT_SERVICE_GRPC_URL']
@@ -49,6 +54,7 @@ export function validateGatewayEnvironment(
     PORT: port,
     JWT_SECRET: jwtSecret,
     AUTH_SERVICE_GRPC_URL: authServiceUrl,
+    CLINIC_SERVICE_GRPC_URL: clinicServiceUrl,
     PATIENT_SERVICE_GRPC_URL: patientServiceUrl,
     FRONTEND_ORIGINS: frontendOrigins,
   };
