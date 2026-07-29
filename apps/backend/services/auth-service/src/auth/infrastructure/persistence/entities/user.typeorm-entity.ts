@@ -30,6 +30,9 @@ export class UserTypeOrmEntity {
   @Column({ type: 'enum', enum: UserRole })
   role!: UserRole;
 
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive!: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'datetime', precision: 6 })
   createdAt!: Date;
 

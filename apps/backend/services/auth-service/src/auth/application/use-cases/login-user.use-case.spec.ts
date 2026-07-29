@@ -20,6 +20,7 @@ describe(LoginUserUseCase.name, () => {
     findByEmailAndClinic: jest.fn(),
     findById: jest.fn(),
     save: jest.fn(),
+    updateAvailability: jest.fn(),
   };
   const tokens: jest.Mocked<JwtServicePort> = {
     signAccessToken: jest.fn(),

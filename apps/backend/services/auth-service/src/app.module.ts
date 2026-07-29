@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UserTypeOrmEntity } from './auth/infrastructure/persistence/entities/user.typeorm-entity';
 import { CreateUsersTable20260726000000 } from './auth/infrastructure/persistence/migrations/20260726000000-create-users-table';
+import { AddUserAccountAvailability20260729000000 } from './auth/infrastructure/persistence/migrations/20260729000000-add-user-account-availability';
 import { validateAuthEnvironment } from './configuration/auth-environment';
 import { HealthModule } from './health/health.module';
 
@@ -25,7 +26,10 @@ import { HealthModule } from './health/health.module';
         password: config.getOrThrow<string>('DB_PASSWORD'),
         database: config.getOrThrow<string>('DB_NAME'),
         entities: [UserTypeOrmEntity],
-        migrations: [CreateUsersTable20260726000000],
+        migrations: [
+          CreateUsersTable20260726000000,
+          AddUserAccountAvailability20260729000000,
+        ],
         migrationsRun: config.getOrThrow<boolean>('DB_MIGRATIONS_RUN'),
         synchronize: false,
       }),

@@ -10,6 +10,7 @@ export class UserMapper {
       passwordHash: entity.passwordHash,
       fullName: entity.fullName,
       role: entity.role,
+      isActive: entity.isActive,
       createdAt: entity.createdAt,
     });
   }
@@ -22,6 +23,7 @@ export class UserMapper {
     entity.passwordHash = user.passwordHash;
     entity.fullName = user.fullName;
     entity.role = user.role;
+    entity.isActive = user.isActive;
     entity.createdAt = user.createdAt;
     return entity;
   }

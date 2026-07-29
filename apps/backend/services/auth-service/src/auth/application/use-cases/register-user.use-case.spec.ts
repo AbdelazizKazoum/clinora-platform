@@ -8,9 +8,9 @@ import { RegisterUserUseCase } from './register-user.use-case';
 describe(RegisterUserUseCase.name, () => {
   const users: jest.Mocked<UserRepository> = {
     findByEmailAndClinic: jest.fn(),
-    findByEmail: jest.fn(),
     findById: jest.fn(),
     save: jest.fn(),
+    updateAvailability: jest.fn(),
   };
   const tokens: jest.Mocked<JwtServicePort> = {
     signAccessToken: jest.fn(),
@@ -53,6 +53,7 @@ describe(RegisterUserUseCase.name, () => {
       expect.objectContaining({
         email: 'admin@clinora.test',
         passwordHash: 'hashed-password',
+        isActive: true,
       }),
     );
     expect(result).toMatchObject({

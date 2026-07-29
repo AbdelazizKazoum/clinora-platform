@@ -7,6 +7,7 @@ export interface UserProperties {
   passwordHash: string;
   fullName: string;
   role: UserRole;
+  isActive?: boolean;
   createdAt: Date;
 }
 
@@ -17,6 +18,7 @@ export class User {
   readonly passwordHash: string;
   readonly fullName: string;
   readonly role: UserRole;
+  readonly isActive: boolean;
   readonly createdAt: Date;
 
   constructor(properties: UserProperties) {
@@ -26,6 +28,24 @@ export class User {
     this.passwordHash = properties.passwordHash;
     this.fullName = properties.fullName;
     this.role = properties.role;
+    this.isActive = properties.isActive ?? true;
     this.createdAt = properties.createdAt;
+  }
+
+  changeAvailability(isActive: boolean): User {
+    if (this.isActive === isActive) {
+      return this;
+    }
+
+    return new User({
+      id: this.id,
+      clinicId: this.clinicId,
+      email: this.email,
+      passwordHash: this.passwordHash,
+      fullName: this.fullName,
+      role: this.role,
+      isActive,
+      createdAt: this.createdAt,
+    });
   }
 }
