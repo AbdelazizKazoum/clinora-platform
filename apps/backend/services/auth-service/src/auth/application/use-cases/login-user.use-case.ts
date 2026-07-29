@@ -51,6 +51,10 @@ export class LoginUserUseCase {
       throw new InvalidCredentialsError();
     }
 
+    if (!user.isActive) {
+      throw new InvalidCredentialsError();
+    }
+
     const [accessToken, refreshToken] = await Promise.all([
       this.tokens.signAccessToken({
         user_id: user.id,

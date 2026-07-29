@@ -60,6 +60,28 @@ describe(LoginUserUseCase.name, () => {
     });
   });
 
+  it('rejects an inactive user with the generic invalid-credentials error', async () => {
+    users.findByEmailAndClinic.mockResolvedValue(
+      user.changeAvailability(false),
+    );
+    passwords.compare.mockResolvedValue(true);
+
+    const useCase = new LoginUserUseCase(users, tokens, passwords);
+    const result = useCase.execute({
+      email: user.email,
+      password: 'Secret123!',
+      clinicId: user.clinicId,
+    });
+
+    await expect(result).rejects.toBeInstanceOf(InvalidCredentialsError);
+    expect(passwords.compare).toHaveBeenCalledWith(
+      'Secret123!',
+      user.passwordHash,
+    );
+    expect(tokens.signAccessToken).not.toHaveBeenCalled();
+    expect(tokens.signRefreshToken).not.toHaveBeenCalled();
+  });
+
   it('uses a password comparison even when the user is absent', async () => {
     users.findByEmailAndClinic.mockResolvedValue(null);
     passwords.compare.mockResolvedValue(false);

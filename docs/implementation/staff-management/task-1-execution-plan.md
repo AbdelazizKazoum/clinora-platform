@@ -182,7 +182,7 @@ The browser-provided URL clinic ID remains request context only. The verified
 - [x] Microtask 1: Prepare API Gateway JWT authentication
 - [x] Microtask 2: Prepare role and clinic-scope authorization primitives
 - [x] Microtask 3: Add auth account availability persistence
-- [ ] Microtask 4: Enforce account availability during login and refresh
+- [x] Microtask 4: Enforce account availability during login and refresh
 - [ ] Microtask 5: Add internal auth identity-management operations
 - [ ] Microtask 6: Extend the clinic service auth port
 - [ ] Microtask 7: Make staff status canonical
@@ -400,6 +400,13 @@ checks it.
 - An active identity continues to log in and refresh normally.
 - The external error response does not reveal whether an account is disabled.
 - The maximum remaining access after deactivation is documented and bounded.
+
+### Implementation Note
+
+Existing access tokens are not revoked immediately when an identity is disabled.
+They expire naturally, and auth-service environment validation rejects
+`JWT_EXPIRES_IN` values above `900` seconds so that maximum window remains
+bounded to 15 minutes.
 
 ### Verification
 

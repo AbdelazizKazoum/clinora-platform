@@ -13,6 +13,8 @@ interface AuthEnvironment {
   REFRESH_TOKEN_EXPIRES_IN: number;
 }
 
+const MAX_ACCESS_TOKEN_LIFETIME_SECONDS = 900;
+
 function requiredString(
   environment: Record<string, unknown>,
   key: string,
@@ -49,6 +51,11 @@ export function validateAuthEnvironment(
     throw new Error('JWT secrets must contain at least 32 characters');
   }
 
+  const jwtExpiresIn = numberValue(environment, 'JWT_EXPIRES_IN', 900);
+  if (jwtExpiresIn > MAX_ACCESS_TOKEN_LIFETIME_SECONDS) {
+    throw new Error('JWT_EXPIRES_IN must not exceed 900 seconds');
+  }
+
   return {
     PORT: numberValue(environment, 'PORT', 3002),
     GRPC_PORT: numberValue(environment, 'GRPC_PORT', 5001),
@@ -59,7 +66,7 @@ export function validateAuthEnvironment(
     DB_NAME: requiredString(environment, 'DB_NAME'),
     DB_MIGRATIONS_RUN: environment['DB_MIGRATIONS_RUN'] !== 'false',
     JWT_SECRET: jwtSecret,
-    JWT_EXPIRES_IN: numberValue(environment, 'JWT_EXPIRES_IN', 900),
+    JWT_EXPIRES_IN: jwtExpiresIn,
     REFRESH_TOKEN_SECRET: refreshTokenSecret,
     REFRESH_TOKEN_EXPIRES_IN: numberValue(
       environment,

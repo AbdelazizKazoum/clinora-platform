@@ -24,7 +24,7 @@ export class RefreshTokenUseCase {
     }
 
     const user = await this.users.findById(payload.user_id);
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new InvalidRefreshTokenError();
     }
 
