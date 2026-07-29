@@ -163,6 +163,7 @@ services:
       PATIENT_PROTO_PATH: /workspace/libs/contracts/patient/src/lib/patient.proto
       AUTH_SERVICE_GRPC_URL: auth-service:5001
       PATIENT_SERVICE_GRPC_URL: patient-service:5003
+      JWT_SECRET: local-access-secret-change-before-production-123456
       FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "127.0.0.1:3001:3001"
