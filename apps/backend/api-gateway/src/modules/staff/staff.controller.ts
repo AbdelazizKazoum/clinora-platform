@@ -13,13 +13,13 @@ import type {
   StaffMemberReply,
   StaffMembersReply,
 } from '@clinora/contracts-clinic';
+import { CurrentUser } from '@common/auth/decorators/current-user.decorator';
+import { Roles } from '@common/auth/decorators/roles.decorator';
+import { ClinicScopeGuard } from '@common/auth/guards/clinic-scope.guard';
+import { JwtAuthGuard } from '@common/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@common/auth/guards/roles.guard';
+import type { JwtPayload } from '@common/auth/jwt-payload';
 
-import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
-import { Roles } from '../../common/auth/decorators/roles.decorator';
-import { ClinicScopeGuard } from '../../common/auth/guards/clinic-scope.guard';
-import { JwtAuthGuard } from '../../common/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/auth/guards/roles.guard';
-import type { JwtPayload } from '../../common/auth/jwt-payload';
 import {
   CreateStaffMemberDto,
   UpdateStaffMemberDto,

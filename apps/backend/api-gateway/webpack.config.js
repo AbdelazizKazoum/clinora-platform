@@ -1,5 +1,5 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
-const { join } = require('path');
+const { join, resolve } = require('path');
 
 module.exports = {
   output: {
@@ -42,4 +42,9 @@ module.exports = {
       sourceMap: true,
     }),
   ],
+  resolve: {
+    alias: {
+      '@common': resolve(__dirname, 'src/common'),
+    },
+  },
 };

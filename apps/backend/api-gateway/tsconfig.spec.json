@@ -4,7 +4,10 @@
     "outDir": "./out-tsc/jest",
     "types": ["jest", "node"],
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "paths": {
+      "@common/*": ["./src/common/*"]
+    }
   },
   "include": [
     "jest.config.ts",
