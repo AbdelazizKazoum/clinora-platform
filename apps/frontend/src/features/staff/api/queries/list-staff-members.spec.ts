@@ -67,4 +67,12 @@ describe('listStaffMembers', () => {
       new Date('2026-07-29T09:00:00.000Z'),
     );
   });
+
+  it('maps an omitted empty staff collection to an empty list', async () => {
+    apiClientGet.mockResolvedValue(createAxiosResponse({}));
+
+    await expect(
+      listStaffMembers({ clinicId: 'clinic A/1' }),
+    ).resolves.toEqual([]);
+  });
 });

@@ -15,5 +15,5 @@ export const listStaffMembers = async (
     staffApiPaths.staffMembers(query.clinicId),
   );
 
-  return response.data.items.map(mapStaffMemberFromDto);
+  return (response.data.items ?? []).map(mapStaffMemberFromDto);
 };

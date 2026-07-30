@@ -18,5 +18,5 @@ export interface StaffMemberResponseDto {
 }
 
 export interface ListStaffMembersResponseDto {
-  items: StaffMemberResponseDto[];
+  items?: StaffMemberResponseDto[];
 }

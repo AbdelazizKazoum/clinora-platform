@@ -50,6 +50,19 @@ describe(StaffFacade.name, () => {
     ).resolves.toEqual({ items: [] });
   });
 
+  it('normalizes omitted empty staff lists for the HTTP contract', async () => {
+    const facade = new StaffFacade(clinicClient);
+    clinicClient.listStaffMembers.mockResolvedValue(
+      {} as Awaited<ReturnType<ClinicServiceClient['listStaffMembers']>>,
+    );
+
+    await expect(
+      facade.listStaffMembers({
+        clinicId: '10000000-0000-4000-8000-000000000001',
+      }),
+    ).resolves.toEqual({ items: [] });
+  });
+
   it('maps clinic service dependency failures to stable HTTP errors', async () => {
     const facade = new StaffFacade(clinicClient);
     clinicClient.createStaffMember.mockRejectedValue({

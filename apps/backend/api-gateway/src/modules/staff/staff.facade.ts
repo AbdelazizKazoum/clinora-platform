@@ -38,10 +38,16 @@ export class StaffFacade {
     return this.execute(() => this.clinicClient.getStaffMember(request));
   }
 
-  listStaffMembers(
+  async listStaffMembers(
     request: ListStaffMembersRequest,
   ): Promise<StaffMembersReply> {
-    return this.execute(() => this.clinicClient.listStaffMembers(request));
+    const reply = await this.execute(() =>
+      this.clinicClient.listStaffMembers(request),
+    );
+
+    return {
+      items: reply.items ?? [],
+    };
   }
 
   createStaffMember(
