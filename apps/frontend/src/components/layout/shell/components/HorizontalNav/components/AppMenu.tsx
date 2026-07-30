@@ -1,5 +1,4 @@
 import Icon from '@/components/wrappers/Icon'
-import { menuItems } from '@/components/layout/shell/components/data'
 import type { MenuItemType } from '@/types'
 import clsx from 'clsx'
 import Link from 'next/link'
@@ -81,7 +80,7 @@ const MenuItem = ({ item, linkClass, wrapperClass, level }: { item: MenuItemType
   return menuLevel > 1 ? link : <li className={clsx(wrapperClass, { active: isActive })}>{link}</li>
 }
 
-const AppMenu = () => {
+const AppMenu = ({ menuItems }: { menuItems: MenuItemType[] }) => {
   return (
     <ul className="navbar-nav">
       {menuItems.map((item, idx) => (

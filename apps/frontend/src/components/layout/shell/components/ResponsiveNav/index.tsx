@@ -1,11 +1,12 @@
 'use client'
+import type { MenuItemType } from '@/types'
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 
 const Sidenav = dynamic(() => import('../Sidenav'))
 const HorizontalNav = dynamic(() => import('../HorizontalNav'))
 
-const ResponsiveNav = () => {
+const ResponsiveNav = ({ menuItems }: { menuItems: MenuItemType[] }) => {
   const [isMobile, setIsMobile] = useState<null | boolean>(null)
 
   useEffect(() => {
@@ -17,7 +18,7 @@ const ResponsiveNav = () => {
 
   if (isMobile === null) return null
 
-  return isMobile ? <Sidenav /> : <HorizontalNav />
+  return isMobile ? <Sidenav menuItems={menuItems} /> : <HorizontalNav menuItems={menuItems} />
 }
 
 export default ResponsiveNav

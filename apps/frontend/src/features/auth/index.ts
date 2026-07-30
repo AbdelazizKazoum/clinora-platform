@@ -18,6 +18,13 @@ export { default as SplitSuccessMailPage } from './pages/split/success-mail-page
 export { default as SplitTwoFactorPage } from './pages/split/two-factor-page';
 export { default as RequireAuth } from './components/require-auth';
 export { useAuth } from './hooks/use-auth';
+export {
+  can,
+  canAccessPath,
+  filterMenuItemsForRole,
+  FRONTEND_CAPABILITIES,
+  type FrontendCapability,
+} from './model';
 export type {
   AuthSession,
   AuthUser,

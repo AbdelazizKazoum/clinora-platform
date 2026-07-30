@@ -1,12 +1,13 @@
 import AppLogo from '@/components/AppLogo'
 import { SimpleBar } from '@/components/wrappers/SimpleBar'
+import type { MenuItemType } from '@/types'
 import AppMenu from './components/AppMenu'
 import OffcanvasToggle from './components/OffcanvasToggle'
 import OnHoverToggle from './components/OnHoverToggle'
 
 import UserProfileSettings from './components/UserProfileSettings'
 
-const Sidenav = () => {
+const Sidenav = ({ menuItems }: { menuItems: MenuItemType[] }) => {
   return (
     <div className="sidenav-menu" id="sidenav">
       <AppLogo />
@@ -19,7 +20,7 @@ const Sidenav = () => {
         <UserProfileSettings />
 
         <div id="sidenav-menu">
-          <AppMenu />
+          <AppMenu menuItems={menuItems} />
         </div>
       </SimpleBar>
     </div>

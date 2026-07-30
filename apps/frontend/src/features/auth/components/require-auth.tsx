@@ -1,13 +1,15 @@
 'use client';
 
 import MainLayout from '@/components/layout/shell/MainLayout';
+import { menuItems } from '@/components/layout/shell/components/data';
 import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import { filterMenuItemsForRole } from '../model';
 
 const RequireAuth = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const { isAuthenticated, isAuthReady, loading, logout } = useAuth();
+  const { isAuthenticated, isAuthReady, loading, logout, user } = useAuth();
 
   useEffect(() => {
     if (isAuthReady && !isAuthenticated) {
@@ -19,8 +21,14 @@ const RequireAuth = ({ children }: { children: ReactNode }) => {
     return null;
   }
 
+  const accessibleMenuItems = filterMenuItemsForRole(menuItems, user?.role);
+
   return (
-    <MainLayout isLoggingOut={loading} onLogout={logout}>
+    <MainLayout
+      isLoggingOut={loading}
+      menuItems={accessibleMenuItems}
+      onLogout={logout}
+    >
       {children}
     </MainLayout>
   );

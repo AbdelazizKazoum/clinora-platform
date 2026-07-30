@@ -1,5 +1,4 @@
 import Icon from '@/components/wrappers/Icon'
-import { menuItems } from '@/components/layout/shell/components/data'
 import type { MenuItemType } from '@/types'
 import { scrollToElement } from '@/lib/layout/layout'
 import clsx from 'clsx'
@@ -88,7 +87,7 @@ const MenuItem = ({ item, level = 0 }: { item: MenuItemType; level?: number }) =
   )
 }
 
-const AppMenu = () => {
+const AppMenu = ({ menuItems }: { menuItems: MenuItemType[] }) => {
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null)
   const scrollToActiveLink = () => {
     const activeItem: HTMLAnchorElement | null = document.querySelector('.side-nav-link.active')

@@ -2,12 +2,12 @@ import 'server-only';
 
 import { getToken, type JWT } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
+import {
+  AUTH_SESSION_COOKIE_NAME,
+  AUTH_SESSION_MAX_AGE_SECONDS,
+} from './auth-cookie';
 
-export const AUTH_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
-export const AUTH_SESSION_COOKIE_NAME =
-  process.env.NODE_ENV === 'production'
-    ? '__Secure-clinora.session-token'
-    : 'clinora.session-token';
+export { AUTH_SESSION_COOKIE_NAME, AUTH_SESSION_MAX_AGE_SECONDS };
 
 export interface BackendTokenUpdate {
   accessToken: string;
