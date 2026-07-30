@@ -21,7 +21,7 @@ the next task.
 
 - [x] Task 1: Define and enforce the staff identity lifecycle
 - [x] Task 2: Expose staff management through the API Gateway
-- [ ] Task 3: Add role-aware access control for staff management
+- [x] Task 3: Add role-aware access control for staff management
 - [ ] Task 4: Add TanStack Query infrastructure to the frontend
 - [ ] Task 5: Create the frontend staff data boundary
 - [ ] Task 6: Build the read-only staff management page
@@ -225,17 +225,16 @@ The clinic contract currently supports:
 The create use case already asks the auth service to create the login identity
 before it saves the staff profile.
 
-Known gaps that must be handled before exposing all UI actions:
+Readiness notes before exposing all UI actions:
 
-- Role-aware API Gateway authorization is pending Task 3.
-- Clinic-scope API Gateway authorization is pending Task 3.
+- Staff route authorization is enforced in the API Gateway for authenticated
+  admins scoped to the route clinic.
+- Staff frontend navigation and route access are filtered through the auth
+  feature access policy.
 - Deleting the staff row does not disable or remove the auth identity.
-- Current frontend route protection checks authentication, not the admin role.
-- The static sidebar currently exposes Staff routes to every authenticated
-  role.
 
-The first tasks resolve these gaps before mutation controls are presented in the
-frontend.
+Do not expose permanent deletion until Task 9 defines the identity and audit
+behavior.
 
 ## API Shape
 

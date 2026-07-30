@@ -119,7 +119,7 @@ Middleware implementation notes:
 - [x] Microtask 1: Enforce Staff Route Authorization In The API Gateway
 - [x] Microtask 2: Add Backend Authorization Tests
 - [x] Microtask 3: Add Frontend Capability Policy And Staff Access UX
-- [ ] Microtask 4: Verify End-To-End Behavior And Update Documentation
+- [x] Microtask 4: Verify End-To-End Behavior And Update Documentation
 
 ## Microtask 1: Enforce Staff Route Authorization In The API Gateway
 

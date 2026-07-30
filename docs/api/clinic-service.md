@@ -1,7 +1,7 @@
 # Clinic and staff API contract for frontend integration
 
-Status: HTTP staff routes implemented; role-aware access pending Task 3  
-Last verified: 2026-07-29
+Status: HTTP staff routes implemented with authenticated admin and clinic-scope access  
+Last verified: 2026-07-30
 
 This document is the frontend-facing reference for the clinic bounded context,
 especially staff management. The clinic service owns clinic profile data,
@@ -70,8 +70,9 @@ For local server-side checks, the direct Gateway base is:
 http://localhost:3001/api/v1/clinics/{clinicId}/staff
 ```
 
-The API Gateway staff routes are implemented. Role-aware authorization and
-clinic-scope enforcement are pending Task 3.
+The API Gateway staff routes are implemented. Every staff HTTP route requires a
+valid access token, an authenticated `admin` role, and a `clinicId` route
+parameter that matches the trusted clinic claim in the access token.
 
 ## 2. Staff values
 
@@ -194,9 +195,11 @@ Gateway implementation notes:
 - The Gateway delegates to the clinic service through `ClinicClientModule`.
 - The Gateway does not create auth identities itself; staff creation remains
   one clinic-service operation.
-- The `PATCH` route requires JWT authentication now because the Gateway must
-  derive `actorUserId` from trusted token claims for self-deactivation rules.
-- Admin-role and clinic-scope guards are pending Task 3.
+- All staff routes require JWT authentication, `admin` role authorization, and
+  clinic-scope authorization before the Gateway delegates to the clinic
+  service.
+- The `PATCH` route derives `actorUserId` from trusted token claims for
+  self-deactivation rules.
 
 ## 5. Create staff
 
@@ -420,14 +423,18 @@ interface ApiError {
    authorization.
 10. Do not expose staff deletion until Task 9 defines the product and audit
     behavior.
+11. Use the auth feature access policy for Staff navigation, route access, and
+    future Staff buttons or actions.
+12. Staff management frontend routes are admin-only until product requirements
+    grant non-admin staff capabilities.
 
 ## 12. Known integration gaps
 
-- Role-aware access control and clinic-scope enforcement for staff routes are
-  pending Task 3.
-- The staff update route already requires JWT authentication so the Gateway can
-  pass a trusted `actorUserId` to the clinic service. Admin-role and
-  clinic-scope checks are added in Task 3.
+- Staff route authorization is implemented in the API Gateway and covered by
+  focused authorization tests for missing token, wrong role, wrong clinic, and
+  valid admin access.
+- Frontend Staff navigation and route access use the auth feature's static
+  access policy. This improves UX but does not replace backend enforcement.
 - There is no generated OpenAPI/Swagger contract. This Markdown file documents
   the intended frontend contract; the TypeScript and proto contracts remain
   the executable backend source of truth.
