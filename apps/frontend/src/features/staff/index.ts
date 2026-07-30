@@ -10,3 +10,4 @@ export {
   type StaffStatus,
 } from './model';
 export { useStaffMembers } from './hooks';
+export { default as StaffPage } from './pages/staff-page';

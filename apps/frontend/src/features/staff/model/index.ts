@@ -15,3 +15,12 @@ export {
 } from './staff.queries';
 export { staffQueryKeys } from './staff-query-keys';
 export { mapStaffMemberFromDto } from './staff.mapper';
+export {
+  filterStaffMembers,
+  getStaffInitials,
+  getStaffSummary,
+  type StaffListFilters,
+  type StaffRoleFilter,
+  type StaffStatusFilter,
+  type StaffSummary,
+} from './staff-list.rules';
