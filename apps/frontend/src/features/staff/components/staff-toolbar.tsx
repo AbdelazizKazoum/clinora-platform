@@ -1,4 +1,5 @@
 import Icon from '@/components/wrappers/Icon';
+import Link from 'next/link';
 import { Button, Col, FormSelect, Row } from 'react-bootstrap';
 
 import {
@@ -32,17 +33,17 @@ const StaffToolbar = ({
   statusFilter,
 }: StaffToolbarProps) => (
   <form
-    className="border rounded bg-body p-3 mb-3"
+    className="card border p-3 mb-3"
     onSubmit={(event) => event.preventDefault()}
   >
-    <Row className="g-2 align-items-center">
-      <Col xs={12} lg={5}>
+    <Row className="g-3 align-items-center">
+      <Col xs={12} lg={4}>
         <div className="app-search">
           <input
             aria-label="Search staff"
             className="form-control"
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search name, email, phone, specialization..."
+            placeholder="Search staff name..."
             type="search"
             value={search}
           />
@@ -50,14 +51,14 @@ const StaffToolbar = ({
         </div>
       </Col>
 
-      <Col xs={12} lg={7}>
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <span className="fw-semibold text-muted">Filter By:</span>
+      <Col xs={12} lg={8}>
+        <div className="d-flex flex-wrap flex-xl-nowrap align-items-center justify-content-lg-end gap-2">
+          <span className="me-2 fw-semibold flex-shrink-0">Filter By:</span>
 
-          <div className="app-search">
+          <div className="app-search flex-shrink-0">
             <FormSelect
               aria-label="Filter staff by role"
-              className="form-control my-1 my-md-0"
+              className="form-control"
               onChange={(event) =>
                 onRoleFilterChange(event.target.value as StaffRoleFilter)
               }
@@ -73,10 +74,10 @@ const StaffToolbar = ({
             <Icon icon="user-check" className="app-search-icon text-muted" />
           </div>
 
-          <div className="app-search">
+          <div className="app-search flex-shrink-0">
             <FormSelect
               aria-label="Filter staff by status"
-              className="form-control my-1 my-md-0"
+              className="form-control"
               onChange={(event) =>
                 onStatusFilterChange(event.target.value as StaffStatusFilter)
               }
@@ -94,15 +95,22 @@ const StaffToolbar = ({
 
           {hasActiveFilters && (
             <Button
-              className="my-1"
+              className="flex-shrink-0"
               onClick={onClearFilters}
               type="button"
-              variant="outline-secondary"
+              variant="secondary"
             >
               <Icon icon="x" className="me-1" />
               Clear
             </Button>
           )}
+
+          <div className="ms-lg-auto flex-shrink-0">
+            <Link className="btn btn-primary" href="/staff/new">
+              <Icon icon="plus" className="me-1" />
+              Add Staff Member
+            </Link>
+          </div>
         </div>
       </Col>
     </Row>

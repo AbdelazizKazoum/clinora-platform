@@ -7,9 +7,8 @@ import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 import {
   getAvailableStaffStatusTransitions,
   getStaffInitials,
-  staffRoleBadgeClassNames,
   staffRoleLabels,
-  staffStatusBadgeClassNames,
+  staffStatusDotClassNames,
   staffStatusLabels,
   type StaffMember,
   type StaffStatus,
@@ -17,33 +16,40 @@ import {
 
 const joinedDateFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
-  month: 'short',
-  year: 'numeric',
+  month: 'numeric',
+  year: '2-digit',
 });
 
 const StaffAvatar = ({ staffMember }: { staffMember: StaffMember }) => {
   const [hasImageError, setHasImageError] = useState(false);
-
-  if (staffMember.avatar && !hasImageError) {
-    return (
-      <img
-        alt={`${staffMember.fullName} avatar`}
-        className="rounded-circle me-3 flex-shrink-0"
-        height={64}
-        onError={() => setHasImageError(true)}
-        src={staffMember.avatar}
-        width={64}
-      />
-    );
-  }
+  const statusLabel = staffStatusLabels[staffMember.status];
+  const statusDotClassName = staffStatusDotClassNames[staffMember.status];
 
   return (
     <div
-      className="avatar rounded-circle me-3 flex-shrink-0"
-      style={{ height: 64, width: 64 }}
+      className="position-relative flex-shrink-0"
+      style={{ height: 72, width: 72 }}
     >
-      <span className="avatar-title text-bg-primary fw-semibold rounded-circle fs-22">
-        {getStaffInitials(staffMember)}
+      {staffMember.avatar && !hasImageError ? (
+        <img
+          alt={`${staffMember.fullName} avatar`}
+          className="rounded-circle"
+          height={72}
+          onError={() => setHasImageError(true)}
+          src={staffMember.avatar}
+          width={72}
+        />
+      ) : (
+        <span className="avatar-title text-bg-primary fw-semibold rounded-circle fs-22 h-100 w-100">
+          {getStaffInitials(staffMember)}
+        </span>
+      )}
+      <span
+        className={`position-absolute rounded-circle border border-2 border-white ${statusDotClassName}`}
+        style={{ bottom: 5, height: 13, right: 5, width: 13 }}
+        title={statusLabel}
+      >
+        <span className="visually-hidden">{statusLabel}</span>
       </span>
     </div>
   );
@@ -69,107 +75,91 @@ const StaffCard = ({
   onStatusChange,
   staffMember,
 }: StaffCardProps) => (
-  <Card className="h-100">
-    <CardBody className="d-flex align-items-start">
-      <StaffAvatar staffMember={staffMember} />
+  <Card className="h-100 border-0 shadow-sm">
+    <CardBody>
+      <div className="d-flex align-items-start justify-content-between mb-3">
+        <StaffAvatar staffMember={staffMember} />
 
-      <div className="flex-grow-1 min-w-0">
-        <div className="d-flex flex-nowrap justify-content-between align-items-start gap-2">
-          <div className="min-w-0">
-            <h5 className="mb-1 text-truncate">{staffMember.fullName}</h5>
-            <p className="mb-2 text-muted fs-xs">
-              {staffMember.specialization ?? 'Clinic staff'}
-            </p>
-          </div>
-          <div className="d-flex align-items-start gap-1 flex-shrink-0">
-            <span
-              className={`badge badge-label ${staffStatusBadgeClassNames[staffMember.status]}`}
+        {canManage && onEdit && onStatusChange && (
+          <Dropdown align="end">
+            <Dropdown.Toggle
+              aria-label={`Manage ${staffMember.fullName}`}
+              as={Button}
+              className="text-muted drop-arrow-none card-drop p-0 border-0"
+              disabled={isActionPending}
+              size="sm"
+              variant="link"
             >
-              {staffStatusLabels[staffMember.status]}
-            </span>
-
-            {canManage && onEdit && onStatusChange && (
-              <Dropdown align="end">
-                <Dropdown.Toggle
-                  aria-label={`Manage ${staffMember.fullName}`}
-                  as={Button}
-                  className="btn-icon btn-sm rounded-circle"
-                  disabled={isActionPending}
-                  size="sm"
-                  variant="light"
-                >
-                  <Icon icon="ellipsis-vertical" />
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  <Dropdown.Item onClick={() => onEdit(staffMember)}>
-                    <Icon icon="square-pen" className="me-2" />
-                    Edit
+              <Icon icon="ellipsis" className="fs-24" />
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Item onClick={() => onEdit(staffMember)}>
+                <Icon icon="square-pen" className="me-2" />
+                Edit
+              </Dropdown.Item>
+              <Dropdown.Divider />
+              {getAvailableStaffStatusTransitions(staffMember.status).map(
+                (status) => (
+                  <Dropdown.Item
+                    key={status}
+                    onClick={() => onStatusChange(staffMember, status)}
+                  >
+                    <Icon icon="activity" className="me-2" />
+                    {getStatusActionLabel(status)}
                   </Dropdown.Item>
-                  <Dropdown.Divider />
-                  {getAvailableStaffStatusTransitions(staffMember.status).map(
-                    (status) => (
-                      <Dropdown.Item
-                        key={status}
-                        onClick={() => onStatusChange(staffMember, status)}
-                      >
-                        <Icon icon="activity" className="me-2" />
-                        {getStatusActionLabel(status)}
-                      </Dropdown.Item>
-                    ),
-                  )}
-                </Dropdown.Menu>
-              </Dropdown>
-            )}
-          </div>
+                ),
+              )}
+            </Dropdown.Menu>
+          </Dropdown>
+        )}
+      </div>
+
+      <h5 className="mb-1 text-truncate">{staffMember.fullName}</h5>
+      <span className="text-muted fs-xs">
+        {staffRoleLabels[staffMember.role]}
+      </span>
+
+      <hr className="my-3 border-dashed" />
+
+      <div className="d-flex justify-content-between gap-3 mb-3">
+        <div className="min-w-0">
+          <p className="text-muted fs-xs mb-1">Specialization</p>
+          <h6 className="mb-0 text-truncate">
+            {staffMember.specialization ?? 'Clinic staff'}
+          </h6>
         </div>
 
-        <div className="mb-3">
-          <span
-            className={`badge ${staffRoleBadgeClassNames[staffMember.role]}`}
+        <div className="text-end flex-shrink-0">
+          <p className="text-muted fs-xs mb-1">Joined Date</p>
+          <h6 className="mb-0">
+            {joinedDateFormatter.format(staffMember.createdAt)}
+          </h6>
+        </div>
+      </div>
+
+      <div className="d-grid gap-2">
+        <div className="d-flex align-items-center gap-2 min-w-0">
+          <Icon icon="mail" className="text-muted flex-shrink-0" />
+          <a
+            className="link-reset text-truncate"
+            href={`mailto:${staffMember.email}`}
           >
-            {staffRoleLabels[staffMember.role]}
-          </span>
+            {staffMember.email}
+          </a>
         </div>
 
-        <div className="d-grid gap-2">
-          <div className="d-flex align-items-center gap-2 min-w-0">
-            <div className="avatar-xs avatar-img-size fs-24 flex-shrink-0">
-              <span className="avatar-title text-bg-light fs-sm rounded-circle">
-                <Icon icon="mail" />
-              </span>
-            </div>
+        <div className="d-flex align-items-center gap-2 min-w-0">
+          <Icon icon="phone" className="text-muted flex-shrink-0" />
+          {staffMember.phone ? (
             <a
               className="link-reset text-truncate"
-              href={`mailto:${staffMember.email}`}
+              href={`tel:${staffMember.phone}`}
             >
-              {staffMember.email}
+              {staffMember.phone}
             </a>
-          </div>
-
-          {staffMember.phone && (
-            <div className="d-flex align-items-center gap-2 min-w-0">
-              <div className="avatar-xs avatar-img-size fs-24 flex-shrink-0">
-                <span className="avatar-title text-bg-light fs-sm rounded-circle">
-                  <Icon icon="phone" />
-                </span>
-              </div>
-              <a
-                className="link-reset text-truncate"
-                href={`tel:${staffMember.phone}`}
-              >
-                {staffMember.phone}
-              </a>
-            </div>
+          ) : (
+            <span className="text-muted text-truncate">No phone on file</span>
           )}
-
-          <div className="d-flex align-items-center gap-2 text-muted">
-            <div className="avatar-xs avatar-img-size fs-24 flex-shrink-0">
-              <span className="avatar-title text-bg-light fs-sm rounded-circle">
-                <Icon icon="calendar-days" />
-              </span>
-            </div>
-            <span>Joined {joinedDateFormatter.format(staffMember.createdAt)}</span>
-          </div>
         </div>
       </div>
     </CardBody>

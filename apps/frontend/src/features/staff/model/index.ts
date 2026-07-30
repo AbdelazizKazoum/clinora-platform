@@ -4,6 +4,7 @@ export {
   staffRoleBadgeClassNames,
   staffRoleLabels,
   staffStatusBadgeClassNames,
+  staffStatusDotClassNames,
   staffStatusLabels,
   type StaffMember,
   type StaffRole,

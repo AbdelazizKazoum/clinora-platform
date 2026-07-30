@@ -3,7 +3,6 @@
 import PageBreadcrumb from '@/components/PageBreadcrumb';
 import Icon from '@/components/wrappers/Icon';
 import { useNotificationStore } from '@/store';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useMemo, useState } from 'react';
 import { Alert, Button, Card, CardBody, Col, Row } from 'react-bootstrap';
@@ -28,7 +27,7 @@ import {
 const StaffGridSkeleton = () => (
   <Row>
     {Array.from({ length: 6 }, (_, index) => (
-      <Col key={index} xs={12} md={6} xl={4} className="mb-3">
+      <Col key={index} xs={12} md={6} xl={3} className="mb-3">
         <StaffCardSkeleton />
       </Col>
     ))}
@@ -85,10 +84,7 @@ const StaffPage = () => {
   const hasActiveFilters =
     search.trim().length > 0 || roleFilter !== 'ALL' || statusFilter !== 'ALL';
 
-  const summary = useMemo(
-    () => getStaffSummary(staffMembers),
-    [staffMembers],
-  );
+  const summary = useMemo(() => getStaffSummary(staffMembers), [staffMembers]);
   const filteredStaffMembers = useMemo(
     () =>
       filterStaffMembers(staffMembers, {
@@ -148,13 +144,6 @@ const StaffPage = () => {
     <>
       <PageBreadcrumb title="Staff Management" subtitle="Staff" />
 
-      <div className="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
-        <Link className="btn btn-primary" href="/staff/new">
-          <Icon icon="plus" className="me-1" />
-          Add Staff Member
-        </Link>
-      </div>
-
       {isInitialLoading ? (
         <StaffSummarySkeleton />
       ) : (
@@ -185,8 +174,7 @@ const StaffPage = () => {
           variant="danger"
         >
           <span>
-            {staffMembersQuery.error.message ||
-              'Unable to load staff members.'}
+            {staffMembersQuery.error.message || 'Unable to load staff members.'}
           </span>
           <Button
             disabled={staffMembersQuery.isFetching}
@@ -224,10 +212,7 @@ const StaffPage = () => {
             filteredStaffMembers.length === 0 && (
               <Card>
                 <CardBody className="text-center py-5">
-                  <Icon
-                    icon="search-x"
-                    className="display-5 text-muted mb-3"
-                  />
+                  <Icon icon="search-x" className="display-5 text-muted mb-3" />
                   <h5>No staff match these filters</h5>
                   <p className="text-muted mb-3">
                     Try a different search term, role, or status.
@@ -242,7 +227,13 @@ const StaffPage = () => {
           {filteredStaffMembers.length > 0 && (
             <Row>
               {filteredStaffMembers.map((staffMember) => (
-                <Col key={staffMember.id} xs={12} md={6} xl={4} className="mb-3">
+                <Col
+                  key={staffMember.id}
+                  xs={12}
+                  md={6}
+                  xl={3}
+                  className="mb-3"
+                >
                   <StaffCard
                     canManage={canManageStaff}
                     isActionPending={

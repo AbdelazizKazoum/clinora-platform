@@ -53,3 +53,9 @@ export const staffStatusBadgeClassNames = {
   'on-leave': 'badge-soft-warning text-warning',
   inactive: 'badge-soft-danger text-danger',
 } satisfies Record<StaffStatus, string>;
+
+export const staffStatusDotClassNames = {
+  active: 'bg-success',
+  'on-leave': 'bg-warning',
+  inactive: 'bg-danger',
+} satisfies Record<StaffStatus, string>;

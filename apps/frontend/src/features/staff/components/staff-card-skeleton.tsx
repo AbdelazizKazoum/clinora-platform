@@ -1,27 +1,31 @@
 import { Card, CardBody, Placeholder } from 'react-bootstrap';
 
 const StaffCardSkeleton = () => (
-  <Card className="h-100" aria-hidden="true">
-    <CardBody className="d-flex align-items-start placeholder-glow">
+  <Card className="h-100 border-0 shadow-sm" aria-hidden="true">
+    <CardBody className="placeholder-glow">
       <Placeholder
-        className="rounded-circle me-3 flex-shrink-0"
-        style={{ height: 64, width: 64 }}
+        className="rounded-circle d-block mb-3"
+        style={{ height: 72, width: 72 }}
       />
 
-      <div className="flex-grow-1">
-        <div className="d-flex justify-content-between gap-3">
-          <div className="w-75">
-            <Placeholder className="col-8 d-block mb-2" />
-            <Placeholder size="xs" className="col-6" />
-          </div>
-          <Placeholder className="col-2" />
-        </div>
+      <Placeholder className="col-7 d-block mb-2" />
+      <Placeholder size="xs" className="col-5" />
 
-        <Placeholder className="col-4 d-block my-3" />
-        <Placeholder className="col-10 d-block mb-2" />
-        <Placeholder className="col-7 d-block mb-2" />
-        <Placeholder className="col-6 d-block" />
+      <hr className="my-3 border-dashed" />
+
+      <div className="d-flex justify-content-between gap-3 mb-3">
+        <div className="w-50">
+          <Placeholder size="xs" className="col-7 d-block mb-2" />
+          <Placeholder className="col-9 d-block" />
+        </div>
+        <div className="w-25 text-end">
+          <Placeholder size="xs" className="col-12 d-block mb-2" />
+          <Placeholder className="col-10 d-block ms-auto" />
+        </div>
       </div>
+
+      <Placeholder className="col-10 d-block mb-2" />
+      <Placeholder className="col-7 d-block" />
     </CardBody>
   </Card>
 );
