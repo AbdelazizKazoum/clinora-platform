@@ -23,7 +23,7 @@ the next task.
 - [x] Task 2: Expose staff management through the API Gateway
 - [x] Task 3: Add role-aware access control for staff management
 - [ ] Task 4: Add TanStack Query infrastructure to the frontend
-- [ ] Task 5: Create the frontend staff data boundary
+- [x] Task 5: Create the frontend staff data boundary
 - [ ] Task 6: Build the read-only staff management page
 - [ ] Task 7: Build the create-staff workflow
 - [ ] Task 8: Add edit and status-management actions
