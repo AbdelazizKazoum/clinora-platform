@@ -26,6 +26,7 @@ import {
   ClinicRecordConflictError,
   ClinicRecordNotFoundError,
   ClinicSelfDeactivationError,
+  ClinicStaffPermanentRemovalDisabledError,
 } from '../errors/clinic.errors';
 
 export interface CreateStaffMemberWithCredentials
@@ -215,9 +216,9 @@ export class ManageStaffMembersUseCase {
   }
 
   async delete(clinicId: string, id: string): Promise<void> {
-    if (!(await this.staffMembers.delete(clinicId, id))) {
-      throw new ClinicRecordNotFoundError('Staff member', id);
-    }
+    void clinicId;
+    void id;
+    throw new ClinicStaffPermanentRemovalDisabledError();
   }
 
   private async assertClinicExists(clinicId: string): Promise<void> {

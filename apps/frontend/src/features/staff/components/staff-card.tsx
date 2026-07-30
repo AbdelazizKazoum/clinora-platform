@@ -49,6 +49,11 @@ const StaffAvatar = ({ staffMember }: { staffMember: StaffMember }) => {
   );
 };
 
+const getStatusActionLabel = (status: StaffStatus): string =>
+  status === 'inactive'
+    ? 'Deactivate Account'
+    : `Mark ${staffStatusLabels[status]}`;
+
 interface StaffCardProps {
   isActionPending?: boolean;
   canManage?: boolean;
@@ -108,7 +113,7 @@ const StaffCard = ({
                         onClick={() => onStatusChange(staffMember, status)}
                       >
                         <Icon icon="activity" className="me-2" />
-                        Mark {staffStatusLabels[status]}
+                        {getStatusActionLabel(status)}
                       </Dropdown.Item>
                     ),
                   )}

@@ -27,7 +27,7 @@ the next task.
 - [x] Task 6: Build the read-only staff management page
 - [x] Task 7: Build the create-staff workflow
 - [x] Task 8: Add edit and status-management actions
-- [ ] Task 9: Decide and implement the removal policy
+- [x] Task 9: Decide and implement the removal policy
 - [ ] Task 10: Add staff-management test coverage and final UX hardening
 
 ## Architectural Direction
@@ -261,10 +261,13 @@ Readiness notes before exposing all UI actions:
   admins scoped to the route clinic.
 - Staff frontend navigation and route access are filtered through the auth
   feature access policy.
-- Deleting the staff row does not disable or remove the auth identity.
+- Permanent staff deletion is disabled. Staff removal is represented by setting
+  status to `inactive`, which disables the synchronized auth identity while
+  retaining the clinic profile.
 
-Do not expose permanent deletion until Task 9 defines the identity and audit
-behavior.
+Do not expose permanent deletion to the frontend unless a future architecture
+decision defines coordinated auth cleanup, session invalidation, and audit
+retention.
 
 ## API Shape
 
@@ -281,8 +284,8 @@ GET   /clinics/:clinicId/staff/by-user/:userId
 PATCH /clinics/:clinicId/staff/:staffMemberId
 ```
 
-Do not expose permanent deletion to the frontend until Task 9 defines its
-identity and audit behavior.
+Do not expose permanent deletion to the frontend. Use `PATCH` with status
+`inactive` for staff removal.
 
 The initial list operation may return the complete clinic staff list. Local
 search and filtering are acceptable for the first release because individual

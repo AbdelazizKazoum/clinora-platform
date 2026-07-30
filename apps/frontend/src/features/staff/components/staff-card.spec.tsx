@@ -48,13 +48,13 @@ describe(StaffCard.name, () => {
 
     expect(screen.getByText('Edit')).toBeTruthy();
     expect(screen.getByText('Mark On Leave')).toBeTruthy();
-    expect(screen.getByText('Mark Inactive')).toBeTruthy();
+    expect(screen.getByText('Deactivate Account')).toBeTruthy();
     expect(screen.queryByText('Mark Active')).toBeNull();
 
     fireEvent.click(screen.getByText('Edit'));
     expect(onEdit).toHaveBeenCalledWith(staffMember);
 
-    fireEvent.click(screen.getByText('Mark Inactive'));
+    fireEvent.click(screen.getByText('Deactivate Account'));
     expect(onStatusChange).toHaveBeenCalledWith(staffMember, 'inactive');
   });
 
@@ -72,7 +72,7 @@ describe(StaffCard.name, () => {
 
     expect(screen.getByText('Mark Active')).toBeTruthy();
     expect(screen.queryByText('Mark On Leave')).toBeNull();
-    expect(screen.queryByText('Mark Inactive')).toBeNull();
+    expect(screen.queryByText('Deactivate Account')).toBeNull();
   });
 
   it('hides management actions when the member is not manageable', () => {

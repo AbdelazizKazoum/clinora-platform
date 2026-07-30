@@ -9,6 +9,7 @@ import {
   ClinicLastEnabledAdminError,
   ClinicRecordNotFoundError,
   ClinicSelfDeactivationError,
+  ClinicStaffPermanentRemovalDisabledError,
 } from '../errors/clinic.errors';
 import type { AuthServicePort } from '../ports/auth-service.port';
 import { StaffRole } from '../../domain/enums/staff-role.enum';
@@ -592,5 +593,19 @@ describe(ManageStaffMembersUseCase.name, () => {
         role: StaffRole.Doctor,
       }),
     ).rejects.toBeInstanceOf(ClinicLastEnabledAdminError);
+  });
+
+  it('rejects permanent staff deletion and does not hard-delete the profile', async () => {
+    const staff = createStaffMembers();
+    const auth = createAuth();
+    const useCase = createUseCase(createClinics(), staff, auth);
+
+    await expect(
+      useCase.delete(input.clinicId, existingStaffMember.id),
+    ).rejects.toBeInstanceOf(ClinicStaffPermanentRemovalDisabledError);
+
+    expect(staff.delete).not.toHaveBeenCalled();
+    expect(auth.updateStaffIdentity).not.toHaveBeenCalled();
+    expect(auth.deleteProvisionedIdentity).not.toHaveBeenCalled();
   });
 });

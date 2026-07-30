@@ -49,6 +49,9 @@ ClinicService.DeleteStaffMember
 ```
 
 These methods are for backend-to-backend communication only.
+`DeleteStaffMember` is retained for contract compatibility but permanent staff
+deletion is disabled by policy. It must reject requests; staff removal is
+represented by updating status to `inactive`.
 
 ### Frontend communication rule
 
@@ -185,9 +188,11 @@ All paths below are relative to `/api/bff`.
 | `GET`   | `/clinics/{clinicId}/staff/by-user/{userId}` | Find staff profile for a user | `200 StaffMemberDto` |
 | `PATCH` | `/clinics/{clinicId}/staff/{staffMemberId}` | Partially update staff profile/lifecycle | `200 StaffMemberDto` |
 
-Do not expose permanent staff deletion to the frontend yet. The internal gRPC
-contract has `DeleteStaffMember`, but Task 9 must first define identity and
-audit behavior for removal.
+Do not expose permanent staff deletion to the frontend. Staff removal is
+inactivation only: use `PATCH` with `status: "inactive"` so the clinic profile
+is retained and auth access is disabled through the synchronized identity
+workflow. The internal gRPC contract still has `DeleteStaffMember` for
+compatibility, but the clinic service rejects it by policy.
 
 Gateway implementation notes:
 
@@ -354,7 +359,37 @@ Frontend rules:
 - Do not send `isActive`.
 - Invalidate the staff list and the edited staff member after success.
 
-## 9. Clinic and working-hours capabilities
+## 9. Staff removal policy
+
+Staff removal is inactivation only.
+
+Supported removal request:
+
+```txt
+PATCH /api/bff/clinics/{clinicId}/staff/{staffMemberId}
+```
+
+```json
+{
+  "status": "inactive"
+}
+```
+
+This disables login/refresh through the synchronized auth identity while
+retaining the clinic staff profile for operational history and audit needs.
+
+Permanent deletion is not exposed through HTTP. The legacy/internal
+`ClinicService.DeleteStaffMember` method rejects requests and must not remove
+the clinic profile or auth identity.
+
+UI language must distinguish deactivation from deletion. Use labels such as
+`Deactivate Account`, not delete/remove/trash labels, for this workflow.
+
+See:
+
+- `docs/implementation/staff-management/removal-policy.md`
+
+## 10. Clinic and working-hours capabilities
 
 The current internal clinic service also supports:
 
@@ -368,7 +403,7 @@ ClinicService.UpsertWorkingHours
 These operations do not yet have a frontend-facing HTTP contract in this file.
 Document them separately when a frontend workflow needs them.
 
-## 10. Expected errors
+## 11. Expected errors
 
 Frontend code should branch on HTTP status before reading a success shape.
 
@@ -379,7 +414,7 @@ Frontend code should branch on HTTP status before reading a success shape.
 | `403`  | Authenticated user is not allowed to manage staff |
 | `404`  | Clinic or staff member was not found |
 | `409`  | Staff email already exists in the clinic |
-| `412`  | Lifecycle rule failed, such as self-deactivation or last enabled admin |
+| `412`  | Lifecycle or policy rule failed, such as self-deactivation, last enabled admin, or disabled permanent deletion |
 | `500`  | Unexpected clinic-service failure |
 | `502`  | BFF could not reach the API Gateway |
 | `503`  | API Gateway could not reach the clinic service |
@@ -406,7 +441,7 @@ interface ApiError {
 }
 ```
 
-## 11. Frontend integration rules
+## 12. Frontend integration rules
 
 1. Keep staff-specific API functions, DTOs, mappers, schemas, hooks, and UI
    under `apps/frontend/src/features/staff`.
@@ -421,14 +456,13 @@ interface ApiError {
    changes.
 9. Treat frontend permission checks as UX only. The backend must enforce
    authorization.
-10. Do not expose staff deletion until Task 9 defines the product and audit
-    behavior.
+10. Do not expose staff deletion. Use status `inactive` for staff removal.
 11. Use the auth feature access policy for Staff navigation, route access, and
     future Staff buttons or actions.
 12. Staff management frontend routes are admin-only until product requirements
     grant non-admin staff capabilities.
 
-## 12. Known integration gaps
+## 13. Known integration gaps
 
 - Staff route authorization is implemented in the API Gateway and covered by
   focused authorization tests for missing token, wrong role, wrong clinic, and

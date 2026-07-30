@@ -12,6 +12,8 @@ service ClinicService {
   rpc ListStaffMembers (ListStaffMembersRequest) returns (StaffMembersReply);
   rpc CreateStaffMember (CreateStaffMemberRequest) returns (StaffMemberReply);
   rpc UpdateStaffMember (UpdateStaffMemberRequest) returns (StaffMemberReply);
+  // Deprecated: permanent staff deletion is disabled by policy.
+  // Use UpdateStaffMember with status "inactive" for normal removal.
   rpc DeleteStaffMember (DeleteStaffMemberRequest) returns (SuccessReply);
 }
 

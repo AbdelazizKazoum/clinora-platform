@@ -166,6 +166,11 @@ export interface ClinicServiceClient {
   updateStaffMember(
     request: UpdateStaffMemberRequest,
   ): Observable<StaffMemberReply>;
+  /**
+   * @deprecated Permanent staff deletion is disabled by policy.
+   * Use UpdateStaffMember with status "inactive" to remove account access while
+   * retaining the staff profile for audit/history.
+   */
   deleteStaffMember(
     request: DeleteStaffMemberRequest,
   ): Observable<SuccessReply>;

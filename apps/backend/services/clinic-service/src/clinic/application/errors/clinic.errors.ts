@@ -53,3 +53,12 @@ export class ClinicLastEnabledAdminError extends Error {
     this.name = ClinicLastEnabledAdminError.name;
   }
 }
+
+export class ClinicStaffPermanentRemovalDisabledError extends Error {
+  constructor() {
+    super(
+      'Permanent staff deletion is disabled; set staff status to inactive instead',
+    );
+    this.name = ClinicStaffPermanentRemovalDisabledError.name;
+  }
+}
