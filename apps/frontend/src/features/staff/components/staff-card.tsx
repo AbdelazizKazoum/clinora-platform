@@ -2,15 +2,17 @@
 
 import Icon from '@/components/wrappers/Icon';
 import { useState } from 'react';
-import { Card, CardBody } from 'react-bootstrap';
+import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 
 import {
+  getAvailableStaffStatusTransitions,
   getStaffInitials,
   staffRoleBadgeClassNames,
   staffRoleLabels,
   staffStatusBadgeClassNames,
   staffStatusLabels,
   type StaffMember,
+  type StaffStatus,
 } from '../model';
 
 const joinedDateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -47,24 +49,73 @@ const StaffAvatar = ({ staffMember }: { staffMember: StaffMember }) => {
   );
 };
 
-const StaffCard = ({ staffMember }: { staffMember: StaffMember }) => (
+interface StaffCardProps {
+  isActionPending?: boolean;
+  canManage?: boolean;
+  onEdit?: (staffMember: StaffMember) => void;
+  onStatusChange?: (staffMember: StaffMember, status: StaffStatus) => void;
+  staffMember: StaffMember;
+}
+
+const StaffCard = ({
+  canManage = false,
+  isActionPending = false,
+  onEdit,
+  onStatusChange,
+  staffMember,
+}: StaffCardProps) => (
   <Card className="h-100">
     <CardBody className="d-flex align-items-start">
       <StaffAvatar staffMember={staffMember} />
 
       <div className="flex-grow-1 min-w-0">
-        <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div className="d-flex flex-nowrap justify-content-between align-items-start gap-2">
           <div className="min-w-0">
             <h5 className="mb-1 text-truncate">{staffMember.fullName}</h5>
             <p className="mb-2 text-muted fs-xs">
               {staffMember.specialization ?? 'Clinic staff'}
             </p>
           </div>
-          <span
-            className={`badge badge-label ${staffStatusBadgeClassNames[staffMember.status]}`}
-          >
-            {staffStatusLabels[staffMember.status]}
-          </span>
+          <div className="d-flex align-items-start gap-1 flex-shrink-0">
+            <span
+              className={`badge badge-label ${staffStatusBadgeClassNames[staffMember.status]}`}
+            >
+              {staffStatusLabels[staffMember.status]}
+            </span>
+
+            {canManage && onEdit && onStatusChange && (
+              <Dropdown align="end">
+                <Dropdown.Toggle
+                  aria-label={`Manage ${staffMember.fullName}`}
+                  as={Button}
+                  className="btn-icon btn-sm rounded-circle"
+                  disabled={isActionPending}
+                  size="sm"
+                  variant="light"
+                >
+                  <Icon icon="ellipsis-vertical" />
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <Dropdown.Item onClick={() => onEdit(staffMember)}>
+                    <Icon icon="square-pen" className="me-2" />
+                    Edit
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  {getAvailableStaffStatusTransitions(staffMember.status).map(
+                    (status) => (
+                      <Dropdown.Item
+                        key={status}
+                        onClick={() => onStatusChange(staffMember, status)}
+                      >
+                        <Icon icon="activity" className="me-2" />
+                        Mark {staffStatusLabels[status]}
+                      </Dropdown.Item>
+                    ),
+                  )}
+                </Dropdown.Menu>
+              </Dropdown>
+            )}
+          </div>
         </div>
 
         <div className="mb-3">

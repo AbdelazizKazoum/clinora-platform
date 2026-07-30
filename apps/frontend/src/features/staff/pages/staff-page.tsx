@@ -2,6 +2,7 @@
 
 import PageBreadcrumb from '@/components/PageBreadcrumb';
 import Icon from '@/components/wrappers/Icon';
+import { useNotificationStore } from '@/store';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useMemo, useState } from 'react';
@@ -9,13 +10,18 @@ import { Alert, Button, Card, CardBody, Col, Row } from 'react-bootstrap';
 
 import StaffCard from '../components/staff-card';
 import StaffCardSkeleton from '../components/staff-card-skeleton';
+import StaffEditModal from '../components/staff-edit-modal';
 import StaffSummaryCards from '../components/staff-summary-cards';
 import StaffToolbar from '../components/staff-toolbar';
-import { useStaffMembers } from '../hooks';
+import { useStaffMembers, useUpdateStaffMember } from '../hooks';
 import {
   filterStaffMembers,
   getStaffSummary,
+  isStaffDeactivationStatus,
+  staffStatusLabels,
+  type StaffMember,
   type StaffRoleFilter,
+  type StaffStatus,
   type StaffStatusFilter,
 } from '../model';
 
@@ -55,12 +61,22 @@ const StaffSummarySkeleton = () => (
 const StaffPage = () => {
   const { data: session, status: sessionStatus } = useSession();
   const clinicId = session?.user.clinicId;
+  const canManageStaff = session?.user.role === 'admin';
+  const showNotification = useNotificationStore(
+    (state) => state.showNotification,
+  );
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<StaffRoleFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StaffStatusFilter>('ALL');
+  const [editingStaffMember, setEditingStaffMember] =
+    useState<StaffMember | null>(null);
+  const [pendingStatusStaffMemberId, setPendingStatusStaffMemberId] = useState<
+    string | null
+  >(null);
   const staffMembersQuery = useStaffMembers(
     sessionStatus === 'authenticated' ? clinicId : undefined,
   );
+  const statusUpdateMutation = useUpdateStaffMember();
 
   const staffMembers = staffMembersQuery.data ?? [];
   const isInitialLoading =
@@ -87,6 +103,45 @@ const StaffPage = () => {
     setSearch('');
     setRoleFilter('ALL');
     setStatusFilter('ALL');
+  };
+
+  const handleStatusChange = async (
+    staffMember: StaffMember,
+    status: StaffStatus,
+  ) => {
+    if (
+      isStaffDeactivationStatus(status) &&
+      !window.confirm(
+        `${staffMember.fullName} will lose access to Clinora when marked inactive. Continue?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setPendingStatusStaffMemberId(staffMember.id);
+      await statusUpdateMutation.updateStaffMember({
+        clinicId: staffMember.clinicId,
+        staffMemberId: staffMember.id,
+        status,
+      });
+      showNotification({
+        message: `${staffMember.fullName} is now ${staffStatusLabels[status]}.`,
+        title: 'Staff status updated',
+        variant: 'success',
+      });
+    } catch (error) {
+      showNotification({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Unable to update the staff status.',
+        title: 'Staff request failed',
+        variant: 'danger',
+      });
+    } finally {
+      setPendingStatusStaffMemberId(null);
+    }
   };
 
   return (
@@ -188,13 +243,28 @@ const StaffPage = () => {
             <Row>
               {filteredStaffMembers.map((staffMember) => (
                 <Col key={staffMember.id} xs={12} md={6} xl={4} className="mb-3">
-                  <StaffCard staffMember={staffMember} />
+                  <StaffCard
+                    canManage={canManageStaff}
+                    isActionPending={
+                      pendingStatusStaffMemberId === staffMember.id
+                    }
+                    onEdit={setEditingStaffMember}
+                    onStatusChange={(member, status) => {
+                      void handleStatusChange(member, status);
+                    }}
+                    staffMember={staffMember}
+                  />
                 </Col>
               ))}
             </Row>
           )}
         </>
       )}
+
+      <StaffEditModal
+        onHide={() => setEditingStaffMember(null)}
+        staffMember={editingStaffMember}
+      />
     </>
   );
 };

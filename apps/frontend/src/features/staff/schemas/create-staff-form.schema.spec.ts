@@ -38,11 +38,11 @@ describe('create staff form schema', () => {
     expect(result.errors.passwordConfirmation).toBe('Passwords must match.');
   });
 
-  it('requires specialization for doctors only', () => {
+  it('keeps specialization optional for every role', () => {
     expect(
       validateCreateStaffForm(validValues({ specialization: '' })).errors
         .specialization,
-    ).toBe('Doctor specialization is required.');
+    ).toBeUndefined();
     expect(
       validateCreateStaffForm(
         validValues({ role: 'SECRETARY', specialization: '' }),
@@ -55,7 +55,7 @@ describe('create staff form schema', () => {
       'clinic-1',
       validValues({
         role: 'SECRETARY',
-        specialization: 'Ignored for non-doctors',
+        specialization: '',
       }),
     );
 
@@ -70,6 +70,5 @@ describe('create staff form schema', () => {
       password: 'StrongPassword123!',
     });
     expect(command).not.toHaveProperty('passwordConfirmation');
-    expect(command).not.toHaveProperty('specialization');
   });
 });

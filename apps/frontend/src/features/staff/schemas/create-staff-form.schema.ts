@@ -84,9 +84,7 @@ export const validateCreateStaffForm = (
     errors.role = 'Choose a valid staff role.';
   }
 
-  if (values.role === 'DOCTOR' && !specialization) {
-    errors.specialization = 'Doctor specialization is required.';
-  } else if (specialization && !hasMaxLength(specialization, 255)) {
+  if (specialization && !hasMaxLength(specialization, 255)) {
     errors.specialization = 'Specialization must be 255 characters or fewer.';
   }
 
@@ -139,7 +137,7 @@ export const mapCreateStaffFormToCommand = (
     command.phone = phone;
   }
 
-  if (values.role === 'DOCTOR' && specialization) {
+  if (specialization) {
     command.specialization = specialization;
   }
 

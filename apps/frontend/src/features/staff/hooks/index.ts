@@ -1,2 +1,2 @@
 export { useStaffMembers } from './queries';
-export { useCreateStaffMember } from './commands';
+export { useCreateStaffMember, useUpdateStaffMember } from './commands';
