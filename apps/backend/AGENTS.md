@@ -52,6 +52,27 @@ apps/backend/services/<service>/src/<bounded-context>/
 
 The exact folders should follow actual need. Do not create empty folders or premature layers.
 
+## Microservice Import Aliases
+
+Backend microservices support service-local layer aliases inspired by the
+legacy DentiFlow services:
+
+```txt
+@domain/*      -> src/<bounded-context>/domain/*
+@application/* -> src/<bounded-context>/application/*
+@infra/*       -> src/<bounded-context>/infrastructure/*
+@common/*      -> src/common/*
+```
+
+Use these aliases for imports that cross layer or folder boundaries inside the
+same microservice, for example `@domain/entities/user` or
+`@application/use-cases/login-user.use-case`. Short relative imports such as
+`./user.mapper` are still fine inside the same folder.
+
+Aliases are local to each service. Do not use `@domain`, `@application`,
+`@infra`, or `@common` to reach into another microservice, and do not apply the
+microservice domain/application/infrastructure aliases to the API Gateway.
+
 ## Dependency Direction
 
 Keep dependencies pointing inward:

@@ -1,5 +1,5 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
-const { join } = require('path');
+const { join, resolve } = require('path');
 
 module.exports = {
   output: {
@@ -41,4 +41,12 @@ module.exports = {
       sourceMap: true,
     }),
   ],
+  resolve: {
+    alias: {
+      '@application': resolve(__dirname, 'src/auth/application'),
+      '@common': resolve(__dirname, 'src/common'),
+      '@domain': resolve(__dirname, 'src/auth/domain'),
+      '@infra': resolve(__dirname, 'src/auth/infrastructure'),
+    },
+  },
 };

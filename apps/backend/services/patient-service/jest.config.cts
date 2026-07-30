@@ -16,5 +16,11 @@ module.exports = {
     '^.+\\.[tj]s$': ['@swc/jest', swcJestConfig],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
+  moduleNameMapper: {
+    '^@application/(.*)$': '<rootDir>/src/patient/application/$1',
+    '^@common/(.*)$': '<rootDir>/src/common/$1',
+    '^@domain/(.*)$': '<rootDir>/src/patient/domain/$1',
+    '^@infra/(.*)$': '<rootDir>/src/patient/infrastructure/$1',
+  },
   coverageDirectory: 'test-output/jest/coverage',
 };

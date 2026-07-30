@@ -53,6 +53,8 @@ Backend rules:
 - Keep domain logic out of controllers.
 - The API Gateway orchestrates external API access and service communication. It does not own business rules.
 - Microservices own their domain logic, data model, TypeORM entities, migrations, and repositories.
+- In backend microservices, prefer service-local layer import aliases for cross-folder imports: `@domain/*`, `@application/*`, `@infra/*`, and `@common/*`.
+- Keep those aliases scoped to the owning microservice's bounded context; never use them to import from another service.
 
 ## Frontend Architecture
 
