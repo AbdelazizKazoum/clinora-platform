@@ -25,7 +25,7 @@ the next task.
 - [ ] Task 4: Add TanStack Query infrastructure to the frontend
 - [x] Task 5: Create the frontend staff data boundary
 - [x] Task 6: Build the read-only staff management page
-- [ ] Task 7: Build the create-staff workflow
+- [x] Task 7: Build the create-staff workflow
 - [ ] Task 8: Add edit and status-management actions
 - [ ] Task 9: Decide and implement the removal policy
 - [ ] Task 10: Add staff-management test coverage and final UX hardening
@@ -184,8 +184,10 @@ Use these files as visual and interaction references only:
 ```txt
 legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/apps/crm/contacts/page.tsx
 legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/apps/users/contacts/page.tsx
+legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/apps/users/account-settings/page.tsx
 legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/apps/users/roles/components/UsersTable.tsx
 legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/widgets/components/StatisticCard4.tsx
+legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/form/layout/components/LayoutForm.tsx
 legacy/dentiflow/frontend/ubold-full-template-source-here/src/app/(admin)/form/validation/components/CustomValidation.tsx
 ```
 
@@ -196,6 +198,8 @@ Adapt:
 - Subtle role and status badges.
 - `app-search` styling with Clinora's `Icon` wrapper.
 - React Bootstrap `Dropdown` for staff actions.
+- Account settings page structure for a full-page staff/account form.
+- Form row, select, password, and action alignment patterns from Ubold forms.
 - Ubold form validation feedback.
 - Clinora's existing `PageBreadcrumb` and notification system.
 
@@ -207,10 +211,36 @@ Do not copy:
 - Fake navigation.
 - Ubold's route or folder organization.
 - Client-side deletion behavior from template examples.
+- Account-settings hero imagery, social links, address sections, and unrelated
+  profile settings.
 
 Do not use Ubold's `MemberRoleCard` for individual staff members. That component
 represents role definitions and may be useful only for a future roles and
 permissions page.
+
+## Navigation Naming
+
+Use concise, task-oriented sidebar labels. Avoid repeating the parent concept in
+child labels.
+
+Recommended staff sidebar naming:
+
+```txt
+Staff
+  Directory
+  Add Member
+```
+
+Use fuller labels in page titles and buttons where extra clarity helps:
+
+```txt
+Staff Management
+Add Staff Member
+Create Staff Member
+```
+
+Avoid nested sidebar labels such as `Staff > Staff Members > Add Staff Member`
+because they are redundant and scan poorly.
 
 ## Current Backend Readiness
 
@@ -465,6 +495,14 @@ Scope:
 
 - Replace the placeholder `/staff/new` route with thin `CreateStaffPage`
   composition.
+- Implement staff creation as a dedicated full page, not a modal or offcanvas,
+  because it creates both a staff profile and a login identity.
+- Use Ubold's `apps/users/account-settings/page.tsx` as the primary visual
+  reference for the full-page account form structure.
+- Use Ubold's `form/validation/components/CustomValidation.tsx` for validation
+  feedback patterns.
+- Use Ubold's `form/layout/components/LayoutForm.tsx` only for small form-row,
+  select, password, and action alignment details.
 - Build a staff-owned form and validation schema.
 - Support first name, last name, email, optional phone, role, optional
   specialization, optional avatar URL, password, and password confirmation.

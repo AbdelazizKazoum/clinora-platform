@@ -13,6 +13,7 @@ export {
   type ListStaffMembersQuery,
   type ListStaffMembersResult,
 } from './staff.queries';
+export { type CreateStaffMemberCommand } from './staff.commands';
 export { staffQueryKeys } from './staff-query-keys';
 export { mapStaffMemberFromDto } from './staff.mapper';
 export {

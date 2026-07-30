@@ -1,4 +1,4 @@
-import PageBreadcrumb from '@/components/PageBreadcrumb'
+import { CreateStaffPage } from '@/features/staff'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 }
 
 const Page = () => {
-  return <PageBreadcrumb title="Add Staff Member" subtitle="Staff" />
+  return <CreateStaffPage />
 }
 
 export default Page
