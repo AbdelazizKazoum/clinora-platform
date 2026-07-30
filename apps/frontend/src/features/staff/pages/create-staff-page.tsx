@@ -345,7 +345,7 @@ const CreateStaffPage = () => {
                 {values.role === 'DOCTOR' && (
                   <FormGroup className="mb-3">
                     <FormLabel htmlFor="staff-specialization">
-                      Specialization {requiredMark}
+                      Specialization
                     </FormLabel>
                     <FormControl
                       disabled={isPending}

@@ -80,4 +80,19 @@ describe(StaffCard.name, () => {
 
     expect(screen.queryByRole('button', { name: /manage salma/i })).toBeNull();
   });
+
+  it('falls back to initials when an avatar image cannot load', () => {
+    render(
+      <StaffCard
+        staffMember={createStaffMember({
+          avatar: 'https://cdn.clinora.test/missing-avatar.jpg',
+        })}
+      />,
+    );
+
+    fireEvent.error(screen.getByAltText('Salma El Mansouri avatar'));
+
+    expect(screen.queryByAltText('Salma El Mansouri avatar')).toBeNull();
+    expect(screen.getByText('SE')).toBeTruthy();
+  });
 });

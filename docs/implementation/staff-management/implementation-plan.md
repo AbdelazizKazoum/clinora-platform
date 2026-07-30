@@ -28,7 +28,7 @@ the next task.
 - [x] Task 7: Build the create-staff workflow
 - [x] Task 8: Add edit and status-management actions
 - [x] Task 9: Decide and implement the removal policy
-- [ ] Task 10: Add staff-management test coverage and final UX hardening
+- [x] Task 10: Add staff-management test coverage and final UX hardening
 
 ## Architectural Direction
 

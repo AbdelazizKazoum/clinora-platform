@@ -23,12 +23,12 @@ const menuItems: MenuItemType[] = [
           {
             url: '/staff',
             slug: 'pages:staff',
-            label: 'Staff Members',
+            label: 'Directory',
           },
           {
             url: '/staff/new',
             slug: 'pages:staff-new',
-            label: 'Add Staff Member',
+            label: 'Add Member',
           },
         ],
       },
