@@ -8,6 +8,11 @@ Read the root `AGENTS.md` first. This file adds backend-specific architecture ru
 
 ## Architecture Reference
 
+Read `docs/architecture/backend.md` before making backend architecture, folder
+structure, microservice, API Gateway, gRPC, NATS, SSE, persistence, or contract
+changes. That document is the canonical backend architecture guide for what
+belongs in each backend folder and how the layers communicate.
+
 Use `legacy/dentiflow/backend/services/` as the reference for proven backend service architecture.
 
 Do not copy legacy code blindly. Analyze the intent, keep the clean architecture boundaries, then adapt the implementation to Clinora's current Nx layout, package names, contracts, and service boundaries.
