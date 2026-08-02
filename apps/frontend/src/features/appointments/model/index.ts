@@ -36,6 +36,10 @@ export {
   type ListAppointmentsResult,
 } from './appointment.queries';
 export {
+  appointmentQueryKeys,
+  appointmentQueueQueryKeys,
+} from './appointment-query-keys';
+export {
   mapCancelAppointmentCommandToDto,
   mapCheckAppointmentConflictsQueryToDto,
   mapCreateAppointmentCommandToDto,

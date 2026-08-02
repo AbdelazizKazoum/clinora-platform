@@ -19,7 +19,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 3. Add Appointment Models And Rules
 - [x] Task 4. Add Appointment DTOs And Mappers
 - [x] Task 5. Add Appointment API Functions
-- [ ] Task 6. Add Appointment Query And Mutation Hooks
+- [x] Task 6. Add Appointment Query And Mutation Hooks
 - [ ] Task 7. Adapt Ubold Calendar Shell
 - [ ] Task 8. Connect Calendar Range Loading
 - [ ] Task 9. Add Doctor Provider Filtering
@@ -46,7 +46,7 @@ the next task.
       string conversion.
 - [x] Appointment API function tests cover BFF-relative paths, query params, and
       command bodies.
-- [ ] Query key and hook tests cover clinic/range/filter inputs and mutation
+- [x] Query key and hook tests cover clinic/range/filter inputs and mutation
       invalidation.
 - [ ] Appointment form validation tests cover required patient, doctor,
       duration, start time, and derived end time behavior.
