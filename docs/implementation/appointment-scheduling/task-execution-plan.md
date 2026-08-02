@@ -16,7 +16,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 
 - [x] Task 1. Confirm Ubold Calendar Dependencies
 - [x] Task 2. Create Appointment Feature Skeleton
-- [ ] Task 3. Add Appointment Models And Rules
+- [x] Task 3. Add Appointment Models And Rules
 - [ ] Task 4. Add Appointment DTOs And Mappers
 - [ ] Task 5. Add Appointment API Functions
 - [ ] Task 6. Add Appointment Query And Mutation Hooks
@@ -38,9 +38,9 @@ the next task.
 
 ## Testing Checklist
 
-- [ ] Appointment timing rule tests cover valid timing, invalid timing, and
+- [x] Appointment timing rule tests cover valid timing, invalid timing, and
       duration calculations.
-- [ ] Conflict rule tests cover overlap, exact back-to-back appointments,
+- [x] Conflict rule tests cover overlap, exact back-to-back appointments,
       cancelled/no-show exceptions, and emergency override behavior.
 - [ ] Appointment DTO mapper tests cover date conversion and empty optional
       string conversion.
