@@ -20,7 +20,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 4. Add Appointment DTOs And Mappers
 - [x] Task 5. Add Appointment API Functions
 - [x] Task 6. Add Appointment Query And Mutation Hooks
-- [ ] Task 7. Adapt Ubold Calendar Shell
+- [x] Task 7. Adapt Ubold Calendar Shell
 - [ ] Task 8. Connect Calendar Range Loading
 - [ ] Task 9. Add Doctor Provider Filtering
 - [ ] Task 10. Add Appointment Form Modal
