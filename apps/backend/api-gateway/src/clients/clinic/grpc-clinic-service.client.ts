@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { ClientGrpc } from '@nestjs/microservices';
+import type { ClientGrpc } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 
 import type {
@@ -36,9 +36,7 @@ export class GrpcClinicServiceClient
       );
   }
 
-  getStaffMember(
-    request: GetStaffMemberRequest,
-  ): Promise<StaffMemberReply> {
+  getStaffMember(request: GetStaffMemberRequest): Promise<StaffMemberReply> {
     return lastValueFrom(this.getService().getStaffMember(request));
   }
 

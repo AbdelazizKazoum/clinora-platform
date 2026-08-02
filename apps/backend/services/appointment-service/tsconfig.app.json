@@ -1,0 +1,46 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": ["node"],
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "es2021",
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@application/*": ["./src/appointment/application/*"],
+      "@common/*": ["./src/common/*"],
+      "@domain/*": ["./src/appointment/domain/*"],
+      "@infra/*": ["./src/appointment/infrastructure/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "out-tsc",
+    "dist",
+    "jest.config.ts",
+    "jest.config.cts",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "eslint.config.js",
+    "eslint.config.cjs",
+    "eslint.config.mjs"
+  ],
+  "references": [
+    {
+      "path": "../../../../libs/contracts/appointment/tsconfig.lib.json"
+    },
+    {
+      "path": "../../../../libs/contracts/clinic/tsconfig.lib.json"
+    },
+    {
+      "path": "../../../../libs/contracts/patient/tsconfig.lib.json"
+    }
+  ]
+}

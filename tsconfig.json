@@ -35,6 +35,12 @@
     },
     {
       "path": "./libs/contracts/clinic"
+    },
+    {
+      "path": "./apps/backend/services/appointment-service"
+    },
+    {
+      "path": "./libs/contracts/appointment"
     }
   ]
 }

@@ -1,0 +1,22 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out-tsc/jest",
+    "types": ["jest", "node"],
+    "tsBuildInfoFile": "out-tsc/jest/tsconfig.spec.tsbuildinfo",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "paths": {
+      "@application/*": ["./src/appointment/application/*"],
+      "@common/*": ["./src/common/*"],
+      "@domain/*": ["./src/appointment/domain/*"],
+      "@infra/*": ["./src/appointment/infrastructure/*"]
+    }
+  },
+  "include": ["jest.config.cts", "src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}

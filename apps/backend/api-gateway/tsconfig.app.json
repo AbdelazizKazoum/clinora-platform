@@ -34,6 +34,9 @@
       "path": "../../../libs/contracts/auth/tsconfig.lib.json"
     },
     {
+      "path": "../../../libs/contracts/appointment/tsconfig.lib.json"
+    },
+    {
       "path": "../../../libs/contracts/clinic/tsconfig.lib.json"
     },
     {

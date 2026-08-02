@@ -1,0 +1,46 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { ManageAppointmentsUseCase } from './application/use-cases/manage-appointments.use-case';
+import { ManageQueueUseCase } from './application/use-cases/manage-queue.use-case';
+import {
+  APPOINTMENT_REPOSITORY,
+  CLINIC_SERVICE_PORT,
+  OUTBOX_REPOSITORY,
+  PATIENT_SERVICE_PORT,
+  QUEUE_REPOSITORY,
+} from './appointment.tokens';
+import { ClinicGrpcClientModule } from './infrastructure/grpc/clinic-grpc-client.module';
+import { ClinicServiceGrpcAdapter } from './infrastructure/grpc/clinic-service-grpc.adapter';
+import { PatientGrpcClientModule } from './infrastructure/grpc/patient-grpc-client.module';
+import { PatientServiceGrpcAdapter } from './infrastructure/grpc/patient-service-grpc.adapter';
+import { AppointmentTypeOrmEntity } from './infrastructure/persistence/entities/appointment.typeorm-entity';
+import { OutboxTypeOrmEntity } from './infrastructure/persistence/entities/outbox.typeorm-entity';
+import { QueueEntryTypeOrmEntity } from './infrastructure/persistence/entities/queue-entry.typeorm-entity';
+import { AppointmentRepository } from './infrastructure/persistence/repositories/appointment.repository';
+import { OutboxRepository } from './infrastructure/persistence/repositories/outbox.repository';
+import { QueueRepository } from './infrastructure/persistence/repositories/queue.repository';
+import { AppointmentGrpcController } from './presentation/grpc/appointment.grpc-controller';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      AppointmentTypeOrmEntity,
+      QueueEntryTypeOrmEntity,
+      OutboxTypeOrmEntity,
+    ]),
+    PatientGrpcClientModule,
+    ClinicGrpcClientModule,
+  ],
+  controllers: [AppointmentGrpcController],
+  providers: [
+    ManageAppointmentsUseCase,
+    ManageQueueUseCase,
+    { provide: APPOINTMENT_REPOSITORY, useClass: AppointmentRepository },
+    { provide: QUEUE_REPOSITORY, useClass: QueueRepository },
+    { provide: OUTBOX_REPOSITORY, useClass: OutboxRepository },
+    { provide: PATIENT_SERVICE_PORT, useClass: PatientServiceGrpcAdapter },
+    { provide: CLINIC_SERVICE_PORT, useClass: ClinicServiceGrpcAdapter },
+  ],
+})
+export class AppointmentModule {}

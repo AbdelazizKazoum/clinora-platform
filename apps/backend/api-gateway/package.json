@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@clinora/contracts-auth": "workspace:*",
+    "@clinora/contracts-appointment": "workspace:*",
     "@clinora/contracts-clinic": "workspace:*",
     "@clinora/contracts-patient": "workspace:*",
     "@grpc/grpc-js": "^1.14.3",

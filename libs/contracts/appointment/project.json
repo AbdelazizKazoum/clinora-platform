@@ -1,0 +1,9 @@
+{
+  "name": "contracts-appointment",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/contracts/appointment/src",
+  "projectType": "library",
+  "tags": ["platform:contracts", "type:lib", "scope:appointment"],
+  "// targets": "to see all targets run: nx show project contracts-appointment --web",
+  "targets": {}
+}

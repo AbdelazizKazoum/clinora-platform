@@ -150,6 +150,53 @@ services:
     networks:
       - clinora-backend
 
+  appointment-service:
+    build:
+      context: ../..
+      dockerfile: apps/backend/services/appointment-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      GRPC_PORT: 5004
+      APPOINTMENT_PROTO_PATH: /workspace/libs/contracts/appointment/src/lib/appointment.proto
+      CLINIC_PROTO_PATH: /workspace/libs/contracts/clinic/src/lib/clinic.proto
+      PATIENT_PROTO_PATH: /workspace/libs/contracts/patient/src/lib/patient.proto
+      CLINIC_SERVICE_GRPC_URL: clinic-service:5002
+      PATIENT_SERVICE_GRPC_URL: patient-service:5003
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: clinora_appointment
+      DB_PASSWORD: clinora_appointment_local_password
+      DB_NAME: clinora_appointment
+      DB_MIGRATIONS_RUN: "true"
+    ports:
+      - "127.0.0.1:3005:3005"
+      - "127.0.0.1:5004:5004"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3005/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+      clinic-service:
+        condition: service_healthy
+      patient-service:
+        condition: service_healthy
+    networks:
+      - clinora-backend
+
   api-gateway:
     build:
       context: ../..
@@ -160,9 +207,11 @@ services:
       COOKIE_SECURE: "false"
       PORT: 3001
       AUTH_PROTO_PATH: /workspace/libs/contracts/auth/src/lib/auth.proto
+      APPOINTMENT_PROTO_PATH: /workspace/libs/contracts/appointment/src/lib/appointment.proto
       CLINIC_PROTO_PATH: /workspace/libs/contracts/clinic/src/lib/clinic.proto
       PATIENT_PROTO_PATH: /workspace/libs/contracts/patient/src/lib/patient.proto
       AUTH_SERVICE_GRPC_URL: auth-service:5001
+      APPOINTMENT_SERVICE_GRPC_URL: appointment-service:5004
       CLINIC_SERVICE_GRPC_URL: clinic-service:5002
       PATIENT_SERVICE_GRPC_URL: patient-service:5003
       JWT_SECRET: local-access-secret-change-before-production-123456
@@ -189,6 +238,8 @@ services:
       clinic-service:
         condition: service_healthy
       patient-service:
+        condition: service_healthy
+      appointment-service:
         condition: service_healthy
     networks:
       - clinora-backend
