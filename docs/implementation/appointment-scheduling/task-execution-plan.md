@@ -17,7 +17,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 1. Confirm Ubold Calendar Dependencies
 - [x] Task 2. Create Appointment Feature Skeleton
 - [x] Task 3. Add Appointment Models And Rules
-- [ ] Task 4. Add Appointment DTOs And Mappers
+- [x] Task 4. Add Appointment DTOs And Mappers
 - [ ] Task 5. Add Appointment API Functions
 - [ ] Task 6. Add Appointment Query And Mutation Hooks
 - [ ] Task 7. Adapt Ubold Calendar Shell
@@ -42,7 +42,7 @@ the next task.
       duration calculations.
 - [x] Conflict rule tests cover overlap, exact back-to-back appointments,
       cancelled/no-show exceptions, and emergency override behavior.
-- [ ] Appointment DTO mapper tests cover date conversion and empty optional
+- [x] Appointment DTO mapper tests cover date conversion and empty optional
       string conversion.
 - [ ] Appointment API function tests cover BFF-relative paths, query params, and
       command bodies.

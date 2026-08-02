@@ -23,6 +23,11 @@ export {
 } from './appointment-duration';
 export { type CheckInAppointmentCommand } from './appointment.commands';
 export {
+  mapAppointmentFromDto,
+  mapAppointmentsListFromDto,
+  mapCheckInAppointmentCommandToDto,
+} from './appointment.mapper';
+export {
   appointmentsOverlap,
   calculateDurationMinutes,
   calculateEndAtFromDuration,
