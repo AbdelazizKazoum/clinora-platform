@@ -1,4 +1,4 @@
-import PageBreadcrumb from '@/components/PageBreadcrumb'
+import { AppointmentSchedulePage } from '@/features/appointments'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 }
 
 const Page = () => {
-  return <PageBreadcrumb title="Schedule" subtitle="Clinical" />
+  return <AppointmentSchedulePage />
 }
 
 export default Page

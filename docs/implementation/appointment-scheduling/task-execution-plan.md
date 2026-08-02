@@ -14,8 +14,8 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 
 ## Execution Checklist
 
-- [ ] Task 1. Confirm Ubold Calendar Dependencies
-- [ ] Task 2. Create Appointment Feature Skeleton
+- [x] Task 1. Confirm Ubold Calendar Dependencies
+- [x] Task 2. Create Appointment Feature Skeleton
 - [ ] Task 3. Add Appointment Models And Rules
 - [ ] Task 4. Add Appointment DTOs And Mappers
 - [ ] Task 5. Add Appointment API Functions
@@ -32,6 +32,9 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [ ] Task 16. Polish Responsive Ubold Schedule UX
 - [ ] Task 17. Final Integration Verification
 - [ ] Task 18. Document Completion Notes
+
+After finishing and verifying any task, update this checklist before starting
+the next task.
 
 ## Testing Checklist
 
