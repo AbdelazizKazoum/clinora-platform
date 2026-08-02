@@ -23,7 +23,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 7. Adapt Ubold Calendar Shell
 - [x] Task 8. Connect Calendar Range Loading
 - [x] Task 9. Add Doctor Provider Filtering
-- [ ] Task 10. Add Appointment Form Modal
+- [x] Task 10. Add Appointment Form Modal
 - [ ] Task 11. Connect Create And Update Flows
 - [ ] Task 12. Add Event Popover
 - [ ] Task 13. Add Inline Move And Resize Reschedule
@@ -33,8 +33,9 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [ ] Task 17. Final Integration Verification
 - [ ] Task 18. Document Completion Notes
 
-After finishing and verifying any task, update this checklist before starting
-the next task.
+After finishing and verifying any task, check both the execution checklist and
+testing checklist, then update every completed item before starting the next
+task.
 
 ## Testing Checklist
 
@@ -48,7 +49,7 @@ the next task.
       command bodies.
 - [x] Query key and hook tests cover clinic/range/filter inputs and mutation
       invalidation.
-- [ ] Appointment form validation tests cover required patient, doctor,
+- [x] Appointment form validation tests cover required patient, doctor,
       duration, start time, and derived end time behavior.
 - [ ] Calendar interaction tests cover inline move, inline resize, conflict
       failure, and event revert behavior.

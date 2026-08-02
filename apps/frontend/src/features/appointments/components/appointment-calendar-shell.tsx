@@ -31,6 +31,11 @@ import {
   type Appointment,
   type AppointmentProvider,
 } from '../model';
+import {
+  calculateAppointmentFormEndAt,
+  type AppointmentFormValues,
+} from '../schemas';
+import AppointmentFormModal from './appointment-form-modal';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'medium',
@@ -44,6 +49,11 @@ const calendarPageLimit = 100;
 interface CalendarRange {
   startDate: Date;
   endDate: Date;
+}
+
+interface AppointmentModalState {
+  appointment: Appointment | null;
+  initialStartAt: Date;
 }
 
 const mapAppointmentToCalendarEvent = (
@@ -76,6 +86,8 @@ const AppointmentCalendarShell = () => {
     null,
   );
   const [visibleProviderIds, setVisibleProviderIds] = useState<string[]>([]);
+  const [appointmentModal, setAppointmentModal] =
+    useState<AppointmentModalState | null>(null);
 
   const staffMembers = useStaffMembers(
     sessionStatus === 'authenticated' ? clinicId : undefined,
@@ -117,6 +129,22 @@ const AppointmentCalendarShell = () => {
   const isInitialLoading =
     sessionStatus === 'loading' ||
     ((appointments.isLoading || staffMembers.isLoading) && events.length === 0);
+  const defaultModalProvider = useMemo(() => {
+    if (appointmentModal?.appointment) {
+      return (
+        providers.find(
+          (provider) =>
+            provider.doctorId === appointmentModal.appointment?.doctorId,
+        ) ?? null
+      );
+    }
+
+    return (
+      providers.find((provider) => provider.doctorId === visibleProviderIds[0]) ??
+      providers[0] ??
+      null
+    );
+  }, [appointmentModal, providers, visibleProviderIds]);
 
   useEffect(() => {
     const providerIds = providers.map((provider) => provider.doctorId);
@@ -141,10 +169,18 @@ const AppointmentCalendarShell = () => {
 
   const handleCreateDraft = () => {
     setSelectedSlotLabel('New appointment draft');
+    setAppointmentModal({
+      appointment: null,
+      initialStartAt: new Date(),
+    });
   };
 
   const handleDateClick = (arg: DateClickArg) => {
     setSelectedSlotLabel(dateTimeFormatter.format(arg.date));
+    setAppointmentModal({
+      appointment: null,
+      initialStartAt: arg.date,
+    });
   };
 
   const handleDatesSet = (arg: DatesSetArg) => {
@@ -155,7 +191,30 @@ const AppointmentCalendarShell = () => {
   };
 
   const handleEventClick = (arg: EventClickArg) => {
+    const appointment = (
+      arg.event.extendedProps as { appointment?: Appointment }
+    ).appointment;
+
     setSelectedSlotLabel(arg.event.title);
+
+    if (!appointment) return;
+
+    setAppointmentModal({
+      appointment,
+      initialStartAt: appointment.startAt,
+    });
+  };
+
+  const handleAppointmentFormSubmit = (values: AppointmentFormValues) => {
+    const endAt = calculateAppointmentFormEndAt(values);
+    const patientName = values.patientName.trim() || 'Appointment';
+
+    setSelectedSlotLabel(
+      endAt
+        ? `${patientName} - ${dateTimeFormatter.format(endAt)}`
+        : patientName,
+    );
+    setAppointmentModal(null);
   };
 
   const handleProviderToggle = (providerId: string) => {
@@ -385,6 +444,18 @@ const AppointmentCalendarShell = () => {
           />
         </SimpleBar>
       </Card>
+
+      {appointmentModal && (
+        <AppointmentFormModal
+          appointment={appointmentModal.appointment}
+          defaultProvider={defaultModalProvider}
+          initialStartAt={appointmentModal.initialStartAt}
+          onHide={() => setAppointmentModal(null)}
+          onSubmit={handleAppointmentFormSubmit}
+          providers={providers}
+          show={true}
+        />
+      )}
     </div>
   );
 };
