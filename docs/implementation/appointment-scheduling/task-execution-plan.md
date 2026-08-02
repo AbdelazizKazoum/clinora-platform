@@ -18,7 +18,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 2. Create Appointment Feature Skeleton
 - [x] Task 3. Add Appointment Models And Rules
 - [x] Task 4. Add Appointment DTOs And Mappers
-- [ ] Task 5. Add Appointment API Functions
+- [x] Task 5. Add Appointment API Functions
 - [ ] Task 6. Add Appointment Query And Mutation Hooks
 - [ ] Task 7. Adapt Ubold Calendar Shell
 - [ ] Task 8. Connect Calendar Range Loading
@@ -44,7 +44,7 @@ the next task.
       cancelled/no-show exceptions, and emergency override behavior.
 - [x] Appointment DTO mapper tests cover date conversion and empty optional
       string conversion.
-- [ ] Appointment API function tests cover BFF-relative paths, query params, and
+- [x] Appointment API function tests cover BFF-relative paths, query params, and
       command bodies.
 - [ ] Query key and hook tests cover clinic/range/filter inputs and mutation
       invalidation.

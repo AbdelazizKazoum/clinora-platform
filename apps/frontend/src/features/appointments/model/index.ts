@@ -21,11 +21,30 @@ export {
   appointmentDurationLabels,
   type AppointmentDurationOption,
 } from './appointment-duration';
-export { type CheckInAppointmentCommand } from './appointment.commands';
 export {
+  type CancelAppointmentCommand,
+  type CheckInAppointmentCommand,
+  type CreateAppointmentCommand,
+  type RescheduleAppointmentCommand,
+  type UpdateAppointmentCommand,
+} from './appointment.commands';
+export {
+  type CheckAppointmentConflictsQuery,
+  type ConflictResult,
+  type GetAppointmentQuery,
+  type ListAppointmentsQuery,
+  type ListAppointmentsResult,
+} from './appointment.queries';
+export {
+  mapCancelAppointmentCommandToDto,
+  mapCheckAppointmentConflictsQueryToDto,
+  mapCreateAppointmentCommandToDto,
   mapAppointmentFromDto,
   mapAppointmentsListFromDto,
   mapCheckInAppointmentCommandToDto,
+  mapListAppointmentsQueryToDto,
+  mapRescheduleAppointmentCommandToDto,
+  mapUpdateAppointmentCommandToDto,
 } from './appointment.mapper';
 export {
   appointmentsOverlap,

@@ -9,6 +9,10 @@ export type {
   ConflictResponseDto,
 } from './appointment-response.dto';
 export type {
+  CheckAppointmentConflictsQueryDto,
+  ListAppointmentsQueryDto,
+} from './appointment-query.dto';
+export type {
   CheckInPatientRequestDto,
   UpdateQueueNotesRequestDto,
   UpdateQueueStatusRequestDto,
