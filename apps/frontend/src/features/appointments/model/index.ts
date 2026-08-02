@@ -40,6 +40,11 @@ export {
   appointmentQueueQueryKeys,
 } from './appointment-query-keys';
 export {
+  projectActiveDoctorProviders,
+  toggleVisibleProviderId,
+  type AppointmentProvider,
+} from './appointment-provider';
+export {
   mapCancelAppointmentCommandToDto,
   mapCheckAppointmentConflictsQueryToDto,
   mapCreateAppointmentCommandToDto,

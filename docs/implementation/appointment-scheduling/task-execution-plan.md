@@ -21,8 +21,8 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 5. Add Appointment API Functions
 - [x] Task 6. Add Appointment Query And Mutation Hooks
 - [x] Task 7. Adapt Ubold Calendar Shell
-- [ ] Task 8. Connect Calendar Range Loading
-- [ ] Task 9. Add Doctor Provider Filtering
+- [x] Task 8. Connect Calendar Range Loading
+- [x] Task 9. Add Doctor Provider Filtering
 - [ ] Task 10. Add Appointment Form Modal
 - [ ] Task 11. Connect Create And Update Flows
 - [ ] Task 12. Add Event Popover
