@@ -29,6 +29,7 @@ import { checkAppointmentConflicts } from '../api';
 import {
   useAppointments,
   useCancelAppointment,
+  useCheckInAppointment,
   useCreateAppointment,
   useRescheduleAppointment,
   useUpdateAppointment,
@@ -50,9 +51,13 @@ import {
   mapAppointmentFormToUpdateCommand,
   parseAppointmentDateTimeLocalInputValue,
   validateAppointmentForm,
+  mapAppointmentCheckInErrorToMessage,
+  mapAppointmentCheckInFormToCommand,
+  type AppointmentCheckInFormValues,
   type AppointmentFormValues,
 } from '../schemas';
 import AppointmentCancelModal from './appointment-cancel-modal';
+import AppointmentCheckInModal from './appointment-check-in-modal';
 import AppointmentEventPopover from './appointment-event-popover';
 import AppointmentFormModal from './appointment-form-modal';
 
@@ -151,6 +156,8 @@ const AppointmentCalendarShell = () => {
   const clinicId = session?.user.clinicId;
   const { cancelAppointment, isPending: isCancellingAppointment } =
     useCancelAppointment();
+  const { checkInAppointment, isPending: isCheckingInAppointment } =
+    useCheckInAppointment();
   const { createAppointment, isPending: isCreatingAppointment } =
     useCreateAppointment();
   const { isPending: isReschedulingAppointment, rescheduleAppointment } =
@@ -173,8 +180,13 @@ const AppointmentCalendarShell = () => {
     useState<AppointmentPopoverState | null>(null);
   const [appointmentCancelModal, setAppointmentCancelModal] =
     useState<Appointment | null>(null);
+  const [appointmentCheckInModal, setAppointmentCheckInModal] =
+    useState<Appointment | null>(null);
   const [appointmentCancellationError, setAppointmentCancellationError] =
     useState<string | null>(null);
+  const [appointmentCheckInError, setAppointmentCheckInError] = useState<
+    string | null
+  >(null);
   const [appointmentSubmissionError, setAppointmentSubmissionError] = useState<
     string | null
   >(null);
@@ -449,11 +461,39 @@ const AppointmentCalendarShell = () => {
 
   const handleCheckInAppointment = (appointment: Appointment) => {
     setAppointmentPopover(null);
-    showNotification({
-      message: `${appointment.patientName} is ready for check-in details.`,
-      title: 'Check-in action selected',
-      variant: 'info',
-    });
+    setAppointmentCheckInError(null);
+    setAppointmentCheckInModal(appointment);
+  };
+
+  const handleAppointmentCheckInSubmit = async (
+    values: AppointmentCheckInFormValues,
+  ) => {
+    if (!appointmentCheckInModal) return;
+
+    try {
+      setAppointmentCheckInError(null);
+      await checkInAppointment(
+        mapAppointmentCheckInFormToCommand(appointmentCheckInModal, values),
+      );
+
+      showNotification({
+        message: 'Appointment checked into the queue successfully.',
+        title: 'Appointment checked in',
+        variant: 'success',
+      });
+      setSelectedSlotLabel(
+        `${appointmentCheckInModal.patientName} - Checked in`,
+      );
+      setAppointmentCheckInModal(null);
+    } catch (error) {
+      const message = mapAppointmentCheckInErrorToMessage(error);
+      setAppointmentCheckInError(message);
+      showNotification({
+        message,
+        title: 'Check-in failed',
+        variant: 'danger',
+      });
+    }
   };
 
   const handleAppointmentFormSubmit = async (values: AppointmentFormValues) => {
@@ -788,6 +828,22 @@ const AppointmentCalendarShell = () => {
             setAppointmentCancelModal(null);
           }}
           onSubmit={handleAppointmentCancellationSubmit}
+          show={true}
+        />
+      )}
+
+      {appointmentCheckInModal && (
+        <AppointmentCheckInModal
+          appointment={appointmentCheckInModal}
+          error={appointmentCheckInError}
+          isSubmitting={isCheckingInAppointment}
+          onHide={() => {
+            if (isCheckingInAppointment) return;
+
+            setAppointmentCheckInError(null);
+            setAppointmentCheckInModal(null);
+          }}
+          onSubmit={handleAppointmentCheckInSubmit}
           show={true}
         />
       )}

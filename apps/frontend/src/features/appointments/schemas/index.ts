@@ -1,4 +1,10 @@
 export {
+  createAppointmentCheckInFormValues,
+  mapAppointmentCheckInErrorToMessage,
+  mapAppointmentCheckInFormToCommand,
+  type AppointmentCheckInFormValues,
+} from './appointment-check-in.schema';
+export {
   calculateAppointmentFormEndAt,
   createAppointmentFormValues,
   formatAppointmentDateTimeLocalInputValue,
