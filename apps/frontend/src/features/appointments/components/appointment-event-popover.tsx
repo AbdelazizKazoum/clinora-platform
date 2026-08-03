@@ -13,6 +13,7 @@ import {
   appointmentStatusBadgeClassNames,
   appointmentStatusLabels,
   bookingChannelLabels,
+  canCancelAppointment,
   canCheckInAppointment,
   type Appointment,
 } from '../model';
@@ -24,6 +25,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en', {
 
 interface AppointmentEventPopoverProps {
   appointment: Appointment;
+  onCancel: (appointment: Appointment) => void;
   onCheckIn: (appointment: Appointment) => void;
   onEdit: (appointment: Appointment) => void;
   onHide: () => void;
@@ -33,12 +35,14 @@ interface AppointmentEventPopoverProps {
 
 const AppointmentEventPopover = ({
   appointment,
+  onCancel,
   onCheckIn,
   onEdit,
   onHide,
   show,
   target,
 }: AppointmentEventPopoverProps) => {
+  const canCancel = canCancelAppointment(appointment);
   const canCheckIn = canCheckInAppointment(appointment);
   const serviceLabel = appointment.type ?? 'Appointment';
   const notesLabel = appointment.notes?.trim() || 'No notes';
@@ -116,6 +120,17 @@ const AppointmentEventPopover = ({
           </div>
 
           <div className="d-flex flex-wrap justify-content-end gap-2 border-top mt-3 pt-3">
+            {canCancel && (
+              <Button
+                className="d-inline-flex align-items-center gap-1"
+                onClick={() => onCancel(appointment)}
+                size="sm"
+                variant="outline-danger"
+              >
+                <Icon icon="ban" />
+                Cancel
+              </Button>
+            )}
             {canCheckIn && (
               <Button
                 className="d-inline-flex align-items-center gap-1"

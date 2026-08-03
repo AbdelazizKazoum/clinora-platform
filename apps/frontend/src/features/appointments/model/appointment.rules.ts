@@ -8,6 +8,9 @@ const nonBlockingAppointmentStatuses: ReadonlySet<AppointmentStatus> = new Set([
 export const canCheckInAppointment = (appointment: Appointment): boolean =>
   appointment.status === 'PENDING' || appointment.status === 'CONFIRMED';
 
+export const canCancelAppointment = (appointment: Appointment): boolean =>
+  appointment.status === 'PENDING' || appointment.status === 'CONFIRMED';
+
 export const isValidAppointmentTiming = (
   startAt: Date,
   endAt: Date,

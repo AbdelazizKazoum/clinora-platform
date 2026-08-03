@@ -3,6 +3,7 @@ import {
   appointmentsOverlap,
   calculateDurationMinutes,
   calculateEndAtFromDuration,
+  canCancelAppointment,
   canCheckInAppointment,
   isBlockingAppointment,
   isBlockingOverlap,
@@ -184,6 +185,29 @@ describe('appointment check-in rules', () => {
       false,
     );
     expect(canCheckInAppointment(makeAppointment({ status: 'NO_SHOW' }))).toBe(
+      false,
+    );
+  });
+});
+
+describe('appointment cancellation rules', () => {
+  it('allows pending and confirmed appointments to be cancelled', () => {
+    expect(canCancelAppointment(makeAppointment({ status: 'PENDING' }))).toBe(
+      true,
+    );
+    expect(canCancelAppointment(makeAppointment({ status: 'CONFIRMED' }))).toBe(
+      true,
+    );
+  });
+
+  it('prevents cancelling terminal or missed appointments', () => {
+    expect(canCancelAppointment(makeAppointment({ status: 'COMPLETED' }))).toBe(
+      false,
+    );
+    expect(canCancelAppointment(makeAppointment({ status: 'CANCELLED' }))).toBe(
+      false,
+    );
+    expect(canCancelAppointment(makeAppointment({ status: 'NO_SHOW' }))).toBe(
       false,
     );
   });

@@ -67,6 +67,7 @@ export {
   appointmentsOverlap,
   calculateDurationMinutes,
   calculateEndAtFromDuration,
+  canCancelAppointment,
   canCheckInAppointment,
   isBlockingAppointment,
   isBlockingOverlap,

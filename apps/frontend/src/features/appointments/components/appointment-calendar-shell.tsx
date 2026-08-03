@@ -28,6 +28,7 @@ import { useWindowSize } from 'usehooks-ts';
 import { checkAppointmentConflicts } from '../api';
 import {
   useAppointments,
+  useCancelAppointment,
   useCreateAppointment,
   useRescheduleAppointment,
   useUpdateAppointment,
@@ -51,6 +52,7 @@ import {
   validateAppointmentForm,
   type AppointmentFormValues,
 } from '../schemas';
+import AppointmentCancelModal from './appointment-cancel-modal';
 import AppointmentEventPopover from './appointment-event-popover';
 import AppointmentFormModal from './appointment-form-modal';
 
@@ -109,6 +111,16 @@ const mapAppointmentRescheduleError = (error: unknown): string => {
     : 'Unable to reschedule the appointment.';
 };
 
+const mapAppointmentCancellationError = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    return error.message || 'Unable to cancel the appointment.';
+  }
+
+  return error instanceof Error
+    ? error.message
+    : 'Unable to cancel the appointment.';
+};
+
 const mapAppointmentToCalendarEvent = (
   appointment: Appointment,
 ): EventInput => ({
@@ -137,6 +149,8 @@ const AppointmentCalendarShell = () => {
   const { height } = useWindowSize();
   const { data: session, status: sessionStatus } = useSession();
   const clinicId = session?.user.clinicId;
+  const { cancelAppointment, isPending: isCancellingAppointment } =
+    useCancelAppointment();
   const { createAppointment, isPending: isCreatingAppointment } =
     useCreateAppointment();
   const { isPending: isReschedulingAppointment, rescheduleAppointment } =
@@ -157,6 +171,10 @@ const AppointmentCalendarShell = () => {
     useState<AppointmentModalState | null>(null);
   const [appointmentPopover, setAppointmentPopover] =
     useState<AppointmentPopoverState | null>(null);
+  const [appointmentCancelModal, setAppointmentCancelModal] =
+    useState<Appointment | null>(null);
+  const [appointmentCancellationError, setAppointmentCancellationError] =
+    useState<string | null>(null);
   const [appointmentSubmissionError, setAppointmentSubmissionError] = useState<
     string | null
   >(null);
@@ -387,6 +405,46 @@ const AppointmentCalendarShell = () => {
       appointment,
       initialStartAt: appointment.startAt,
     });
+  };
+
+  const handleCancelAppointment = (appointment: Appointment) => {
+    setAppointmentPopover(null);
+    setAppointmentCancellationError(null);
+    setAppointmentCancelModal(appointment);
+  };
+
+  const handleAppointmentCancellationSubmit = async (
+    cancellationReason: string,
+  ) => {
+    if (!appointmentCancelModal) return;
+
+    try {
+      setAppointmentCancellationError(null);
+      await cancelAppointment({
+        clinicId: appointmentCancelModal.clinicId,
+        appointmentId: appointmentCancelModal.id,
+        cancelledAt: new Date(),
+        cancellationReason: cancellationReason.trim() || null,
+      });
+
+      showNotification({
+        message: 'Appointment cancelled successfully.',
+        title: 'Appointment cancelled',
+        variant: 'success',
+      });
+      setSelectedSlotLabel(
+        `${appointmentCancelModal.patientName} - Cancelled`,
+      );
+      setAppointmentCancelModal(null);
+    } catch (error) {
+      const message = mapAppointmentCancellationError(error);
+      setAppointmentCancellationError(message);
+      showNotification({
+        message,
+        title: 'Cancellation failed',
+        variant: 'danger',
+      });
+    }
   };
 
   const handleCheckInAppointment = (appointment: Appointment) => {
@@ -709,11 +767,28 @@ const AppointmentCalendarShell = () => {
       {appointmentPopover && (
         <AppointmentEventPopover
           appointment={appointmentPopover.appointment}
+          onCancel={handleCancelAppointment}
           onCheckIn={handleCheckInAppointment}
           onEdit={handleEditAppointment}
           onHide={() => setAppointmentPopover(null)}
           show={true}
           target={appointmentPopover.target}
+        />
+      )}
+
+      {appointmentCancelModal && (
+        <AppointmentCancelModal
+          appointment={appointmentCancelModal}
+          error={appointmentCancellationError}
+          isSubmitting={isCancellingAppointment}
+          onHide={() => {
+            if (isCancellingAppointment) return;
+
+            setAppointmentCancellationError(null);
+            setAppointmentCancelModal(null);
+          }}
+          onSubmit={handleAppointmentCancellationSubmit}
+          show={true}
         />
       )}
 

@@ -27,7 +27,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 11. Connect Create And Update Flows
 - [x] Task 12. Add Event Popover
 - [x] Task 13. Add Inline Move And Resize Reschedule
-- [ ] Task 14. Add Cancellation Flow
+- [x] Task 14. Add Cancellation Flow
 - [ ] Task 15. Add Check-In Dialog
 - [ ] Task 16. Polish Responsive Ubold Schedule UX
 - [ ] Task 17. Final Integration Verification
