@@ -38,7 +38,12 @@ const AppointmentCancelModal = ({
   };
 
   return (
-    <Modal centered onHide={isSubmitting ? undefined : onHide} show={show}>
+    <Modal
+      centered
+      className="appointment-schedule-modal"
+      onHide={isSubmitting ? undefined : onHide}
+      show={show}
+    >
       <Form onSubmit={handleSubmit}>
         <Modal.Header closeButton>
           <Modal.Title as="h5">Cancel Appointment</Modal.Title>

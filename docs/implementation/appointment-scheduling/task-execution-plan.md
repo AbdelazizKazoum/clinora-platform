@@ -29,7 +29,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 13. Add Inline Move And Resize Reschedule
 - [x] Task 14. Add Cancellation Flow
 - [x] Task 15. Add Check-In Dialog
-- [ ] Task 16. Polish Responsive Ubold Schedule UX
+- [x] Task 16. Polish Responsive Ubold Schedule UX
 - [ ] Task 17. Final Integration Verification
 - [ ] Task 18. Document Completion Notes
 

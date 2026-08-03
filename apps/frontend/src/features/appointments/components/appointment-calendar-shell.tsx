@@ -9,6 +9,7 @@ import type {
   DatesSetArg,
   EventApi,
   EventClickArg,
+  EventContentArg,
   EventDropArg,
   EventInput,
 } from '@fullcalendar/core/index.js';
@@ -22,7 +23,14 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid/index.js';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, CardBody, Spinner } from 'react-bootstrap';
+import {
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  Placeholder,
+  Spinner,
+} from 'react-bootstrap';
 import { useWindowSize } from 'usehooks-ts';
 
 import { checkAppointmentConflicts } from '../api';
@@ -67,8 +75,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en', {
 });
 
 const defaultCalendarHeight = 650;
+const compactCalendarHeight = 580;
 const calendarPage = 1;
 const calendarPageLimit = 100;
+const calendarMobileBreakpoint = 768;
 
 interface CalendarRange {
   startDate: Date;
@@ -137,21 +147,63 @@ const mapAppointmentToCalendarEvent = (
   ].join(' - '),
   start: appointment.startAt,
   end: appointment.endAt,
-  classNames: appointmentStatusCalendarClassNames[appointment.status].split(
-    ' ',
-  ),
+  classNames:
+    appointmentStatusCalendarClassNames[appointment.status].split(' '),
   extendedProps: {
     appointment,
   },
 });
 
-const getAppointmentFromCalendarEvent = (
-  event: EventApi,
-): Appointment | null =>
+const getAppointmentFromCalendarEvent = (event: EventApi): Appointment | null =>
   (event.extendedProps as { appointment?: Appointment }).appointment ?? null;
 
+const AppointmentScheduleSkeleton = () => (
+  <div className="appointment-schedule-skeleton placeholder-glow px-3 pt-3">
+    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <Placeholder className="col-4 col-md-2" />
+      <div className="d-flex gap-2">
+        <Placeholder.Button size="sm" variant="secondary" xs={2} />
+        <Placeholder.Button size="sm" variant="secondary" xs={2} />
+        <Placeholder.Button size="sm" variant="secondary" xs={2} />
+      </div>
+    </div>
+    <div className="d-flex flex-wrap gap-2 mb-3">
+      <Placeholder.Button size="sm" variant="primary" xs={2} />
+      <Placeholder.Button size="sm" variant="secondary" xs={2} />
+      <Placeholder.Button size="sm" variant="secondary" xs={2} />
+    </div>
+    <div className="appointment-schedule-skeleton-grid rounded border">
+      {Array.from({ length: 18 }, (_, index) => (
+        <span className="border-end border-bottom" key={index} />
+      ))}
+    </div>
+  </div>
+);
+
+const AppointmentScheduleEmptyState = ({
+  children,
+  icon,
+  title,
+}: {
+  children: string;
+  icon: string;
+  title: string;
+}) => (
+  <div className="appointment-schedule-empty mx-3 mt-3 rounded border bg-body-tertiary p-3">
+    <div className="d-flex align-items-start gap-2">
+      <span className="avatar-sm rounded bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center flex-shrink-0">
+        <Icon icon={icon} />
+      </span>
+      <div className="min-w-0">
+        <h6 className="mb-1">{title}</h6>
+        <p className="mb-0 text-muted fs-sm">{children}</p>
+      </div>
+    </div>
+  </div>
+);
+
 const AppointmentCalendarShell = () => {
-  const { height } = useWindowSize();
+  const { height, width } = useWindowSize();
   const { data: session, status: sessionStatus } = useSession();
   const clinicId = session?.user.clinicId;
   const { cancelAppointment, isPending: isCancellingAppointment } =
@@ -232,8 +284,38 @@ const AppointmentCalendarShell = () => {
   const isInitialLoading =
     sessionStatus === 'loading' ||
     ((appointments.isLoading || staffMembers.isLoading) && events.length === 0);
+  const isBackgroundFetching =
+    !isInitialLoading && (appointments.isFetching || staffMembers.isFetching);
+  const hasNoDoctors =
+    !staffMembers.isLoading &&
+    !staffMembers.isError &&
+    providers.length === 0 &&
+    Boolean(clinicId);
+  const hasNoAppointments =
+    !isInitialLoading &&
+    !appointments.isError &&
+    Boolean(calendarRange) &&
+    providers.length > 0 &&
+    filteredAppointments.length === 0;
   const isAppointmentSavePending =
     isSubmittingAppointment || isCreatingAppointment || isUpdatingAppointment;
+  const isCompactViewport =
+    typeof width === 'number' && width < calendarMobileBreakpoint;
+  const calendarToolbar = useMemo(
+    () =>
+      isCompactViewport
+        ? {
+            center: 'title',
+            left: 'prev,next',
+            right: 'today timeGridDay,listWeek',
+          }
+        : {
+            center: 'title',
+            left: 'prev,next today',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth',
+          },
+    [isCompactViewport],
+  );
   const defaultModalProvider = useMemo(() => {
     if (appointmentModal?.appointment) {
       return (
@@ -245,7 +327,9 @@ const AppointmentCalendarShell = () => {
     }
 
     return (
-      providers.find((provider) => provider.doctorId === visibleProviderIds[0]) ??
+      providers.find(
+        (provider) => provider.doctorId === visibleProviderIds[0],
+      ) ??
       providers[0] ??
       null
     );
@@ -267,10 +351,16 @@ const AppointmentCalendarShell = () => {
   }, [providers]);
 
   const calendarHeight = useMemo(() => {
-    if (!height) return defaultCalendarHeight;
+    if (!height) {
+      return isCompactViewport ? compactCalendarHeight : defaultCalendarHeight;
+    }
+
+    if (isCompactViewport) {
+      return Math.max(compactCalendarHeight, height - 300);
+    }
 
     return Math.max(520, height - 240);
-  }, [height]);
+  }, [height, isCompactViewport]);
 
   const handleCreateDraft = () => {
     setSelectedSlotLabel('New appointment draft');
@@ -444,9 +534,7 @@ const AppointmentCalendarShell = () => {
         title: 'Appointment cancelled',
         variant: 'success',
       });
-      setSelectedSlotLabel(
-        `${appointmentCancelModal.patientName} - Cancelled`,
-      );
+      setSelectedSlotLabel(`${appointmentCancelModal.patientName} - Cancelled`);
       setAppointmentCancelModal(null);
     } catch (error) {
       const message = mapAppointmentCancellationError(error);
@@ -556,7 +644,9 @@ const AppointmentCalendarShell = () => {
         variant: 'success',
       });
 
-      setSelectedSlotLabel(`${patientName} - ${dateTimeFormatter.format(endAt)}`);
+      setSelectedSlotLabel(
+        `${patientName} - ${dateTimeFormatter.format(endAt)}`,
+      );
       setAppointmentModal(null);
     } catch (error) {
       const message = mapAppointmentSubmissionError(error);
@@ -598,9 +688,28 @@ const AppointmentCalendarShell = () => {
     );
   };
 
+  const renderCalendarEventContent = (arg: EventContentArg) => {
+    const appointment = getAppointmentFromCalendarEvent(arg.event);
+
+    if (!appointment) {
+      return <span className="text-truncate">{arg.event.title}</span>;
+    }
+
+    return (
+      <span className="appointment-schedule-event-content">
+        <span className="appointment-schedule-event-title">
+          {appointment.patientName}
+        </span>
+        <span className="appointment-schedule-event-meta">
+          {appointment.type ?? 'Appointment'} - {appointment.doctorName}
+        </span>
+      </span>
+    );
+  };
+
   return (
-    <div className="outlook-box gap-1">
-      <Card className="h-100 mb-0 d-none d-lg-flex rounded-end-0 overflow-y-auto outlook-left-menu outlook-left-menu-sm">
+    <div className="appointment-schedule outlook-box gap-1">
+      <Card className="appointment-schedule-sidebar h-100 mb-0 d-none d-lg-flex rounded-end-0 overflow-y-auto outlook-left-menu outlook-left-menu-sm">
         <CardBody>
           <Button
             className="w-100 btn-new-event"
@@ -636,7 +745,7 @@ const AppointmentCalendarShell = () => {
 
           <div className="border-top mt-4 pt-3">
             <h5 className="fs-sm text-uppercase text-muted mb-2">Selection</h5>
-            <p className="mb-0 text-muted">
+            <p className="appointment-schedule-selected mb-0 text-muted">
               {selectedSlotLabel ?? 'No slot selected'}
             </p>
           </div>
@@ -651,8 +760,8 @@ const AppointmentCalendarShell = () => {
         </CardBody>
       </Card>
 
-      <Card className="h-100 mb-0 rounded-start-0 flex-grow-1 border-start-0">
-        <div className="d-lg-none d-flex flex-wrap align-items-center justify-content-between gap-2 card-header">
+      <Card className="appointment-schedule-main h-100 mb-0 rounded-start-0 flex-grow-1 border-start-0">
+        <div className="appointment-schedule-mobile-header d-lg-none d-flex flex-wrap align-items-center justify-content-between gap-2 card-header">
           <Button
             className="btn-new-event"
             onClick={handleCreateDraft}
@@ -662,7 +771,7 @@ const AppointmentCalendarShell = () => {
             New Appointment
           </Button>
 
-          <span className="text-muted fs-sm">
+          <span className="appointment-schedule-selected text-muted fs-sm">
             {selectedSlotLabel ?? 'No slot selected'}
           </span>
         </div>
@@ -718,16 +827,18 @@ const AppointmentCalendarShell = () => {
           </Alert>
         )}
 
-        {isInitialLoading && (
-          <div className="d-flex align-items-center gap-2 px-3 pt-3 text-muted">
-            <Spinner animation="border" size="sm" />
-            <span>Loading appointments</span>
-          </div>
-        )}
-
         {providers.length > 0 && (
-          <div className="px-3 pt-3">
-            <div className="d-flex flex-wrap align-items-center gap-2">
+          <div className="appointment-schedule-provider-bar px-3 pt-3">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+              <h5 className="fs-sm text-uppercase text-muted mb-0">Doctors</h5>
+              {isBackgroundFetching && (
+                <span className="d-inline-flex align-items-center gap-1 text-muted fs-sm">
+                  <Spinner animation="border" size="sm" />
+                  Updating
+                </span>
+              )}
+            </div>
+            <div className="appointment-schedule-provider-list d-flex flex-wrap align-items-center gap-2">
               {providers.map((provider) => {
                 const isVisible = visibleProviderIds.includes(
                   provider.doctorId,
@@ -736,14 +847,14 @@ const AppointmentCalendarShell = () => {
                 return (
                   <Button
                     aria-pressed={isVisible}
-                    className="rounded-pill d-inline-flex align-items-center gap-2 px-2"
+                    className="appointment-schedule-provider-chip rounded-pill d-inline-flex align-items-center gap-2 px-2"
                     key={provider.doctorId}
                     onClick={() => handleProviderToggle(provider.doctorId)}
                     size="sm"
                     variant={isVisible ? 'primary' : 'outline-secondary'}
                   >
                     {renderProviderAvatar(provider)}
-                    <span>{provider.name}</span>
+                    <span className="text-truncate">{provider.name}</span>
                   </Button>
                 );
               })}
@@ -751,56 +862,63 @@ const AppointmentCalendarShell = () => {
           </div>
         )}
 
-        {!staffMembers.isLoading &&
-          !staffMembers.isError &&
-          providers.length === 0 &&
-          clinicId && (
-            <Alert className="m-3 mb-0" variant="info">
-              No active doctors are available for scheduling.
-            </Alert>
-          )}
+        {hasNoDoctors && (
+          <AppointmentScheduleEmptyState icon="stethoscope" title="No Doctors">
+            No active doctors are available for scheduling.
+          </AppointmentScheduleEmptyState>
+        )}
+
+        {hasNoAppointments && (
+          <AppointmentScheduleEmptyState
+            icon="calendar-x"
+            title="No Appointments"
+          >
+            No appointments match the visible doctors and calendar range.
+          </AppointmentScheduleEmptyState>
+        )}
 
         <SimpleBar className="card-body">
-          <FullCalendar
-            bootstrapFontAwesome={false}
-            buttonText={{
-              day: 'Day',
-              list: 'List',
-              month: 'Month',
-              next: 'Next',
-              prev: 'Prev',
-              today: 'Today',
-              week: 'Week',
-            }}
-            dateClick={handleDateClick}
-            datesSet={handleDatesSet}
-            editable={!isReschedulingAppointment}
-            eventClick={handleEventClick}
-            eventDrop={handleEventDrop}
-            eventDurationEditable={!isReschedulingAppointment}
-            eventResizableFromStart={true}
-            eventResize={handleEventResize}
-            eventStartEditable={!isReschedulingAppointment}
-            events={events}
-            handleWindowResize={true}
-            headerToolbar={{
-              center: 'title',
-              left: 'prev,next today',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth',
-            }}
-            height={calendarHeight}
-            initialView="dayGridMonth"
-            plugins={[
-              dayGridPlugin,
-              interactionPlugin,
-              timeGridPlugin,
-              listPlugin,
-            ]}
-            selectable={true}
-            slotDuration="00:30:00"
-            slotMaxTime="19:00:00"
-            slotMinTime="07:00:00"
-          />
+          <div className="appointment-schedule-calendar-frame">
+            {isInitialLoading && <AppointmentScheduleSkeleton />}
+            <FullCalendar
+              bootstrapFontAwesome={false}
+              buttonText={{
+                day: 'Day',
+                list: 'List',
+                month: 'Month',
+                next: 'Next',
+                prev: 'Prev',
+                today: 'Today',
+                week: 'Week',
+              }}
+              dateClick={handleDateClick}
+              datesSet={handleDatesSet}
+              editable={!isReschedulingAppointment}
+              eventClick={handleEventClick}
+              eventContent={renderCalendarEventContent}
+              eventDrop={handleEventDrop}
+              eventDurationEditable={!isReschedulingAppointment}
+              eventResizableFromStart={true}
+              eventResize={handleEventResize}
+              eventStartEditable={!isReschedulingAppointment}
+              events={events}
+              handleWindowResize={true}
+              headerToolbar={calendarToolbar}
+              height={calendarHeight}
+              initialView={isCompactViewport ? 'listWeek' : 'dayGridMonth'}
+              key={isCompactViewport ? 'compact-calendar' : 'desktop-calendar'}
+              plugins={[
+                dayGridPlugin,
+                interactionPlugin,
+                timeGridPlugin,
+                listPlugin,
+              ]}
+              selectable={true}
+              slotDuration="00:30:00"
+              slotMaxTime="19:00:00"
+              slotMinTime="07:00:00"
+            />
+          </div>
         </SimpleBar>
       </Card>
 

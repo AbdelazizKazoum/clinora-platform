@@ -141,7 +141,13 @@ const AppointmentFormModal = ({
   };
 
   return (
-    <Modal centered onHide={isSubmitting ? undefined : onHide} show={show} size="lg">
+    <Modal
+      centered
+      className="appointment-schedule-modal"
+      onHide={isSubmitting ? undefined : onHide}
+      show={show}
+      size="lg"
+    >
       <Form noValidate onSubmit={handleSubmit}>
         <Modal.Header closeButton>
           <Modal.Title as="h5">{modalTitle}</Modal.Title>
@@ -194,7 +200,9 @@ const AppointmentFormModal = ({
                 <Form.Control
                   disabled={isSubmitting}
                   isInvalid={Boolean(errors.type)}
-                  onChange={(event) => updateValues({ type: event.target.value })}
+                  onChange={(event) =>
+                    updateValues({ type: event.target.value })
+                  }
                   placeholder="Consultation"
                   value={values.type}
                 />
