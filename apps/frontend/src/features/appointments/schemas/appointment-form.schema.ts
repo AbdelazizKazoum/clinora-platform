@@ -10,6 +10,8 @@ import {
   type AppointmentProvider,
   type AppointmentStatus,
   type BookingChannel,
+  type CreateAppointmentCommand,
+  type UpdateAppointmentCommand,
 } from '../model';
 
 export interface AppointmentFormValues {
@@ -207,5 +209,71 @@ export const validateAppointmentForm = (
   return {
     errors,
     isValid: Object.keys(errors).length === 0,
+  };
+};
+
+const trimOptionalString = (value: string): string | null => {
+  const trimmedValue = value.trim();
+
+  return trimmedValue.length > 0 ? trimmedValue : null;
+};
+
+const resolveAppointmentFormTiming = (
+  values: AppointmentFormValues,
+): { endAt: Date; startAt: Date } => {
+  const startAt = parseAppointmentDateTimeLocalInputValue(values.startAt);
+  const endAt = calculateAppointmentFormEndAt(values);
+
+  if (!startAt || !endAt || !isValidAppointmentTiming(startAt, endAt)) {
+    throw new RangeError('Appointment timing is invalid.');
+  }
+
+  return { endAt, startAt };
+};
+
+export const mapAppointmentFormToCreateCommand = (
+  clinicId: string,
+  values: AppointmentFormValues,
+): CreateAppointmentCommand => {
+  const timing = resolveAppointmentFormTiming(values);
+
+  return {
+    clinicId,
+    patientId: values.patientId.trim(),
+    patientName: values.patientName.trim(),
+    patientPhone: trimOptionalString(values.patientPhone),
+    doctorId: values.doctorId.trim(),
+    doctorName: values.doctorName.trim(),
+    startAt: timing.startAt,
+    endAt: timing.endAt,
+    isEmergency: values.isEmergency,
+    type: trimOptionalString(values.type),
+    channel: values.channel,
+    status: values.status,
+    notes: trimOptionalString(values.notes),
+  };
+};
+
+export const mapAppointmentFormToUpdateCommand = (
+  appointment: Appointment,
+  values: AppointmentFormValues,
+): UpdateAppointmentCommand => {
+  const timing = resolveAppointmentFormTiming(values);
+
+  return {
+    clinicId: appointment.clinicId,
+    appointmentId: appointment.id,
+    patientId: values.patientId.trim(),
+    patientName: values.patientName.trim(),
+    patientPhone: trimOptionalString(values.patientPhone),
+    doctorId: values.doctorId.trim(),
+    doctorName: values.doctorName.trim(),
+    startAt: timing.startAt,
+    endAt: timing.endAt,
+    isEmergency: values.isEmergency,
+    type: trimOptionalString(values.type),
+    channel: values.channel,
+    status: values.status,
+    notes: trimOptionalString(values.notes),
   };
 };

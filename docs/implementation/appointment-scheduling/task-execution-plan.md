@@ -24,8 +24,8 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 8. Connect Calendar Range Loading
 - [x] Task 9. Add Doctor Provider Filtering
 - [x] Task 10. Add Appointment Form Modal
-- [ ] Task 11. Connect Create And Update Flows
-- [ ] Task 12. Add Event Popover
+- [x] Task 11. Connect Create And Update Flows
+- [x] Task 12. Add Event Popover
 - [ ] Task 13. Add Inline Move And Resize Reschedule
 - [ ] Task 14. Add Cancellation Flow
 - [ ] Task 15. Add Check-In Dialog

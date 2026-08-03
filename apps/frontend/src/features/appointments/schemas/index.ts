@@ -2,6 +2,8 @@ export {
   calculateAppointmentFormEndAt,
   createAppointmentFormValues,
   formatAppointmentDateTimeLocalInputValue,
+  mapAppointmentFormToCreateCommand,
+  mapAppointmentFormToUpdateCommand,
   parseAppointmentDateTimeLocalInputValue,
   validateAppointmentForm,
   type AppointmentFormErrors,

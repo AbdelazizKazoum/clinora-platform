@@ -2,7 +2,16 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Col, Form, InputGroup, Modal, Row } from 'react-bootstrap';
+import {
+  Alert,
+  Button,
+  Col,
+  Form,
+  InputGroup,
+  Modal,
+  Row,
+  Spinner,
+} from 'react-bootstrap';
 
 import {
   APPOINTMENT_DURATION_OPTIONS,
@@ -35,8 +44,10 @@ interface AppointmentFormModalProps {
   defaultProvider: AppointmentProvider | null;
   initialStartAt: Date;
   isSubmitting?: boolean;
+  submissionError?: string | null;
   onHide: () => void;
-  onSubmit: (values: AppointmentFormValues) => void;
+  onSubmit: (values: AppointmentFormValues) => Promise<void> | void;
+  onValuesChange?: () => void;
   providers: readonly AppointmentProvider[];
   show: boolean;
 }
@@ -46,8 +57,10 @@ const AppointmentFormModal = ({
   defaultProvider,
   initialStartAt,
   isSubmitting = false,
+  submissionError = null,
   onHide,
   onSubmit,
+  onValuesChange,
   providers,
   show,
 }: AppointmentFormModalProps) => {
@@ -102,6 +115,7 @@ const AppointmentFormModal = ({
       ...currentValues,
       ...nextValues,
     }));
+    onValuesChange?.();
   };
 
   const handleDoctorChange = (doctorId: string) => {
@@ -115,7 +129,7 @@ const AppointmentFormModal = ({
     });
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const result = validateAppointmentForm(values);
@@ -123,17 +137,21 @@ const AppointmentFormModal = ({
 
     if (!result.isValid) return;
 
-    onSubmit(values);
+    await onSubmit(values);
   };
 
   return (
-    <Modal centered onHide={onHide} show={show} size="lg">
+    <Modal centered onHide={isSubmitting ? undefined : onHide} show={show} size="lg">
       <Form noValidate onSubmit={handleSubmit}>
         <Modal.Header closeButton>
           <Modal.Title as="h5">{modalTitle}</Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
+          {(errors.form || submissionError) && (
+            <Alert variant="danger">{errors.form ?? submissionError}</Alert>
+          )}
+
           <Row className="g-3">
             <Col md={6}>
               <Form.Group controlId="appointment-patient-id">
@@ -378,6 +396,9 @@ const AppointmentFormModal = ({
             Cancel
           </Button>
           <Button disabled={isSubmitting} type="submit" variant="primary">
+            {isSubmitting && (
+              <Spinner animation="border" className="me-2" size="sm" />
+            )}
             {submitLabel}
           </Button>
         </Modal.Footer>

@@ -3,6 +3,8 @@ import {
   calculateAppointmentFormEndAt,
   createAppointmentFormValues,
   formatAppointmentDateTimeLocalInputValue,
+  mapAppointmentFormToCreateCommand,
+  mapAppointmentFormToUpdateCommand,
   parseAppointmentDateTimeLocalInputValue,
   validateAppointmentForm,
 } from './appointment-form.schema';
@@ -103,5 +105,75 @@ describe('appointment form schema', () => {
       durationMinutes: 30,
       startAt: '2026-08-02T11:00',
     });
+  });
+
+  it('maps form values into a create command with derived end time', () => {
+    const command = mapAppointmentFormToCreateCommand(
+      'clinic-1',
+      validValues({
+        notes: ' Bring x-rays ',
+        patientPhone: '',
+        type: ' Whitening ',
+      }),
+    );
+
+    expect(command).toMatchObject({
+      clinicId: 'clinic-1',
+      patientId: 'patient-1',
+      patientName: 'Nadia Benali',
+      patientPhone: null,
+      doctorId: 'doctor-1',
+      doctorName: 'Dr. Salma El Mansouri',
+      type: 'Whitening',
+      notes: 'Bring x-rays',
+      channel: 'PHONE',
+      status: 'PENDING',
+    });
+    expect(formatAppointmentDateTimeLocalInputValue(command.startAt)).toBe(
+      '2026-08-02T09:30',
+    );
+    expect(formatAppointmentDateTimeLocalInputValue(command.endAt)).toBe(
+      '2026-08-02T10:00',
+    );
+  });
+
+  it('maps form values into an update command for the selected appointment', () => {
+    const appointment = {
+      id: 'appointment-1',
+      clinicId: 'clinic-1',
+      patientId: 'patient-old',
+      patientName: 'Old Patient',
+      patientPhone: null,
+      doctorId: 'doctor-old',
+      doctorName: 'Old Doctor',
+      startAt: new Date(2026, 7, 2, 8, 0),
+      endAt: new Date(2026, 7, 2, 8, 30),
+      isEmergency: false,
+      type: null,
+      channel: 'PHONE',
+      status: 'PENDING',
+      notes: null,
+      cancelledAt: null,
+      cancellationReason: null,
+      createdBy: null,
+      createdAt: new Date(2026, 7, 1, 10, 0),
+      updatedAt: new Date(2026, 7, 1, 10, 0),
+    } as const;
+
+    const command = mapAppointmentFormToUpdateCommand(
+      appointment,
+      validValues({ durationMinutes: 60 }),
+    );
+
+    expect(command).toMatchObject({
+      clinicId: 'clinic-1',
+      appointmentId: 'appointment-1',
+      patientId: 'patient-1',
+      doctorId: 'doctor-1',
+      isEmergency: false,
+    });
+    expect(formatAppointmentDateTimeLocalInputValue(command.endAt as Date)).toBe(
+      '2026-08-02T10:30',
+    );
   });
 });

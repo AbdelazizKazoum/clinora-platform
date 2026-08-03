@@ -3,6 +3,8 @@
 import Icon from '@/components/wrappers/Icon';
 import { SimpleBar } from '@/components/wrappers/SimpleBar';
 import { useStaffMembers } from '@/features/staff';
+import { ApiError } from '@/lib/api';
+import { useNotificationStore } from '@/store';
 import type {
   DatesSetArg,
   EventClickArg,
@@ -20,7 +22,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, CardBody, Spinner } from 'react-bootstrap';
 import { useWindowSize } from 'usehooks-ts';
 
-import { useAppointments } from '../hooks';
+import { checkAppointmentConflicts } from '../api';
+import {
+  useAppointments,
+  useCreateAppointment,
+  useUpdateAppointment,
+} from '../hooks';
 import {
   APPOINTMENT_STATUSES,
   appointmentStatusCalendarClassNames,
@@ -33,8 +40,13 @@ import {
 } from '../model';
 import {
   calculateAppointmentFormEndAt,
+  mapAppointmentFormToCreateCommand,
+  mapAppointmentFormToUpdateCommand,
+  parseAppointmentDateTimeLocalInputValue,
+  validateAppointmentForm,
   type AppointmentFormValues,
 } from '../schemas';
+import AppointmentEventPopover from './appointment-event-popover';
 import AppointmentFormModal from './appointment-form-modal';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en', {
@@ -55,6 +67,28 @@ interface AppointmentModalState {
   appointment: Appointment | null;
   initialStartAt: Date;
 }
+
+interface AppointmentPopoverState {
+  appointment: Appointment;
+  target: HTMLElement;
+}
+
+const conflictMessage =
+  'This doctor already has an appointment during the selected time.';
+
+const mapAppointmentSubmissionError = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    if (error.status === 409) {
+      return conflictMessage;
+    }
+
+    return error.message || 'Unable to save the appointment.';
+  }
+
+  return error instanceof Error
+    ? error.message
+    : 'Unable to save the appointment.';
+};
 
 const mapAppointmentToCalendarEvent = (
   appointment: Appointment,
@@ -79,6 +113,13 @@ const AppointmentCalendarShell = () => {
   const { height } = useWindowSize();
   const { data: session, status: sessionStatus } = useSession();
   const clinicId = session?.user.clinicId;
+  const { createAppointment, isPending: isCreatingAppointment } =
+    useCreateAppointment();
+  const { isPending: isUpdatingAppointment, updateAppointment } =
+    useUpdateAppointment();
+  const showNotification = useNotificationStore(
+    (state) => state.showNotification,
+  );
   const [calendarRange, setCalendarRange] = useState<CalendarRange | null>(
     null,
   );
@@ -88,6 +129,12 @@ const AppointmentCalendarShell = () => {
   const [visibleProviderIds, setVisibleProviderIds] = useState<string[]>([]);
   const [appointmentModal, setAppointmentModal] =
     useState<AppointmentModalState | null>(null);
+  const [appointmentPopover, setAppointmentPopover] =
+    useState<AppointmentPopoverState | null>(null);
+  const [appointmentSubmissionError, setAppointmentSubmissionError] = useState<
+    string | null
+  >(null);
+  const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
 
   const staffMembers = useStaffMembers(
     sessionStatus === 'authenticated' ? clinicId : undefined,
@@ -129,6 +176,8 @@ const AppointmentCalendarShell = () => {
   const isInitialLoading =
     sessionStatus === 'loading' ||
     ((appointments.isLoading || staffMembers.isLoading) && events.length === 0);
+  const isAppointmentSavePending =
+    isSubmittingAppointment || isCreatingAppointment || isUpdatingAppointment;
   const defaultModalProvider = useMemo(() => {
     if (appointmentModal?.appointment) {
       return (
@@ -169,6 +218,8 @@ const AppointmentCalendarShell = () => {
 
   const handleCreateDraft = () => {
     setSelectedSlotLabel('New appointment draft');
+    setAppointmentPopover(null);
+    setAppointmentSubmissionError(null);
     setAppointmentModal({
       appointment: null,
       initialStartAt: new Date(),
@@ -177,6 +228,8 @@ const AppointmentCalendarShell = () => {
 
   const handleDateClick = (arg: DateClickArg) => {
     setSelectedSlotLabel(dateTimeFormatter.format(arg.date));
+    setAppointmentPopover(null);
+    setAppointmentSubmissionError(null);
     setAppointmentModal({
       appointment: null,
       initialStartAt: arg.date,
@@ -184,6 +237,7 @@ const AppointmentCalendarShell = () => {
   };
 
   const handleDatesSet = (arg: DatesSetArg) => {
+    setAppointmentPopover(null);
     setCalendarRange({
       endDate: arg.end,
       startDate: arg.start,
@@ -191,6 +245,8 @@ const AppointmentCalendarShell = () => {
   };
 
   const handleEventClick = (arg: EventClickArg) => {
+    arg.jsEvent.preventDefault();
+
     const appointment = (
       arg.event.extendedProps as { appointment?: Appointment }
     ).appointment;
@@ -199,22 +255,103 @@ const AppointmentCalendarShell = () => {
 
     if (!appointment) return;
 
+    setAppointmentPopover({
+      appointment,
+      target: arg.el,
+    });
+  };
+
+  const handleEditAppointment = (appointment: Appointment) => {
+    setAppointmentPopover(null);
+    setAppointmentSubmissionError(null);
     setAppointmentModal({
       appointment,
       initialStartAt: appointment.startAt,
     });
   };
 
-  const handleAppointmentFormSubmit = (values: AppointmentFormValues) => {
-    const endAt = calculateAppointmentFormEndAt(values);
-    const patientName = values.patientName.trim() || 'Appointment';
+  const handleCheckInAppointment = (appointment: Appointment) => {
+    setAppointmentPopover(null);
+    showNotification({
+      message: `${appointment.patientName} is ready for check-in details.`,
+      title: 'Check-in action selected',
+      variant: 'info',
+    });
+  };
 
-    setSelectedSlotLabel(
-      endAt
-        ? `${patientName} - ${dateTimeFormatter.format(endAt)}`
-        : patientName,
-    );
-    setAppointmentModal(null);
+  const handleAppointmentFormSubmit = async (values: AppointmentFormValues) => {
+    const validation = validateAppointmentForm(values);
+    if (!validation.isValid) {
+      setAppointmentSubmissionError('Check the form and try again.');
+      return;
+    }
+
+    const endAt = calculateAppointmentFormEndAt(values);
+    const startAt = parseAppointmentDateTimeLocalInputValue(values.startAt);
+    const patientName = values.patientName.trim() || 'Appointment';
+    const appointment = appointmentModal?.appointment ?? null;
+    const resolvedClinicId = appointment?.clinicId ?? clinicId;
+
+    if (!resolvedClinicId || !startAt || !endAt) {
+      setAppointmentSubmissionError('Appointment timing is invalid.');
+      return;
+    }
+
+    try {
+      setIsSubmittingAppointment(true);
+      setAppointmentSubmissionError(null);
+
+      if (!values.isEmergency) {
+        const conflict = await checkAppointmentConflicts({
+          clinicId: resolvedClinicId,
+          doctorId: values.doctorId.trim(),
+          startAt,
+          endAt,
+          excludeAppointmentId: appointment?.id,
+        });
+
+        if (conflict.hasConflict) {
+          setAppointmentSubmissionError(conflictMessage);
+          showNotification({
+            message: conflictMessage,
+            title: 'Appointment conflict',
+            variant: 'warning',
+          });
+          return;
+        }
+      }
+
+      if (appointment) {
+        await updateAppointment(
+          mapAppointmentFormToUpdateCommand(appointment, values),
+        );
+      } else {
+        await createAppointment(
+          mapAppointmentFormToCreateCommand(resolvedClinicId, values),
+        );
+      }
+
+      showNotification({
+        message: appointment
+          ? 'Appointment updated successfully.'
+          : 'Appointment created successfully.',
+        title: appointment ? 'Appointment updated' : 'Appointment created',
+        variant: 'success',
+      });
+
+      setSelectedSlotLabel(`${patientName} - ${dateTimeFormatter.format(endAt)}`);
+      setAppointmentModal(null);
+    } catch (error) {
+      const message = mapAppointmentSubmissionError(error);
+      setAppointmentSubmissionError(message);
+      showNotification({
+        message,
+        title: 'Appointment request failed',
+        variant: 'danger',
+      });
+    } finally {
+      setIsSubmittingAppointment(false);
+    }
   };
 
   const handleProviderToggle = (providerId: string) => {
@@ -445,15 +582,29 @@ const AppointmentCalendarShell = () => {
         </SimpleBar>
       </Card>
 
+      {appointmentPopover && (
+        <AppointmentEventPopover
+          appointment={appointmentPopover.appointment}
+          onCheckIn={handleCheckInAppointment}
+          onEdit={handleEditAppointment}
+          onHide={() => setAppointmentPopover(null)}
+          show={true}
+          target={appointmentPopover.target}
+        />
+      )}
+
       {appointmentModal && (
         <AppointmentFormModal
           appointment={appointmentModal.appointment}
           defaultProvider={defaultModalProvider}
           initialStartAt={appointmentModal.initialStartAt}
+          isSubmitting={isAppointmentSavePending}
           onHide={() => setAppointmentModal(null)}
           onSubmit={handleAppointmentFormSubmit}
+          onValuesChange={() => setAppointmentSubmissionError(null)}
           providers={providers}
           show={true}
+          submissionError={appointmentSubmissionError}
         />
       )}
     </div>
