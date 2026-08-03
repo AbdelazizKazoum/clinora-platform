@@ -40,6 +40,14 @@ export {
   appointmentQueueQueryKeys,
 } from './appointment-query-keys';
 export {
+  buildAppointmentInlineRescheduleCommand,
+  executeAppointmentInlineReschedule,
+  type AppointmentInlineRescheduleResult,
+  type AppointmentInlineRescheduleStatus,
+  type BuildAppointmentInlineRescheduleOptions,
+  type ExecuteAppointmentInlineRescheduleOptions,
+} from './appointment-inline-reschedule';
+export {
   projectActiveDoctorProviders,
   toggleVisibleProviderId,
   type AppointmentProvider,

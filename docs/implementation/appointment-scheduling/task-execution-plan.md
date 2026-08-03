@@ -26,7 +26,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 10. Add Appointment Form Modal
 - [x] Task 11. Connect Create And Update Flows
 - [x] Task 12. Add Event Popover
-- [ ] Task 13. Add Inline Move And Resize Reschedule
+- [x] Task 13. Add Inline Move And Resize Reschedule
 - [ ] Task 14. Add Cancellation Flow
 - [ ] Task 15. Add Check-In Dialog
 - [ ] Task 16. Polish Responsive Ubold Schedule UX
@@ -51,7 +51,7 @@ task.
       invalidation.
 - [x] Appointment form validation tests cover required patient, doctor,
       duration, start time, and derived end time behavior.
-- [ ] Calendar interaction tests cover inline move, inline resize, conflict
+- [x] Calendar interaction tests cover inline move, inline resize, conflict
       failure, and event revert behavior.
 - [ ] Check-in tests cover status eligibility, queue command mapping, and
       duplicate check-in errors.

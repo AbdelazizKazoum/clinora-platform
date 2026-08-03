@@ -7,12 +7,15 @@ import { ApiError } from '@/lib/api';
 import { useNotificationStore } from '@/store';
 import type {
   DatesSetArg,
+  EventApi,
   EventClickArg,
+  EventDropArg,
   EventInput,
 } from '@fullcalendar/core/index.js';
 import dayGridPlugin from '@fullcalendar/daygrid/index.js';
 import interactionPlugin, {
   type DateClickArg,
+  type EventResizeDoneArg,
 } from '@fullcalendar/interaction/index.js';
 import listPlugin from '@fullcalendar/list/index.js';
 import FullCalendar from '@fullcalendar/react';
@@ -26,6 +29,7 @@ import { checkAppointmentConflicts } from '../api';
 import {
   useAppointments,
   useCreateAppointment,
+  useRescheduleAppointment,
   useUpdateAppointment,
 } from '../hooks';
 import {
@@ -33,6 +37,7 @@ import {
   appointmentStatusCalendarClassNames,
   appointmentStatusDotClassNames,
   appointmentStatusLabels,
+  executeAppointmentInlineReschedule,
   projectActiveDoctorProviders,
   toggleVisibleProviderId,
   type Appointment,
@@ -90,6 +95,20 @@ const mapAppointmentSubmissionError = (error: unknown): string => {
     : 'Unable to save the appointment.';
 };
 
+const mapAppointmentRescheduleError = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    if (error.status === 409) {
+      return conflictMessage;
+    }
+
+    return error.message || 'Unable to reschedule the appointment.';
+  }
+
+  return error instanceof Error
+    ? error.message
+    : 'Unable to reschedule the appointment.';
+};
+
 const mapAppointmentToCalendarEvent = (
   appointment: Appointment,
 ): EventInput => ({
@@ -109,12 +128,19 @@ const mapAppointmentToCalendarEvent = (
   },
 });
 
+const getAppointmentFromCalendarEvent = (
+  event: EventApi,
+): Appointment | null =>
+  (event.extendedProps as { appointment?: Appointment }).appointment ?? null;
+
 const AppointmentCalendarShell = () => {
   const { height } = useWindowSize();
   const { data: session, status: sessionStatus } = useSession();
   const clinicId = session?.user.clinicId;
   const { createAppointment, isPending: isCreatingAppointment } =
     useCreateAppointment();
+  const { isPending: isReschedulingAppointment, rescheduleAppointment } =
+    useRescheduleAppointment();
   const { isPending: isUpdatingAppointment, updateAppointment } =
     useUpdateAppointment();
   const showNotification = useNotificationStore(
@@ -247,9 +273,7 @@ const AppointmentCalendarShell = () => {
   const handleEventClick = (arg: EventClickArg) => {
     arg.jsEvent.preventDefault();
 
-    const appointment = (
-      arg.event.extendedProps as { appointment?: Appointment }
-    ).appointment;
+    const appointment = getAppointmentFromCalendarEvent(arg.event);
 
     setSelectedSlotLabel(arg.event.title);
 
@@ -258,6 +282,101 @@ const AppointmentCalendarShell = () => {
     setAppointmentPopover({
       appointment,
       target: arg.el,
+    });
+  };
+
+  const handleInlineReschedule = async ({
+    appointment,
+    newEndAt,
+    newStartAt,
+    revert,
+  }: {
+    appointment: Appointment;
+    newEndAt: Date | null;
+    newStartAt: Date | null;
+    revert: () => void;
+  }) => {
+    setAppointmentPopover(null);
+
+    try {
+      const result = await executeAppointmentInlineReschedule({
+        appointment,
+        checkConflicts: checkAppointmentConflicts,
+        newEndAt,
+        newStartAt,
+        rescheduleAppointment,
+        revert,
+      });
+
+      if (result.status === 'invalid') {
+        showNotification({
+          message: 'Choose a valid appointment time.',
+          title: 'Appointment not moved',
+          variant: 'warning',
+        });
+        return;
+      }
+
+      if (result.status === 'conflict') {
+        showNotification({
+          message: conflictMessage,
+          title: 'Appointment conflict',
+          variant: 'warning',
+        });
+        return;
+      }
+
+      showNotification({
+        message: 'Appointment rescheduled successfully.',
+        title: 'Appointment rescheduled',
+        variant: 'success',
+      });
+
+      if (result.command) {
+        setSelectedSlotLabel(
+          `${appointment.patientName} - ${dateTimeFormatter.format(
+            result.command.newStartAt,
+          )}`,
+        );
+      }
+    } catch (error) {
+      showNotification({
+        message: mapAppointmentRescheduleError(error),
+        title: 'Reschedule failed',
+        variant: 'danger',
+      });
+    }
+  };
+
+  const handleEventDrop = (arg: EventDropArg) => {
+    const appointment = getAppointmentFromCalendarEvent(arg.event);
+
+    if (!appointment) {
+      arg.revert();
+      return;
+    }
+
+    void handleInlineReschedule({
+      appointment,
+      newEndAt: arg.event.end,
+      newStartAt: arg.event.start,
+      revert: arg.revert,
+    });
+  };
+
+  const handleEventResize = (arg: EventResizeDoneArg) => {
+    const appointment = getAppointmentFromCalendarEvent(arg.event);
+
+    if (!appointment) {
+      arg.revert();
+      return;
+    }
+
+    void handleInlineReschedule({
+      appointment,
+      newEndAt: arg.event.end,
+      newStartAt: arg.event.start,
+      revert: arg.revert,
     });
   };
 
@@ -557,8 +676,13 @@ const AppointmentCalendarShell = () => {
             }}
             dateClick={handleDateClick}
             datesSet={handleDatesSet}
-            editable={false}
+            editable={!isReschedulingAppointment}
             eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventDurationEditable={!isReschedulingAppointment}
+            eventResizableFromStart={true}
+            eventResize={handleEventResize}
+            eventStartEditable={!isReschedulingAppointment}
             events={events}
             handleWindowResize={true}
             headerToolbar={{
