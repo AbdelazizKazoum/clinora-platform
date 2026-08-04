@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 5 complete; Task 6 ready  
+Status: Task 6 complete; Task 7 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -31,7 +31,7 @@ the next task.
 - [x] Task 3: Extend queue entries with chair and manual ordering fields
 - [x] Task 4: Add waiting room use cases inside appointment service
 - [x] Task 5: Update appointment gRPC contract and service presentation
-- [ ] Task 6: Expose waiting room routes through the API Gateway
+- [x] Task 6: Expose waiting room routes through the API Gateway
 - [ ] Task 7: Update queue outbox events and Gateway SSE streaming
 - [ ] Task 8: Create frontend waiting-room feature data boundary
 - [ ] Task 9: Add waiting room queries, commands, hooks, and stream handling
@@ -1179,6 +1179,26 @@ Acceptance criteria:
 - `/api/bff/clinics/{clinicId}/waiting-room...` can reach the appointment
   service through the Gateway.
 - Gateway does not own waiting-room business decisions.
+
+Task 6 result:
+
+- Completed on 2026-08-04.
+- Added `apps/backend/api-gateway/src/modules/waiting-room` with DTOs,
+  controller, facade, and module wiring.
+- Exposed direct Gateway routes under
+  `/api/v1/clinics/{clinicId}/waiting-room` for state reads, status movement,
+  notes, chair assignment, manual/auto reorder, chair listing, chair creation,
+  and chair updates.
+- Applied JWT, role, and clinic-scope guards with the planned role split:
+  read access for `admin`, `doctor`, `secretary`, and `dental_assistant`;
+  flow commands for `admin`, `secretary`, and `dental_assistant`; chair
+  management for `admin` and `secretary`.
+- Added waiting-room facade calls through the typed appointment-service client,
+  including a clinic-scope precheck before delegating the legacy queue notes
+  gRPC command.
+- Verification passed:
+  `pnpm nx test api-gateway`,
+  `pnpm nx build api-gateway`.
 
 ### Task 7: Update Queue Outbox Events And Gateway SSE Streaming
 

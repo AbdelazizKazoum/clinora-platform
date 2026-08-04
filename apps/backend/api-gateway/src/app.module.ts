@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { EventsModule } from './modules/events/events.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { StaffModule } from './modules/staff/staff.module';
+import { WaitingRoomModule } from './modules/waiting-room/waiting-room.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { StaffModule } from './modules/staff/staff.module';
     EventsModule,
     PatientsModule,
     StaffModule,
+    WaitingRoomModule,
     HealthModule,
   ],
   providers: [JwtStrategy],
