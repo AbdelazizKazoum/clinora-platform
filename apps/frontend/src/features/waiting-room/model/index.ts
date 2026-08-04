@@ -57,3 +57,14 @@ export {
   waitingRoomStatusFlow,
   waitingRoomVisibleStatuses,
 } from './waiting-room.rules';
+export {
+  filterWaitingRoomEntries,
+  getWaitingRoomDoctorOptions,
+  getWaitingRoomPatientInitials,
+  getWaitingRoomSummary,
+  groupWaitingRoomEntriesByStatus,
+  type WaitingRoomBoardFilters,
+  type WaitingRoomDoctorOption,
+  type WaitingRoomPriorityFilter,
+  type WaitingRoomSummary,
+} from './waiting-room-board';

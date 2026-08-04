@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 9 complete; Task 10 ready  
+Status: Task 10 complete; Task 11 ready
 Created: 2026-08-04
 
 ## Goal
@@ -35,7 +35,7 @@ the next task.
 - [x] Task 7: Update queue outbox events and Gateway SSE streaming
 - [x] Task 8: Create frontend waiting-room feature data boundary
 - [x] Task 9: Add waiting room queries, commands, hooks, and stream handling
-- [ ] Task 10: Build Ubold-style realtime board shell
+- [x] Task 10: Build Ubold-style realtime board shell
 - [ ] Task 11: Add Kanban-style status movement and manual reordering
 - [ ] Task 12: Add chair assignment and chair management UI
 - [ ] Task 13: Add patient details panel, notes, correction, and treatment launch
@@ -1349,6 +1349,32 @@ Acceptance criteria:
 
 - `/waiting-room` renders a professional board using real waiting-room data.
 - The UI is dense, operational, and consistent with Clinora/Ubold.
+
+Task 10 result:
+
+- Completed on 2026-08-05.
+- Replaced the waiting-room placeholder route with a feature-owned
+  `WaitingRoomPage` that resolves clinic scope from the authenticated session,
+  loads the Task 9 waiting-room query, and subscribes to queue SSE updates.
+- Added four compact queue summary cards plus an Ubold-style toolbar with
+  patient search, priority and doctor filters, refresh feedback, realtime
+  presence, and visible server-ordering mode controls.
+- Adapted the Ubold CRM pipeline structure into four horizontally scrollable
+  status columns backed by SimpleBar while preserving the entry order returned
+  by the backend.
+- Added dense patient cards with priority emphasis, appointment, doctor, chair,
+  note, elapsed-time, automatic/manual position, and contact-dropdown details.
+- Added loading skeletons, initial empty, filtered-empty, missing-clinic, stale
+  data error, initial error, and retry states.
+- Added pure board projection helpers and focused tests for filtering, grouping,
+  summaries, doctor options, initials, live-data rendering, stream startup, and
+  UI states.
+- Kept status movement, persisted reordering, chair workflows, and patient
+  details actions out of this step for Tasks 11-13.
+- Verification passed:
+  `pnpm nx test frontend --runInBand --testPathPatterns=waiting-room --skip-nx-cache`,
+  `pnpm nx lint frontend`,
+  `pnpm nx build frontend --skip-nx-cache`.
 
 ### Task 11: Add Kanban-Style Status Movement And Manual Reordering
 

@@ -1,0 +1,64 @@
+.boardColumn {
+  flex: 1 0 19rem;
+  min-width: 19rem !important;
+  max-width: 24rem;
+}
+
+.columnScroll {
+  height: clamp(25rem, calc(100vh - 30rem), 42rem) !important;
+  min-height: 25rem;
+}
+
+.emptyColumn {
+  border: 1px dashed var(--bs-border-color);
+  background: var(--bs-body-bg);
+}
+
+.patientAvatar {
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+.priorityEmergency {
+  border-inline-start: 3px solid var(--bs-danger) !important;
+}
+
+.priorityUrgent {
+  border-inline-start: 3px solid var(--bs-warning) !important;
+}
+
+.priorityNormal {
+  border-inline-start: 3px solid transparent !important;
+}
+
+.liveDot {
+  animation: waiting-room-pulse 1.8s ease-out infinite;
+}
+
+@keyframes waiting-room-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  70% {
+    opacity: 0.45;
+    transform: scale(1.35);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .boardColumn {
+    flex-basis: 17.5rem;
+    min-width: 17.5rem !important;
+  }
+
+  .columnScroll {
+    height: 32rem !important;
+  }
+}
