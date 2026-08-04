@@ -1,8 +1,22 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import type { DropResult } from '@hello-pangea/dnd';
 import type { Session } from 'next-auth';
 import { useSession } from 'next-auth/react';
 
-import { useWaitingRoomEvents, useWaitingRoomState } from '../hooks';
+import { useNotificationStore } from '@/store';
+
+import {
+  useReorderWaitingRoomEntries,
+  useUpdateWaitingRoomStatus,
+  useWaitingRoomEvents,
+  useWaitingRoomState,
+} from '../hooks';
 import type { WaitingRoomEntry, WaitingRoomState } from '../model';
 import WaitingRoomPage from './waiting-room-page';
 
@@ -22,17 +36,67 @@ jest.mock('@/components/wrappers/SimpleBar', () => ({
   ),
 }));
 
+let mockDragEndHandler: ((result: DropResult) => void) | undefined;
+
+jest.mock('@hello-pangea/dnd', () => ({
+  DragDropContext: ({
+    children,
+    onDragEnd,
+  }: {
+    children: React.ReactNode;
+    onDragEnd: (result: DropResult) => void;
+  }) => {
+    mockDragEndHandler = onDragEnd;
+    return <>{children}</>;
+  },
+  Draggable: ({
+    children,
+  }: {
+    children: (provided: never, snapshot: never) => React.ReactNode;
+  }) =>
+    children(
+      {
+        dragHandleProps: {},
+        draggableProps: {},
+        innerRef: jest.fn(),
+      } as never,
+      { isDragging: false } as never,
+    ),
+  Droppable: ({
+    children,
+  }: {
+    children: (provided: never, snapshot: never) => React.ReactNode;
+  }) =>
+    children(
+      {
+        droppableProps: {},
+        innerRef: jest.fn(),
+        placeholder: null,
+      } as never,
+      { isDraggingOver: false } as never,
+    ),
+}));
+
 jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
 }));
 
 jest.mock('../hooks', () => ({
+  useReorderWaitingRoomEntries: jest.fn(),
+  useUpdateWaitingRoomStatus: jest.fn(),
   useWaitingRoomEvents: jest.fn(),
   useWaitingRoomState: jest.fn(),
 }));
 
+jest.mock('@/store', () => ({
+  useNotificationStore: jest.fn(),
+}));
+
 const clinicId = '10000000-0000-4000-8000-000000000001';
 const refetch = jest.fn();
+const reorderWaitingRoomEntries = jest.fn();
+const updateWaitingRoomStatus = jest.fn();
+const showNotification = jest.fn();
 
 const session: Session = {
   expires: '2026-08-06T00:00:00.000Z',
@@ -109,11 +173,37 @@ const arrangePage = (
     isLoading,
     refetch,
   } as ReturnType<typeof useWaitingRoomState>);
+  jest.mocked(useReorderWaitingRoomEntries).mockReturnValue({
+    error: null,
+    isPending: false,
+    reorderWaitingRoomEntries,
+    reset: jest.fn(),
+  });
+  jest.mocked(useUpdateWaitingRoomStatus).mockReturnValue({
+    error: null,
+    isPending: false,
+    reset: jest.fn(),
+    updateWaitingRoomStatus,
+  });
+  jest
+    .mocked(useNotificationStore)
+    .mockImplementation((selector) => selector({ showNotification } as never));
+};
+
+const finishDrag = (
+  result: Pick<DropResult, 'destination' | 'draggableId' | 'source'>,
+) => {
+  act(() => {
+    mockDragEndHandler?.(result as DropResult);
+  });
 };
 
 describe(WaitingRoomPage.name, () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    refetch.mockResolvedValue({ isError: false });
+    reorderWaitingRoomEntries.mockResolvedValue([]);
+    updateWaitingRoomStatus.mockResolvedValue(createEntry());
   });
 
   it('renders a loading board without empty-state copy', () => {
@@ -184,5 +274,138 @@ describe(WaitingRoomPage.name, () => {
 
     expect(screen.getByText('Waiting room unavailable')).toBeTruthy();
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('enables manual ordering and persists same-column movement', async () => {
+    arrangePage({
+      data: createState([
+        createEntry({ id: 'entry-1', patientName: 'First Patient' }),
+        createEntry({ id: 'entry-2', patientName: 'Second Patient' }),
+      ]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'WAITING', index: 0 },
+      draggableId: 'entry-2',
+      source: { droppableId: 'WAITING', index: 1 },
+    });
+
+    await waitFor(() => {
+      expect(reorderWaitingRoomEntries).toHaveBeenCalledWith({
+        clinicId,
+        mode: 'MANUAL',
+        orderedEntryIds: ['entry-2', 'entry-1'],
+        status: 'WAITING',
+      });
+    });
+  });
+
+  it('blocks seating without a chair before submitting a status move', () => {
+    arrangePage();
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'IN_CHAIR', index: 0 },
+      draggableId: 'entry-1',
+      source: { droppableId: 'WAITING', index: 0 },
+    });
+
+    expect(updateWaitingRoomStatus).not.toHaveBeenCalled();
+    expect(showNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Chair required', variant: 'warning' }),
+    );
+  });
+
+  it('persists forward movement with complete destination ordering', async () => {
+    arrangePage({
+      data: createState([
+        createEntry({
+          id: 'arrived',
+          patientName: 'Arrived Patient',
+          status: 'ARRIVED',
+        }),
+        createEntry({ id: 'waiting', patientName: 'Waiting Patient' }),
+      ]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'WAITING', index: 1 },
+      draggableId: 'arrived',
+      source: { droppableId: 'ARRIVED', index: 0 },
+    });
+
+    await waitFor(() => {
+      expect(updateWaitingRoomStatus).toHaveBeenCalledWith({
+        chairId: undefined,
+        clinicId,
+        correctionReason: undefined,
+        entryId: 'arrived',
+        status: 'WAITING',
+        targetOrderedEntryIds: ['waiting', 'arrived'],
+      });
+    });
+  });
+
+  it('requires and submits a correction reason for backward movement', async () => {
+    arrangePage({
+      data: createState([
+        createEntry({ id: 'waiting', patientName: 'Waiting Patient' }),
+        createEntry({
+          id: 'done',
+          patientName: 'Completed Patient',
+          status: 'DONE',
+        }),
+      ]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'WAITING', index: 1 },
+      draggableId: 'done',
+      source: { droppableId: 'DONE', index: 0 },
+    });
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(updateWaitingRoomStatus).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Correction reason'), {
+      target: { value: 'Patient was marked complete by mistake' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm correction' }));
+
+    await waitFor(() => {
+      expect(updateWaitingRoomStatus).toHaveBeenCalledWith({
+        chairId: undefined,
+        clinicId,
+        correctionReason: 'Patient was marked complete by mistake',
+        entryId: 'done',
+        status: 'WAITING',
+        targetOrderedEntryIds: ['waiting', 'done'],
+      });
+    });
+  });
+
+  it('restores automatic ordering through the backend command', async () => {
+    arrangePage({
+      data: {
+        ...createState([createEntry({ manualOrder: 1 })]),
+        ordering: { mode: 'MANUAL', manualStatuses: ['WAITING'] },
+      },
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auto Reorder' }));
+
+    await waitFor(() => {
+      expect(reorderWaitingRoomEntries).toHaveBeenCalledWith({
+        clinicId,
+        mode: 'AUTO',
+      });
+    });
   });
 });

@@ -3,6 +3,7 @@ import type {
   QueueStatus,
   WaitingRoomEntry,
 } from './waiting-room';
+import { waitingRoomStatusFlow } from './waiting-room.rules';
 
 export type WaitingRoomPriorityFilter = QueuePriority | 'ALL';
 
@@ -18,6 +19,22 @@ export interface WaitingRoomDoctorOption {
 }
 
 export type WaitingRoomSummary = Record<QueueStatus, number>;
+
+export interface WaitingRoomBoardMoveInput {
+  destinationIndex: number;
+  destinationStatus: QueueStatus;
+  entryId: string;
+  sourceIndex: number;
+  sourceStatus: QueueStatus;
+}
+
+export interface WaitingRoomBoardMove {
+  destinationOrderedEntryIds: string[];
+  destinationStatus: QueueStatus;
+  entries: WaitingRoomEntry[];
+  entry: WaitingRoomEntry;
+  sourceStatus: QueueStatus;
+}
 
 const normalizeSearchValue = (value: string): string =>
   value.trim().toLocaleLowerCase();
@@ -69,6 +86,60 @@ export const groupWaitingRoomEntriesByStatus = (
   });
 
   return groupedEntries;
+};
+
+export const projectWaitingRoomBoardMove = (
+  entries: WaitingRoomEntry[],
+  input: WaitingRoomBoardMoveInput,
+): WaitingRoomBoardMove | null => {
+  const groupedEntries = groupWaitingRoomEntriesByStatus(entries);
+  const sourceEntries = groupedEntries[input.sourceStatus];
+  const sourceIndex = sourceEntries.findIndex(
+    (entry) => entry.id === input.entryId,
+  );
+
+  if (
+    sourceIndex === -1 ||
+    sourceEntries[sourceIndex].status !== input.sourceStatus
+  ) {
+    return null;
+  }
+
+  if (
+    input.sourceStatus === input.destinationStatus &&
+    sourceIndex === input.destinationIndex
+  ) {
+    return null;
+  }
+
+  const [entry] = sourceEntries.splice(sourceIndex, 1);
+  const destinationEntries = groupedEntries[input.destinationStatus];
+  const destinationIndex = Math.min(
+    Math.max(input.destinationIndex, 0),
+    destinationEntries.length,
+  );
+  const movedEntry: WaitingRoomEntry = {
+    ...entry,
+    status: input.destinationStatus,
+  };
+
+  destinationEntries.splice(destinationIndex, 0, movedEntry);
+  groupedEntries[input.destinationStatus] = destinationEntries.map(
+    (destinationEntry, index) => ({
+      ...destinationEntry,
+      manualOrder: index + 1,
+    }),
+  );
+
+  return {
+    destinationOrderedEntryIds: groupedEntries[input.destinationStatus].map(
+      (destinationEntry) => destinationEntry.id,
+    ),
+    destinationStatus: input.destinationStatus,
+    entries: waitingRoomStatusFlow.flatMap((status) => groupedEntries[status]),
+    entry,
+    sourceStatus: input.sourceStatus,
+  };
 };
 
 export const getWaitingRoomSummary = (

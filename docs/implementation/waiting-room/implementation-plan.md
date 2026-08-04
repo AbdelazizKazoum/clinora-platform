@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 10 complete; Task 11 ready
+Status: Task 11 complete; Task 12 ready
 Created: 2026-08-04
 
 ## Goal
@@ -36,7 +36,7 @@ the next task.
 - [x] Task 8: Create frontend waiting-room feature data boundary
 - [x] Task 9: Add waiting room queries, commands, hooks, and stream handling
 - [x] Task 10: Build Ubold-style realtime board shell
-- [ ] Task 11: Add Kanban-style status movement and manual reordering
+- [x] Task 11: Add Kanban-style status movement and manual reordering
 - [ ] Task 12: Add chair assignment and chair management UI
 - [ ] Task 13: Add patient details panel, notes, correction, and treatment launch
 - [ ] Task 14: Add role-aware UX, responsive polish, and loading/error states
@@ -1405,6 +1405,37 @@ Acceptance criteria:
 
 - Kanban movement operations persist through backend commands.
 - Manual order is visible across clients after refresh or SSE update.
+
+Task 11 result:
+
+- Completed on 2026-08-05.
+- Added `@hello-pangea/dnd` to the frontend package through pnpm and adapted
+  Ubold's `DragDropContext`, `Droppable`, `Draggable`, drag-handle, ghost, and
+  destination-feedback patterns to the waiting-room board.
+- Activated `Manual Order` as the explicit opt-in for dragging and disabled
+  movement while filters hide queue positions or while another movement is
+  pending.
+- Persisted same-column moves through the manual reorder command with the full
+  ordered status list.
+- Persisted cross-column moves atomically through the status command with the
+  destination's full ordered entry list.
+- Added optimistic board projection with rollback on command failure and an
+  authoritative refetch after successful persistence.
+- Activated `Auto Reorder` to clear persisted manual positions and restore the
+  backend's priority/check-in-time ordering.
+- Added a correction-reason modal before backward status movement and included
+  the reason in the backend status command.
+- Blocked moves into `IN_CHAIR` when no chair is assigned and provided clear
+  user feedback; Task 12 remains responsible for selecting an available chair.
+- Updated cache/SSE reconciliation to derive ordering mode and manually ordered
+  statuses from the authoritative entry data so other clients reflect changes.
+- Added focused tests for movement projection, shared ordering metadata,
+  same-column reorder, forward status movement, chair blocking, correction
+  submission, and automatic reorder.
+- Verification passed:
+  `pnpm nx test frontend --runInBand --testPathPatterns=waiting-room --skip-nx-cache`,
+  `pnpm nx lint frontend --skip-nx-cache`,
+  `pnpm nx build frontend --skip-nx-cache`.
 
 ### Task 12: Add Chair Assignment And Chair Management UI
 

@@ -13,7 +13,6 @@ import {
   queuePriorityLabels,
   type QueueStatus,
   type WaitingRoomDoctorOption,
-  type WaitingRoomOrderingMode,
   type WaitingRoomPriorityFilter,
 } from '../model';
 import styles from './waiting-room-board.module.scss';
@@ -22,33 +21,52 @@ interface WaitingRoomToolbarProps {
   doctorId: string | 'ALL';
   doctors: WaitingRoomDoctorOption[];
   hasActiveFilters: boolean;
+  isManualOrderingEnabled: boolean;
+  isOrderingPending: boolean;
   isRefreshing: boolean;
   manualStatuses: QueueStatus[];
+  onAutoReorder: () => void;
   onClearFilters: () => void;
   onDoctorIdChange: (doctorId: string | 'ALL') => void;
   onPriorityChange: (priority: WaitingRoomPriorityFilter) => void;
+  onManualOrder: () => void;
   onRefresh: () => void;
   onSearchChange: (search: string) => void;
-  orderingMode: WaitingRoomOrderingMode;
   priority: WaitingRoomPriorityFilter;
   search: string;
 }
 
-const orderingControlTitle =
-  'Queue ordering controls become interactive with persisted board movement.';
+const getOrderingDescription = (
+  isOrderingPending: boolean,
+  isManualOrderingEnabled: boolean,
+  hasActiveFilters: boolean,
+): string => {
+  if (isOrderingPending) return 'Saving the shared queue order...';
+  if (isManualOrderingEnabled && hasActiveFilters) {
+    return 'Clear filters to drag patients without hiding queue positions.';
+  }
+  if (isManualOrderingEnabled) {
+    return 'Manual order is active. Use each card handle to move patients.';
+  }
+
+  return 'Automatically ordered by priority and check-in time.';
+};
 
 const WaitingRoomToolbar = ({
   doctorId,
   doctors,
   hasActiveFilters,
+  isManualOrderingEnabled,
+  isOrderingPending,
   isRefreshing,
   manualStatuses,
+  onAutoReorder,
   onClearFilters,
   onDoctorIdChange,
+  onManualOrder,
   onPriorityChange,
   onRefresh,
   onSearchChange,
-  orderingMode,
   priority,
   search,
 }: WaitingRoomToolbarProps) => (
@@ -73,25 +91,37 @@ const WaitingRoomToolbar = ({
             </Badge>
           </div>
           <p className="text-muted fs-xs mb-0 mt-1">
-            Updates from clinic check-in appear automatically.
+            {getOrderingDescription(
+              isOrderingPending,
+              isManualOrderingEnabled,
+              hasActiveFilters,
+            )}
           </p>
         </div>
 
         <ButtonGroup aria-label="Queue ordering mode">
           <Button
-            aria-pressed={orderingMode === 'AUTO'}
-            disabled
-            title={orderingControlTitle}
-            variant={orderingMode === 'AUTO' ? 'primary' : 'outline-primary'}
+            aria-pressed={!isManualOrderingEnabled}
+            disabled={isOrderingPending || !isManualOrderingEnabled}
+            onClick={onAutoReorder}
+            title="Restore priority and check-in time ordering"
+            type="button"
+            variant={!isManualOrderingEnabled ? 'primary' : 'outline-primary'}
           >
-            <Icon icon="list-restart" className="me-1" />
+            {isOrderingPending && isManualOrderingEnabled ? (
+              <Spinner animation="border" className="me-1" size="sm" />
+            ) : (
+              <Icon icon="list-restart" className="me-1" />
+            )}
             Auto Reorder
           </Button>
           <Button
-            aria-pressed={orderingMode === 'MANUAL'}
-            disabled
-            title={orderingControlTitle}
-            variant={orderingMode === 'MANUAL' ? 'primary' : 'outline-primary'}
+            aria-pressed={isManualOrderingEnabled}
+            disabled={isOrderingPending || isManualOrderingEnabled}
+            onClick={onManualOrder}
+            title="Enable persisted drag-and-drop queue ordering"
+            type="button"
+            variant={isManualOrderingEnabled ? 'primary' : 'outline-primary'}
           >
             <Icon icon="grip-vertical" className="me-1" />
             Manual Order

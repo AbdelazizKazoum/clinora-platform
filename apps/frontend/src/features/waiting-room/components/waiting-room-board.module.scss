@@ -14,6 +14,20 @@
   background: var(--bs-body-bg);
 }
 
+.columnDragOver {
+  box-shadow: inset 0 0 0 2px rgba(var(--bs-primary-rgb), 0.35);
+}
+
+.dragHandle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
 .patientAvatar {
   height: 2.5rem;
   width: 2.5rem;

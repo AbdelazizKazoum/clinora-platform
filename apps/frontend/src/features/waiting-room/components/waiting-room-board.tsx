@@ -1,12 +1,21 @@
 import Icon from '@/components/wrappers/Icon';
 import { SimpleBar } from '@/components/wrappers/SimpleBar';
+import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+  type DropResult,
+} from '@hello-pangea/dnd';
+import clsx from 'clsx';
 import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap';
 
 import {
+  QUEUE_STATUSES,
   groupWaitingRoomEntriesByStatus,
   queueStatusLabels,
   waitingRoomStatusFlow,
   type QueueStatus,
+  type WaitingRoomBoardMoveInput,
   type WaitingRoomEntry,
 } from '../model';
 import styles from './waiting-room-board.module.scss';
@@ -27,79 +36,147 @@ const boardColumnConfigs: BoardColumnConfig[] = [
 
 interface WaitingRoomBoardProps {
   entries: WaitingRoomEntry[];
+  isDragEnabled: boolean;
   manualStatuses: QueueStatus[];
+  onMove: (move: WaitingRoomBoardMoveInput) => Promise<void> | void;
 }
+
+const isQueueStatus = (value: string): value is QueueStatus =>
+  QUEUE_STATUSES.includes(value as QueueStatus);
 
 const WaitingRoomBoard = ({
   entries,
+  isDragEnabled,
   manualStatuses,
+  onMove,
 }: WaitingRoomBoardProps) => {
   const groupedEntries = groupWaitingRoomEntriesByStatus(entries);
 
+  const handleDragEnd = (result: DropResult) => {
+    if (
+      !result.destination ||
+      !isQueueStatus(result.source.droppableId) ||
+      !isQueueStatus(result.destination.droppableId)
+    ) {
+      return;
+    }
+
+    void onMove({
+      destinationIndex: result.destination.index,
+      destinationStatus: result.destination.droppableId,
+      entryId: result.draggableId,
+      sourceIndex: result.source.index,
+      sourceStatus: result.source.droppableId,
+    });
+  };
+
   return (
     <CardBody className="p-0">
-      <div className="kanban-content" aria-label="Waiting room board">
-        {boardColumnConfigs.map((column) => {
-          const columnEntries = groupedEntries[column.status];
-          const isManuallyOrdered = manualStatuses.includes(column.status);
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="kanban-content" aria-label="Waiting room board">
+          {boardColumnConfigs.map((column) => {
+            const columnEntries = groupedEntries[column.status];
+            const isManuallyOrdered = manualStatuses.includes(column.status);
 
-          return (
-            <section
-              aria-labelledby={`waiting-room-column-${column.status}`}
-              className={`kanban-board bg-${column.variant} bg-opacity-10 ${styles.boardColumn}`}
-              key={column.status}
-            >
-              <div className="kanban-item py-2 px-3 d-flex align-items-center gap-2">
-                <span
-                  className={`avatar-xs avatar-title rounded-circle bg-${column.variant}-subtle text-${column.variant}`}
-                >
-                  <Icon icon={column.icon} />
-                </span>
-                <h5 className="m-0" id={`waiting-room-column-${column.status}`}>
-                  {queueStatusLabels[column.status]}
-                </h5>
-                <span
-                  className={`badge badge-soft-${column.variant} text-${column.variant}`}
-                >
-                  {columnEntries.length}
-                </span>
-                {isManuallyOrdered && (
-                  <span className="badge badge-soft-secondary text-secondary ms-auto">
-                    Manual
-                  </span>
-                )}
-              </div>
-
-              <SimpleBar
-                className={`kanban-board-group px-2 pb-2 ${styles.columnScroll}`}
+            return (
+              <Droppable
+                droppableId={column.status}
+                isDropDisabled={!isDragEnabled}
+                key={column.status}
               >
-                <ul
-                  className="mb-0"
-                  aria-label={`${queueStatusLabels[column.status]} patients`}
-                >
-                  {columnEntries.map((entry) => (
-                    <li className="kanban-item" key={entry.id}>
-                      <WaitingRoomEntryCard entry={entry} />
-                    </li>
-                  ))}
+                {(provided, snapshot) => (
+                  <section
+                    aria-labelledby={`waiting-room-column-${column.status}`}
+                    className={clsx(
+                      `kanban-board bg-${column.variant} bg-opacity-10`,
+                      styles.boardColumn,
+                      snapshot.isDraggingOver && styles.columnDragOver,
+                    )}
+                  >
+                    <div className="kanban-item py-2 px-3 d-flex align-items-center gap-2">
+                      <span
+                        className={`avatar-xs avatar-title rounded-circle bg-${column.variant}-subtle text-${column.variant}`}
+                      >
+                        <Icon icon={column.icon} />
+                      </span>
+                      <h5
+                        className="m-0"
+                        id={`waiting-room-column-${column.status}`}
+                      >
+                        {queueStatusLabels[column.status]}
+                      </h5>
+                      <span
+                        className={`badge badge-soft-${column.variant} text-${column.variant}`}
+                      >
+                        {columnEntries.length}
+                      </span>
+                      {isManuallyOrdered && (
+                        <span className="badge badge-soft-secondary text-secondary ms-auto">
+                          Manual
+                        </span>
+                      )}
+                    </div>
 
-                  {columnEntries.length === 0 && (
-                    <li
-                      className={`rounded text-center text-muted px-3 py-5 ${styles.emptyColumn}`}
+                    <SimpleBar
+                      className={`kanban-board-group px-2 pb-2 ${styles.columnScroll}`}
                     >
-                      <Icon icon="inbox" className="fs-24 mb-2" />
-                      <p className="fs-sm mb-0">
-                        No patients{' '}
-                        {queueStatusLabels[column.status].toLowerCase()}.
-                      </p>
-                    </li>
-                  )}
-                </ul>
-              </SimpleBar>
-            </section>
-          );
-        })}
-      </div>
+                      <ul
+                        {...provided.droppableProps}
+                        aria-label={`${queueStatusLabels[column.status]} patients`}
+                        className="mb-0"
+                        ref={provided.innerRef}
+                      >
+                        {columnEntries.map((entry, index) => (
+                          <Draggable
+                            draggableId={entry.id}
+                            index={index}
+                            isDragDisabled={!isDragEnabled}
+                            key={entry.id}
+                          >
+                            {(draggableProvided, draggableSnapshot) => (
+                              <li
+                                {...draggableProvided.draggableProps}
+                                className={clsx(
+                                  'kanban-item',
+                                  draggableSnapshot.isDragging &&
+                                    'sortable-fallback',
+                                )}
+                                ref={draggableProvided.innerRef}
+                              >
+                                <WaitingRoomEntryCard
+                                  dragHandleProps={
+                                    draggableProvided.dragHandleProps ??
+                                    undefined
+                                  }
+                                  entry={entry}
+                                  isDragging={draggableSnapshot.isDragging}
+                                />
+                              </li>
+                            )}
+                          </Draggable>
+                        ))}
+
+                        {columnEntries.length === 0 && (
+                          <li
+                            className={`rounded text-center text-muted px-3 py-5 ${styles.emptyColumn}`}
+                          >
+                            <Icon icon="inbox" className="fs-24 mb-2" />
+                            <p className="fs-sm mb-0">
+                              No patients{' '}
+                              {queueStatusLabels[column.status].toLowerCase()}.
+                            </p>
+                          </li>
+                        )}
+                        {provided.placeholder}
+                      </ul>
+                    </SimpleBar>
+                  </section>
+                )}
+              </Droppable>
+            );
+          })}
+        </div>
+      </DragDropContext>
     </CardBody>
   );
 };

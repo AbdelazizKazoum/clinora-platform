@@ -108,6 +108,29 @@ describe('waiting-room cache reconciliation', () => {
       'queue-2',
       'queue-1',
     ]);
+    expect(result?.ordering).toEqual({
+      mode: 'MANUAL',
+      manualStatuses: ['WAITING'],
+    });
+  });
+
+  it('restores automatic ordering metadata from reorder events', () => {
+    const result = applyWaitingRoomEventToState(
+      state({
+        entries: [entry({ manualOrder: 1 })],
+        ordering: { mode: 'MANUAL', manualStatuses: ['WAITING'] },
+      }),
+      {
+        type: 'queue.reordered',
+        clinicId: 'clinic-1',
+        entries: [entry({ manualOrder: null })],
+      },
+    );
+
+    expect(result?.ordering).toEqual({
+      mode: 'AUTO',
+      manualStatuses: [],
+    });
   });
 
   it('upserts chair events into state and chair list caches', () => {

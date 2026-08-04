@@ -1,6 +1,7 @@
 'use client';
 
 import Icon from '@/components/wrappers/Icon';
+import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import clsx from 'clsx';
 import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 
@@ -58,7 +59,17 @@ const getEntryTiming = (
   };
 };
 
-const WaitingRoomEntryCard = ({ entry }: { entry: WaitingRoomEntry }) => {
+interface WaitingRoomEntryCardProps {
+  dragHandleProps?: DraggableProvidedDragHandleProps;
+  entry: WaitingRoomEntry;
+  isDragging?: boolean;
+}
+
+const WaitingRoomEntryCard = ({
+  dragHandleProps,
+  entry,
+  isDragging = false,
+}: WaitingRoomEntryCardProps) => {
   const timing = getEntryTiming(entry);
 
   return (
@@ -66,6 +77,7 @@ const WaitingRoomEntryCard = ({ entry }: { entry: WaitingRoomEntry }) => {
       className={clsx(
         'border-0 shadow-sm mb-2',
         priorityCardClassNames[entry.priority],
+        isDragging && 'shadow-lg',
       )}
     >
       <CardBody className="p-3">
@@ -165,11 +177,17 @@ const WaitingRoomEntryCard = ({ entry }: { entry: WaitingRoomEntry }) => {
             {timeFormatter.format(timing.date)}
           </span>
           <span
-            className="d-flex align-items-center gap-1 flex-shrink-0"
+            {...dragHandleProps}
+            className={clsx(
+              'd-flex align-items-center gap-1 flex-shrink-0',
+              dragHandleProps && styles.dragHandle,
+            )}
             title={
-              entry.manualOrder === null
-                ? 'Automatically ordered by priority and arrival time'
-                : `Manual queue position ${entry.manualOrder}`
+              dragHandleProps
+                ? `Move ${entry.patientName}`
+                : entry.manualOrder === null
+                  ? 'Automatically ordered by priority and arrival time'
+                  : `Manual queue position ${entry.manualOrder}`
             }
           >
             <Icon icon="grip-vertical" />

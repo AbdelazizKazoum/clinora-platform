@@ -5,6 +5,7 @@ import {
   getWaitingRoomPatientInitials,
   getWaitingRoomSummary,
   groupWaitingRoomEntriesByStatus,
+  projectWaitingRoomBoardMove,
 } from './waiting-room-board';
 
 const createEntry = (
@@ -89,5 +90,57 @@ describe('waiting-room board projection', () => {
     expect(getWaitingRoomPatientInitials('  Sara   Amrani El Idrissi ')).toBe(
       'SA',
     );
+  });
+
+  it('projects same-column manual order without mutating source entries', () => {
+    const first = createEntry({ id: 'entry-1' });
+    const second = createEntry({ id: 'entry-2' });
+
+    const move = projectWaitingRoomBoardMove([first, second], {
+      destinationIndex: 0,
+      destinationStatus: 'WAITING',
+      entryId: second.id,
+      sourceIndex: 1,
+      sourceStatus: 'WAITING',
+    });
+
+    expect(move?.destinationOrderedEntryIds).toEqual(['entry-2', 'entry-1']);
+    expect(move?.entries.map((entry) => [entry.id, entry.manualOrder])).toEqual(
+      [
+        ['entry-2', 1],
+        ['entry-1', 2],
+      ],
+    );
+    expect(first.manualOrder).toBeNull();
+    expect(second.manualOrder).toBeNull();
+  });
+
+  it('projects cross-column movement and complete destination order', () => {
+    const arrived = createEntry({ id: 'arrived', status: 'ARRIVED' });
+    const firstWaiting = createEntry({ id: 'waiting-1' });
+    const secondWaiting = createEntry({ id: 'waiting-2' });
+
+    const move = projectWaitingRoomBoardMove(
+      [arrived, firstWaiting, secondWaiting],
+      {
+        destinationIndex: 1,
+        destinationStatus: 'WAITING',
+        entryId: arrived.id,
+        sourceIndex: 0,
+        sourceStatus: 'ARRIVED',
+      },
+    );
+
+    expect(move?.destinationOrderedEntryIds).toEqual([
+      'waiting-1',
+      'arrived',
+      'waiting-2',
+    ]);
+    expect(
+      move?.entries.find((entry) => entry.id === arrived.id),
+    ).toMatchObject({
+      status: 'WAITING',
+      manualOrder: 2,
+    });
   });
 });

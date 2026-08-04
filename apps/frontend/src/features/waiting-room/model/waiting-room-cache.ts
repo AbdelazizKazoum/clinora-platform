@@ -1,8 +1,9 @@
-import type {
-  WaitingRoomChair,
-  WaitingRoomEntry,
-  WaitingRoomQueueStreamEvent,
-  WaitingRoomState,
+import {
+  QUEUE_STATUSES,
+  type WaitingRoomChair,
+  type WaitingRoomEntry,
+  type WaitingRoomQueueStreamEvent,
+  type WaitingRoomState,
 } from './waiting-room';
 
 const upsertById = <TItem extends { id: string }>(
@@ -57,10 +58,22 @@ export const applyWaitingRoomEventToState = (
     return state;
   }
 
+  const entries = mergeEntries(state.entries, event);
+
   return {
     ...state,
-    entries: mergeEntries(state.entries, event),
+    entries,
     chairs: mergeChair(state.chairs, event),
+    ordering: {
+      mode: entries.some((entry) => entry.manualOrder !== null)
+        ? 'MANUAL'
+        : 'AUTO',
+      manualStatuses: QUEUE_STATUSES.filter((status) =>
+        entries.some(
+          (entry) => entry.status === status && entry.manualOrder !== null,
+        ),
+      ),
+    },
   };
 };
 
