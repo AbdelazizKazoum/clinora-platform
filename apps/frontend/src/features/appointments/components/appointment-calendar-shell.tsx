@@ -23,14 +23,7 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid/index.js';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  CardBody,
-  Placeholder,
-  Spinner,
-} from 'react-bootstrap';
+import { Alert, Button, Card, CardBody, Spinner } from 'react-bootstrap';
 import { useWindowSize } from 'usehooks-ts';
 
 import { checkAppointmentConflicts } from '../api';
@@ -68,6 +61,10 @@ import AppointmentCancelModal from './appointment-cancel-modal';
 import AppointmentCheckInModal from './appointment-check-in-modal';
 import AppointmentEventPopover from './appointment-event-popover';
 import AppointmentFormModal from './appointment-form-modal';
+import AppointmentScheduleSkeleton, {
+  getCalendarSkeletonView,
+  type CalendarSkeletonView,
+} from './appointment-schedule-skeleton';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'medium',
@@ -157,29 +154,6 @@ const mapAppointmentToCalendarEvent = (
 const getAppointmentFromCalendarEvent = (event: EventApi): Appointment | null =>
   (event.extendedProps as { appointment?: Appointment }).appointment ?? null;
 
-const AppointmentScheduleSkeleton = () => (
-  <div className="appointment-schedule-skeleton placeholder-glow px-3 pt-3">
-    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-      <Placeholder className="col-4 col-md-2" />
-      <div className="d-flex gap-2">
-        <Placeholder.Button size="sm" variant="secondary" xs={2} />
-        <Placeholder.Button size="sm" variant="secondary" xs={2} />
-        <Placeholder.Button size="sm" variant="secondary" xs={2} />
-      </div>
-    </div>
-    <div className="d-flex flex-wrap gap-2 mb-3">
-      <Placeholder.Button size="sm" variant="primary" xs={2} />
-      <Placeholder.Button size="sm" variant="secondary" xs={2} />
-      <Placeholder.Button size="sm" variant="secondary" xs={2} />
-    </div>
-    <div className="appointment-schedule-skeleton-grid rounded border">
-      {Array.from({ length: 18 }, (_, index) => (
-        <span className="border-end border-bottom" key={index} />
-      ))}
-    </div>
-  </div>
-);
-
 const AppointmentScheduleEmptyState = ({
   children,
   icon,
@@ -222,6 +196,8 @@ const AppointmentCalendarShell = () => {
   const [calendarRange, setCalendarRange] = useState<CalendarRange | null>(
     null,
   );
+  const [calendarSkeletonView, setCalendarSkeletonView] =
+    useState<CalendarSkeletonView>('month');
   const [selectedSlotLabel, setSelectedSlotLabel] = useState<string | null>(
     null,
   );
@@ -301,6 +277,8 @@ const AppointmentCalendarShell = () => {
     isSubmittingAppointment || isCreatingAppointment || isUpdatingAppointment;
   const isCompactViewport =
     typeof width === 'number' && width < calendarMobileBreakpoint;
+  const renderedCalendarSkeletonView =
+    !calendarRange && isCompactViewport ? 'list' : calendarSkeletonView;
   const calendarToolbar = useMemo(
     () =>
       isCompactViewport
@@ -384,6 +362,7 @@ const AppointmentCalendarShell = () => {
 
   const handleDatesSet = (arg: DatesSetArg) => {
     setAppointmentPopover(null);
+    setCalendarSkeletonView(getCalendarSkeletonView(arg.view.type));
     setCalendarRange({
       endDate: arg.end,
       startDate: arg.start,
@@ -878,46 +857,65 @@ const AppointmentCalendarShell = () => {
         )}
 
         <SimpleBar className="card-body">
-          <div className="appointment-schedule-calendar-frame">
-            {isInitialLoading && <AppointmentScheduleSkeleton />}
-            <FullCalendar
-              bootstrapFontAwesome={false}
-              buttonText={{
-                day: 'Day',
-                list: 'List',
-                month: 'Month',
-                next: 'Next',
-                prev: 'Prev',
-                today: 'Today',
-                week: 'Week',
-              }}
-              dateClick={handleDateClick}
-              datesSet={handleDatesSet}
-              editable={!isReschedulingAppointment}
-              eventClick={handleEventClick}
-              eventContent={renderCalendarEventContent}
-              eventDrop={handleEventDrop}
-              eventDurationEditable={!isReschedulingAppointment}
-              eventResizableFromStart={true}
-              eventResize={handleEventResize}
-              eventStartEditable={!isReschedulingAppointment}
-              events={events}
-              handleWindowResize={true}
-              headerToolbar={calendarToolbar}
-              height={calendarHeight}
-              initialView={isCompactViewport ? 'listWeek' : 'dayGridMonth'}
-              key={isCompactViewport ? 'compact-calendar' : 'desktop-calendar'}
-              plugins={[
-                dayGridPlugin,
-                interactionPlugin,
-                timeGridPlugin,
-                listPlugin,
-              ]}
-              selectable={true}
-              slotDuration="00:30:00"
-              slotMaxTime="19:00:00"
-              slotMinTime="07:00:00"
-            />
+          <div
+            aria-busy={isInitialLoading}
+            className={`appointment-schedule-calendar-frame${
+              isInitialLoading ? ' appointment-schedule-calendar-loading' : ''
+            }`}
+          >
+            {isInitialLoading && (
+              <AppointmentScheduleSkeleton
+                height={calendarHeight}
+                isCompact={isCompactViewport}
+                key={renderedCalendarSkeletonView}
+                view={renderedCalendarSkeletonView}
+              />
+            )}
+            <div
+              aria-hidden={isInitialLoading || undefined}
+              className="appointment-schedule-calendar-content"
+            >
+              <FullCalendar
+                bootstrapFontAwesome={false}
+                buttonText={{
+                  day: 'Day',
+                  list: 'List',
+                  month: 'Month',
+                  next: 'Next',
+                  prev: 'Prev',
+                  today: 'Today',
+                  week: 'Week',
+                }}
+                dateClick={handleDateClick}
+                datesSet={handleDatesSet}
+                editable={!isReschedulingAppointment}
+                eventClick={handleEventClick}
+                eventContent={renderCalendarEventContent}
+                eventDrop={handleEventDrop}
+                eventDurationEditable={!isReschedulingAppointment}
+                eventResizableFromStart={true}
+                eventResize={handleEventResize}
+                eventStartEditable={!isReschedulingAppointment}
+                events={events}
+                handleWindowResize={true}
+                headerToolbar={calendarToolbar}
+                height={calendarHeight}
+                initialView={isCompactViewport ? 'listWeek' : 'dayGridMonth'}
+                key={
+                  isCompactViewport ? 'compact-calendar' : 'desktop-calendar'
+                }
+                plugins={[
+                  dayGridPlugin,
+                  interactionPlugin,
+                  timeGridPlugin,
+                  listPlugin,
+                ]}
+                selectable={true}
+                slotDuration="00:30:00"
+                slotMaxTime="19:00:00"
+                slotMinTime="07:00:00"
+              />
+            </div>
           </div>
         </SimpleBar>
       </Card>

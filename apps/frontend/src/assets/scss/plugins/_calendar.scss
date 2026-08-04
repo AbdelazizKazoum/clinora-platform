@@ -430,22 +430,268 @@
         position: relative;
     }
 
+    .appointment-schedule-calendar-loading {
+        .appointment-schedule-calendar-content {
+            visibility: hidden;
+        }
+    }
+
     .appointment-schedule-skeleton {
         position: absolute;
         inset: 0;
-        z-index: 2;
+        z-index: 5;
         background-color: var(--#{$prefix}body-bg);
+        overflow: hidden;
     }
 
-    .appointment-schedule-skeleton-grid {
-        display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        height: 240px;
-        overflow: hidden;
+    .appointment-schedule-skeleton-bar {
+        display: block;
+        border-radius: 0.25rem;
+    }
 
-        > span {
-            min-height: 80px;
+    .appointment-schedule-skeleton-toolbar {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 0.75rem;
+
+        > :last-child {
+            justify-self: end;
         }
+    }
+
+    .appointment-schedule-skeleton-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .appointment-schedule-skeleton-button {
+        flex: 0 0 auto;
+        height: 31px;
+        opacity: 0.3;
+    }
+
+    .appointment-schedule-skeleton-button-icon {
+        width: 34px;
+    }
+
+    .appointment-schedule-skeleton-button-today {
+        width: 58px;
+    }
+
+    .appointment-schedule-skeleton-button-view {
+        width: 62px;
+    }
+
+    .appointment-schedule-skeleton-button-active {
+        color: var(--#{$prefix}primary);
+        opacity: 0.65;
+    }
+
+    .appointment-schedule-skeleton-title {
+        width: 9rem;
+        height: 1.25rem;
+    }
+
+    .appointment-schedule-skeleton-month {
+        min-height: 490px;
+        overflow: hidden;
+    }
+
+    .appointment-schedule-skeleton-month-weekdays,
+    .appointment-schedule-skeleton-month-days {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .appointment-schedule-skeleton-month-weekdays {
+        height: 42px;
+    }
+
+    .appointment-schedule-skeleton-month-days {
+        grid-template-rows: repeat(6, minmax(74px, 1fr));
+        min-height: 448px;
+    }
+
+    .appointment-schedule-skeleton-weekday {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--#{$prefix}tertiary-bg);
+
+        .appointment-schedule-skeleton-bar {
+            width: min(52%, 3.75rem);
+            height: 0.7rem;
+        }
+    }
+
+    .appointment-schedule-skeleton-date {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.65rem;
+        padding: 0.5rem;
+    }
+
+    .appointment-schedule-skeleton-date-number {
+        width: 1.15rem;
+        height: 0.65rem;
+    }
+
+    .appointment-schedule-skeleton-month-event {
+        align-self: stretch;
+        height: 1.15rem;
+        color: var(--#{$prefix}primary);
+        opacity: 0.22;
+    }
+
+    .appointment-schedule-skeleton-time-grid {
+        overflow: hidden;
+    }
+
+    .appointment-schedule-skeleton-time-header,
+    .appointment-schedule-skeleton-time-body {
+        display: grid;
+        grid-template-columns: 64px repeat(
+                var(--calendar-skeleton-columns),
+                minmax(0, 1fr)
+            );
+    }
+
+    .appointment-schedule-skeleton-time-corner,
+    .appointment-schedule-skeleton-time-heading {
+        min-height: 52px;
+        padding: 0.75rem 0.5rem;
+        background-color: var(--#{$prefix}tertiary-bg);
+        text-align: center;
+    }
+
+    .appointment-schedule-skeleton-time-heading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .appointment-schedule-skeleton-bar {
+            width: min(54%, 3.5rem);
+            height: 0.7rem;
+        }
+    }
+
+    .appointment-schedule-skeleton-time-body {
+        min-height: 520px;
+    }
+
+    .appointment-schedule-skeleton-time-axis {
+        display: grid;
+        grid-template-rows: repeat(10, 52px);
+    }
+
+    .appointment-schedule-skeleton-time-label {
+        display: flex;
+        justify-content: flex-end;
+        padding: 0.45rem 0.5rem;
+
+        .appointment-schedule-skeleton-bar {
+            width: 2.1rem;
+            height: 0.55rem;
+        }
+    }
+
+    .appointment-schedule-skeleton-time-lane {
+        position: relative;
+        min-width: 0;
+        background-image: linear-gradient(
+            to bottom,
+            var(--#{$prefix}border-color) 1px,
+            transparent 1px
+        );
+        background-size: 100% 52px;
+    }
+
+    .appointment-schedule-skeleton-time-event {
+        position: absolute;
+        inset-inline: 0.35rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        padding: 0.5rem;
+        border-inline-start: 3px solid rgba(var(--#{$prefix}primary-rgb), 0.3);
+        border-radius: 0.25rem;
+        background-color: rgba(var(--#{$prefix}primary-rgb), 0.08);
+
+        .appointment-schedule-skeleton-bar {
+            width: 76%;
+            height: 0.55rem;
+            color: var(--#{$prefix}primary);
+            opacity: 0.25;
+
+            &:last-child {
+                width: 48%;
+            }
+        }
+    }
+
+    .appointment-schedule-skeleton-time-event-secondary {
+        inset-inline-start: 35%;
+        border-inline-start-color: rgba(var(--#{$prefix}info-rgb), 0.35);
+        background-color: rgba(var(--#{$prefix}info-rgb), 0.08);
+
+        .appointment-schedule-skeleton-bar {
+            color: var(--#{$prefix}info);
+        }
+    }
+
+    .appointment-schedule-skeleton-list-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 42px;
+        padding: 0.65rem 1rem;
+        background-color: var(--#{$prefix}tertiary-bg);
+
+        .appointment-schedule-skeleton-bar:first-child {
+            width: 7rem;
+            height: 0.7rem;
+        }
+
+        .appointment-schedule-skeleton-bar:last-child {
+            width: 4.5rem;
+            height: 0.6rem;
+        }
+    }
+
+    .appointment-schedule-skeleton-list-row {
+        display: grid;
+        grid-template-columns: 10px 76px minmax(180px, 1fr) 96px;
+        align-items: center;
+        gap: 1rem;
+        min-height: 64px;
+        padding: 0.75rem 1rem;
+    }
+
+    .appointment-schedule-skeleton-list-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        color: var(--#{$prefix}primary);
+    }
+
+    .appointment-schedule-skeleton-list-time,
+    .appointment-schedule-skeleton-list-title,
+    .appointment-schedule-skeleton-list-meta {
+        height: 0.7rem;
+    }
+
+    .appointment-schedule-skeleton-list-time {
+        width: 3.75rem;
+    }
+
+    .appointment-schedule-skeleton-list-title {
+        width: min(72%, 22rem);
+    }
+
+    .appointment-schedule-skeleton-list-meta {
+        width: 5.5rem;
     }
 
     .appointment-schedule-empty {
@@ -587,9 +833,32 @@
             }
         }
 
-        .appointment-schedule-skeleton-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            height: 300px;
+        .appointment-schedule-skeleton-toolbar {
+            grid-template-columns: 1fr;
+
+            > * {
+                justify-self: center;
+            }
+        }
+
+        .appointment-schedule-skeleton-actions:last-child {
+            order: 3;
+        }
+
+        .appointment-schedule-skeleton-month {
+            min-width: 560px;
+        }
+
+        .appointment-schedule-skeleton-week .appointment-schedule-skeleton-time-grid {
+            min-width: 520px;
+        }
+
+        .appointment-schedule-skeleton-list-row {
+            grid-template-columns: 10px 75px minmax(150px, 1fr);
+
+            > :last-child {
+                display: none;
+            }
         }
 
         .fc {
