@@ -23,6 +23,19 @@ describe('validateGatewayEnvironment', () => {
     ).toBe('clinic-service:5002');
   });
 
+  it('allows NATS to be disabled when no URL is configured', () => {
+    expect(validateGatewayEnvironment(validEnvironment).NATS_URL).toBe('');
+  });
+
+  it('returns the configured NATS URL', () => {
+    expect(
+      validateGatewayEnvironment({
+        ...validEnvironment,
+        NATS_URL: 'nats://nats:4222',
+      }).NATS_URL,
+    ).toBe('nats://nats:4222');
+  });
+
   it('rejects a missing JWT secret', () => {
     expect(() => validateGatewayEnvironment({})).toThrow(
       'JWT_SECRET is required',

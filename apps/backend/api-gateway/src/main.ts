@@ -13,7 +13,7 @@ async function bootstrap(): Promise<void> {
   const port = config.getOrThrow<number>('PORT');
   const frontendOrigins = config.getOrThrow<string[]>('FRONTEND_ORIGINS');
 
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  app.setGlobalPrefix('api/v1', { exclude: ['health', 'events/queue'] });
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({

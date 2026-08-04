@@ -35,14 +35,14 @@ export class ManageQueueUseCase {
 
   async getById(id: string): Promise<QueueEntry> {
     const entry = await this.queue.findById(id);
-    if (!entry) throw new NotFoundException(`Queue entry \"${id}\" not found`);
+    if (!entry) throw new NotFoundException(`Queue entry "${id}" not found`);
     return entry;
   }
 
   async checkIn(input: CheckInPatientInput): Promise<QueueEntry> {
     const appointment = await this.appointments.findById(input.appointmentId);
     if (!appointment) {
-      throw new NotFoundException(`Appointment \"${input.appointmentId}\" not found`);
+      throw new NotFoundException(`Appointment "${input.appointmentId}" not found`);
     }
     if (appointment.clinicId !== input.clinicId) {
       throw new BadRequestException("Appointment does not belong to this clinic");

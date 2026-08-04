@@ -12,6 +12,7 @@ import {
 } from './appointment.tokens';
 import { ClinicGrpcClientModule } from './infrastructure/grpc/clinic-grpc-client.module';
 import { ClinicServiceGrpcAdapter } from './infrastructure/grpc/clinic-service-grpc.adapter';
+import { OutboxRelayService } from './infrastructure/nats/outbox-relay.service';
 import { PatientGrpcClientModule } from './infrastructure/grpc/patient-grpc-client.module';
 import { PatientServiceGrpcAdapter } from './infrastructure/grpc/patient-service-grpc.adapter';
 import { AppointmentTypeOrmEntity } from './infrastructure/persistence/entities/appointment.typeorm-entity';
@@ -41,6 +42,7 @@ import { AppointmentGrpcController } from './presentation/grpc/appointment.grpc-
     { provide: OUTBOX_REPOSITORY, useClass: OutboxRepository },
     { provide: PATIENT_SERVICE_PORT, useClass: PatientServiceGrpcAdapter },
     { provide: CLINIC_SERVICE_PORT, useClass: ClinicServiceGrpcAdapter },
+    OutboxRelayService,
   ],
 })
 export class AppointmentModule {}

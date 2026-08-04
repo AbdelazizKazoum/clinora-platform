@@ -91,7 +91,7 @@ export class AppointmentRepository implements IAppointmentRepository {
   async update(id: string, input: UpdateAppointmentInput): Promise<Appointment> {
     const existing = await this.repo.findOne({where: {id}});
     if (!existing) {
-      throw new NotFoundException(`Appointment \"${id}\" not found`);
+      throw new NotFoundException(`Appointment "${id}" not found`);
     }
 
     const startAt = input.startAt ?? existing.start_at;

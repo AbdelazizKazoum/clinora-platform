@@ -7,6 +7,7 @@ interface GatewayEnvironment {
   APPOINTMENT_SERVICE_GRPC_URL: string;
   CLINIC_SERVICE_GRPC_URL: string;
   PATIENT_SERVICE_GRPC_URL: string;
+  NATS_URL: string;
   FRONTEND_ORIGINS: string[];
 }
 
@@ -43,6 +44,8 @@ export function validateGatewayEnvironment(
     typeof environment['PATIENT_SERVICE_GRPC_URL'] === 'string'
       ? environment['PATIENT_SERVICE_GRPC_URL']
       : 'localhost:5003';
+  const natsUrl =
+    typeof environment['NATS_URL'] === 'string' ? environment['NATS_URL'] : '';
   const frontendOrigins = String(
     environment['FRONTEND_ORIGINS'] ?? 'http://localhost:3000',
   )
@@ -62,6 +65,7 @@ export function validateGatewayEnvironment(
     APPOINTMENT_SERVICE_GRPC_URL: appointmentServiceUrl,
     CLINIC_SERVICE_GRPC_URL: clinicServiceUrl,
     PATIENT_SERVICE_GRPC_URL: patientServiceUrl,
+    NATS_URL: natsUrl,
     FRONTEND_ORIGINS: frontendOrigins,
   };
 }

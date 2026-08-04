@@ -28,6 +28,7 @@ module.exports = {
         'class-transformer',
         'class-validator',
         'cookie-parser',
+        'nats',
         'passport',
         'passport-jwt',
         'reflect-metadata',

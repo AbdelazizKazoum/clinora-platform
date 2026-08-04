@@ -27,6 +27,7 @@ module.exports = {
         'class-transformer',
         'class-validator',
         'mysql2',
+        'nats',
         'reflect-metadata',
         'rxjs',
         'tslib',

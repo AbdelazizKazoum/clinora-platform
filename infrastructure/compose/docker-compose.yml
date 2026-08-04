@@ -25,6 +25,30 @@ services:
     networks:
       - clinora-backend
 
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    command: ["-m", "8222"]
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:8222/healthz",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - clinora-backend
+
   auth-service:
     build:
       context: ../..
@@ -170,6 +194,8 @@ services:
       DB_PASSWORD: clinora_appointment_local_password
       DB_NAME: clinora_appointment
       DB_MIGRATIONS_RUN: "true"
+      NATS_URL: nats://nats:4222
+      OUTBOX_RELAY_INTERVAL_MS: 500
     ports:
       - "127.0.0.1:3005:3005"
       - "127.0.0.1:5004:5004"
@@ -189,6 +215,8 @@ services:
       start_period: 15s
     depends_on:
       db:
+        condition: service_healthy
+      nats:
         condition: service_healthy
       clinic-service:
         condition: service_healthy
@@ -216,6 +244,7 @@ services:
       PATIENT_SERVICE_GRPC_URL: patient-service:5003
       JWT_SECRET: local-access-secret-change-before-production-123456
       FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      NATS_URL: nats://nats:4222
     ports:
       - "127.0.0.1:3001:3001"
     healthcheck:
@@ -234,6 +263,8 @@ services:
       start_period: 10s
     depends_on:
       auth-service:
+        condition: service_healthy
+      nats:
         condition: service_healthy
       clinic-service:
         condition: service_healthy

@@ -91,12 +91,12 @@ export class QueueRepository implements IQueueRepository {
   ): Promise<QueueEntry> {
     const existing = await this.repo.findOne({where: {id}});
     if (!existing)
-      throw new NotFoundException(`Queue entry \"${id}\" not found`);
+      throw new NotFoundException(`Queue entry "${id}" not found`);
 
     const currentIndex = QUEUE_ORDER.indexOf(existing.status);
     const nextIndex = QUEUE_ORDER.indexOf(status);
     if (nextIndex === -1) {
-      throw new BadRequestException(`Invalid queue status \"${status}\"`);
+      throw new BadRequestException(`Invalid queue status "${status}"`);
     }
     if (nextIndex < currentIndex && !correctionReason?.trim()) {
       throw new BadRequestException(
@@ -131,7 +131,7 @@ export class QueueRepository implements IQueueRepository {
   async updateNotes(id: string, notes?: string | null): Promise<QueueEntry> {
     const existing = await this.repo.findOne({where: {id}});
     if (!existing)
-      throw new NotFoundException(`Queue entry \"${id}\" not found`);
+      throw new NotFoundException(`Queue entry "${id}" not found`);
 
     const saved = await this.repo.save({
       ...existing,

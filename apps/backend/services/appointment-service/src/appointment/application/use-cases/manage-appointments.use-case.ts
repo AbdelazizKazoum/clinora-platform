@@ -62,7 +62,7 @@ export class ManageAppointmentsUseCase {
   async getById(id: string): Promise<Appointment> {
     const appointment = await this.appointments.findById(id);
     if (!appointment) {
-      throw new NotFoundException(`Appointment \"${id}\" not found`);
+      throw new NotFoundException(`Appointment "${id}" not found`);
     }
     return appointment;
   }

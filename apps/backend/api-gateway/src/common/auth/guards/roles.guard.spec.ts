@@ -14,7 +14,7 @@ const authenticatedUser: JwtPayload = {
 };
 
 function createContext(request: { user?: JwtPayload }): ExecutionContext {
-  function handler(): void {}
+  const handler = (): undefined => undefined;
   class Controller {}
 
   Reflect.defineMetadata(ROLES_KEY, ['admin'], handler);

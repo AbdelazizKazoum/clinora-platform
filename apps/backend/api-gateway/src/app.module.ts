@@ -7,6 +7,7 @@ import { validateGatewayEnvironment } from './configuration/gateway-environment'
 import { HealthModule } from './health/health.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { EventsModule } from './modules/events/events.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { StaffModule } from './modules/staff/staff.module';
 
@@ -19,6 +20,7 @@ import { StaffModule } from './modules/staff/staff.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     AuthModule,
     AppointmentsModule,
+    EventsModule,
     PatientsModule,
     StaffModule,
     HealthModule,

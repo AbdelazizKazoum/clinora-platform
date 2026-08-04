@@ -576,7 +576,41 @@ interface ApiError {
 }
 ```
 
-## 7. Frontend integration rules
+## 7. Queue realtime events
+
+The appointment service writes queue changes to its service-owned outbox table.
+When `NATS_URL` is configured, the appointment-service outbox relay publishes
+pending queue events to NATS. The API Gateway subscribes to those NATS subjects
+and exposes an authenticated SSE stream:
+
+```txt
+GET /events/queue?clinicId={clinicId}
+```
+
+The SSE route is intentionally outside the `/api/v1` prefix. It requires the
+same JWT authentication strategy as Gateway HTTP routes and rejects requests
+when the query `clinicId` does not match the authenticated `clinic_id` claim.
+
+Queue event subjects:
+
+| Subject | Meaning |
+| ------- | ------- |
+| `queue.checked_in` | A patient was checked into the waiting room |
+| `queue.status.updated` | A queue entry changed visit-flow status |
+| `queue.notes.updated` | Queue notes were replaced |
+
+SSE messages contain:
+
+```ts
+interface QueueStreamEvent {
+  type: 'queue.checked_in' | 'queue.status.updated' | 'queue.notes.updated';
+  entry: Record<string, unknown>;
+}
+```
+
+The Gateway also sends periodic heartbeat messages with data `":heartbeat"`.
+
+## 8. Frontend integration rules
 
 1. Keep appointment-specific API functions, DTOs, mappers, schemas, hooks, and
    UI under `apps/frontend/src/features/appointments`.
@@ -600,7 +634,7 @@ interface ApiError {
 12. Do not expose direct appointment-service, gRPC, or Docker service URLs in
     frontend code.
 
-## 8. Local verification reference
+## 9. Local verification reference
 
 The appointment service was verified through the API Gateway after migration:
 
@@ -614,7 +648,7 @@ The appointment service was verified through the API Gateway after migration:
 The Docker images for `appointment-service` and `api-gateway` were also built
 successfully during the migration verification.
 
-## 9. Known integration gaps
+## 10. Known integration gaps
 
 - There is no generated OpenAPI/Swagger contract. This Markdown file documents
   the implemented HTTP contract; the TypeScript DTOs and shared contracts remain
