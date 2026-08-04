@@ -977,6 +977,7 @@ const AppointmentCalendarShell = () => {
       {appointmentModal && (
         <AppointmentFormModal
           appointment={appointmentModal.appointment}
+          clinicId={clinicId}
           defaultProvider={defaultModalProvider}
           initialStartAt={appointmentModal.initialStartAt}
           isSubmitting={isAppointmentSavePending}

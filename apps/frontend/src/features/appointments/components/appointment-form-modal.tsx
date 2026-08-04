@@ -33,6 +33,7 @@ import {
   type AppointmentFormErrors,
   type AppointmentFormValues,
 } from '../schemas';
+import AppointmentPatientSearch from './appointment-patient-search';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en', {
   dateStyle: 'medium',
@@ -41,6 +42,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en', {
 
 interface AppointmentFormModalProps {
   appointment: Appointment | null;
+  clinicId: string | null | undefined;
   defaultProvider: AppointmentProvider | null;
   initialStartAt: Date;
   isSubmitting?: boolean;
@@ -54,6 +56,7 @@ interface AppointmentFormModalProps {
 
 const AppointmentFormModal = ({
   appointment,
+  clinicId,
   defaultProvider,
   initialStartAt,
   isSubmitting = false,
@@ -159,39 +162,25 @@ const AppointmentFormModal = ({
           )}
 
           <Row className="g-3">
-            <Col md={6}>
-              <Form.Group controlId="appointment-patient-id">
-                <Form.Label>Patient</Form.Label>
-                <Form.Control
-                  disabled={isSubmitting}
-                  isInvalid={Boolean(errors.patientId)}
-                  onChange={(event) =>
-                    updateValues({ patientId: event.target.value })
-                  }
-                  placeholder="Existing patient ID"
-                  value={values.patientId}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.patientId}
-                </Form.Control.Feedback>
-              </Form.Group>
-            </Col>
+            <Col md={12}>
+              <AppointmentPatientSearch
+                clinicId={clinicId}
+                disabled={isSubmitting}
+                error={errors.patientId ?? errors.patientName}
+                onChange={(selection) => {
+                  updateValues(selection);
 
-            <Col md={6}>
-              <Form.Group controlId="appointment-patient-name">
-                <Form.Label>Patient Name</Form.Label>
-                <Form.Control
-                  disabled={isSubmitting}
-                  isInvalid={Boolean(errors.patientName)}
-                  onChange={(event) =>
-                    updateValues({ patientName: event.target.value })
+                  if (selection.patientId) {
+                    setErrors((currentErrors) => ({
+                      ...currentErrors,
+                      patientId: undefined,
+                      patientName: undefined,
+                    }));
                   }
-                  value={values.patientName}
-                />
-                <Form.Control.Feedback type="invalid">
-                  {errors.patientName}
-                </Form.Control.Feedback>
-              </Form.Group>
+                }}
+                patientId={values.patientId}
+                patientName={values.patientName}
+              />
             </Col>
 
             <Col md={6}>

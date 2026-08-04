@@ -14,6 +14,7 @@ export type {
   PatientSortField,
   PatientSortOrder,
 } from './patient.queries';
+export { patientQueryKeys } from './patient-query-keys';
 export {
   mapListPatientsQueryToDto,
   mapCreatePatientCommandToDto,

@@ -1,0 +1,1 @@
+export { usePatientSearch } from './queries';
