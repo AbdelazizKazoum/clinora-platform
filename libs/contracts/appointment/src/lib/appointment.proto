@@ -15,6 +15,14 @@ service AppointmentService {
   rpc CheckInPatient (CheckInPatientRequest) returns (QueueEntryReply);
   rpc UpdateQueueStatus (UpdateQueueStatusRequest) returns (QueueEntryReply);
   rpc UpdateQueueNotes (UpdateQueueNotesRequest) returns (QueueEntryReply);
+
+  rpc GetWaitingRoomState (GetWaitingRoomStateRequest) returns (WaitingRoomStateReply);
+  rpc UpdateWaitingRoomStatus (UpdateWaitingRoomStatusRequest) returns (QueueEntryReply);
+  rpc AssignWaitingRoomChair (AssignWaitingRoomChairRequest) returns (QueueEntryReply);
+  rpc ReorderWaitingRoomEntries (ReorderWaitingRoomEntriesRequest) returns (QueueEntriesListReply);
+  rpc ListWaitingRoomChairs (ListWaitingRoomChairsRequest) returns (WaitingRoomChairsListReply);
+  rpc CreateWaitingRoomChair (CreateWaitingRoomChairRequest) returns (WaitingRoomChairReply);
+  rpc UpdateWaitingRoomChair (UpdateWaitingRoomChairRequest) returns (WaitingRoomChairReply);
 }
 
 message AppointmentReply {
@@ -132,6 +140,9 @@ message QueueEntryReply {
   string seated_at = 15;
   string completed_at = 16;
   string updated_at = 17;
+  string chair_id = 18;
+  string chair_name = 19;
+  optional int32 manual_order = 20;
 }
 
 message QueueEntriesListReply {
@@ -169,4 +180,77 @@ message UpdateQueueStatusRequest {
 message UpdateQueueNotesRequest {
   string queue_entry_id = 1;
   optional string queue_notes = 2;
+}
+
+message WaitingRoomChairReply {
+  string id = 1;
+  string clinic_id = 2;
+  string name = 3;
+  string code = 4;
+  bool is_active = 5;
+  bool is_available = 6;
+  string occupied_by_entry_id = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message WaitingRoomOrderingReply {
+  string mode = 1;
+  repeated string manual_statuses = 2;
+}
+
+message WaitingRoomStateReply {
+  repeated QueueEntryReply entries = 1;
+  repeated WaitingRoomChairReply chairs = 2;
+  WaitingRoomOrderingReply ordering = 3;
+  string generated_at = 4;
+}
+
+message WaitingRoomChairsListReply {
+  repeated WaitingRoomChairReply chairs = 1;
+}
+
+message GetWaitingRoomStateRequest {
+  string clinic_id = 1;
+}
+
+message UpdateWaitingRoomStatusRequest {
+  string clinic_id = 1;
+  string queue_entry_id = 2;
+  string status = 3;
+  optional string chair_id = 4;
+  optional string correction_reason = 5;
+  repeated string target_ordered_entry_ids = 6;
+}
+
+message AssignWaitingRoomChairRequest {
+  string clinic_id = 1;
+  string queue_entry_id = 2;
+  string chair_id = 3;
+}
+
+message ReorderWaitingRoomEntriesRequest {
+  string clinic_id = 1;
+  string mode = 2;
+  optional string status = 3;
+  repeated string ordered_entry_ids = 4;
+}
+
+message ListWaitingRoomChairsRequest {
+  string clinic_id = 1;
+}
+
+message CreateWaitingRoomChairRequest {
+  string clinic_id = 1;
+  string name = 2;
+  optional string code = 3;
+  optional bool is_active = 4;
+}
+
+message UpdateWaitingRoomChairRequest {
+  string clinic_id = 1;
+  string chair_id = 2;
+  optional string name = 3;
+  optional string code = 4;
+  optional bool is_active = 5;
 }

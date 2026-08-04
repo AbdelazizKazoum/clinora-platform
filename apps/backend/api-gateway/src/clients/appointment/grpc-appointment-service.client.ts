@@ -6,20 +6,30 @@ import type {
   AppointmentReply,
   AppointmentServiceClient as GrpcAppointmentServiceContractClient,
   AppointmentsListReply,
+  AssignWaitingRoomChairRequest,
   CheckAppointmentConflictsRequest,
   CheckInPatientRequest,
   ConflictReply,
   CreateAppointmentRequest,
+  CreateWaitingRoomChairRequest,
   GetAppointmentRequest,
   GetQueueEntryRequest,
+  GetWaitingRoomStateRequest,
   ListAppointmentsRequest,
   ListQueueEntriesRequest,
+  ListWaitingRoomChairsRequest,
   QueueEntriesListReply,
   QueueEntryReply,
+  ReorderWaitingRoomEntriesRequest,
   UpdateAppointmentRequest,
   UpdateAppointmentTimingRequest,
   UpdateQueueNotesRequest,
   UpdateQueueStatusRequest,
+  UpdateWaitingRoomChairRequest,
+  UpdateWaitingRoomStatusRequest,
+  WaitingRoomChairReply,
+  WaitingRoomChairsListReply,
+  WaitingRoomStateReply,
 } from '@clinora/contracts-appointment';
 import { APPOINTMENT_SERVICE_NAME } from '@clinora/contracts-appointment';
 
@@ -102,6 +112,48 @@ export class GrpcAppointmentServiceClient
 
   updateQueueNotes(request: UpdateQueueNotesRequest): Promise<QueueEntryReply> {
     return lastValueFrom(this.getService().updateQueueNotes(request));
+  }
+
+  getWaitingRoomState(
+    request: GetWaitingRoomStateRequest,
+  ): Promise<WaitingRoomStateReply> {
+    return lastValueFrom(this.getService().getWaitingRoomState(request));
+  }
+
+  updateWaitingRoomStatus(
+    request: UpdateWaitingRoomStatusRequest,
+  ): Promise<QueueEntryReply> {
+    return lastValueFrom(this.getService().updateWaitingRoomStatus(request));
+  }
+
+  assignWaitingRoomChair(
+    request: AssignWaitingRoomChairRequest,
+  ): Promise<QueueEntryReply> {
+    return lastValueFrom(this.getService().assignWaitingRoomChair(request));
+  }
+
+  reorderWaitingRoomEntries(
+    request: ReorderWaitingRoomEntriesRequest,
+  ): Promise<QueueEntriesListReply> {
+    return lastValueFrom(this.getService().reorderWaitingRoomEntries(request));
+  }
+
+  listWaitingRoomChairs(
+    request: ListWaitingRoomChairsRequest,
+  ): Promise<WaitingRoomChairsListReply> {
+    return lastValueFrom(this.getService().listWaitingRoomChairs(request));
+  }
+
+  createWaitingRoomChair(
+    request: CreateWaitingRoomChairRequest,
+  ): Promise<WaitingRoomChairReply> {
+    return lastValueFrom(this.getService().createWaitingRoomChair(request));
+  }
+
+  updateWaitingRoomChair(
+    request: UpdateWaitingRoomChairRequest,
+  ): Promise<WaitingRoomChairReply> {
+    return lastValueFrom(this.getService().updateWaitingRoomChair(request));
   }
 
   private getService(): GrpcAppointmentServiceContractClient {

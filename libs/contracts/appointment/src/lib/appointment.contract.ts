@@ -20,11 +20,14 @@ export const QUEUE_STATUSES = [
   'IN_CHAIR',
   'DONE',
 ] as const;
+export const WAITING_ROOM_ORDERING_MODES = ['AUTO', 'MANUAL'] as const;
 
 export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
 export type BookingChannel = (typeof BOOKING_CHANNELS)[number];
 export type QueuePriority = (typeof QUEUE_PRIORITIES)[number];
 export type QueueStatus = (typeof QUEUE_STATUSES)[number];
+export type WaitingRoomOrderingMode =
+  (typeof WAITING_ROOM_ORDERING_MODES)[number];
 
 export function resolveAppointmentProtoPath(): string {
   return resolve(
@@ -148,6 +151,9 @@ export interface QueueEntryReply {
   seatedAt: string;
   completedAt: string;
   updatedAt: string;
+  chairId: string;
+  chairName: string;
+  manualOrder?: number;
 }
 
 export interface QueueEntriesListReply {
@@ -187,10 +193,81 @@ export interface UpdateQueueNotesRequest {
   queueNotes?: string;
 }
 
+export interface WaitingRoomChairReply {
+  id: string;
+  clinicId: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  isAvailable: boolean;
+  occupiedByEntryId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WaitingRoomOrderingReply {
+  mode: WaitingRoomOrderingMode;
+  manualStatuses: QueueStatus[];
+}
+
+export interface WaitingRoomStateReply {
+  entries: QueueEntryReply[];
+  chairs: WaitingRoomChairReply[];
+  ordering: WaitingRoomOrderingReply;
+  generatedAt: string;
+}
+
+export interface WaitingRoomChairsListReply {
+  chairs: WaitingRoomChairReply[];
+}
+
+export interface GetWaitingRoomStateRequest {
+  clinicId: string;
+}
+
+export interface UpdateWaitingRoomStatusRequest {
+  clinicId: string;
+  queueEntryId: string;
+  status: QueueStatus;
+  chairId?: string;
+  correctionReason?: string;
+  targetOrderedEntryIds?: string[];
+}
+
+export interface AssignWaitingRoomChairRequest {
+  clinicId: string;
+  queueEntryId: string;
+  chairId: string;
+}
+
+export interface ReorderWaitingRoomEntriesRequest {
+  clinicId: string;
+  mode: WaitingRoomOrderingMode;
+  status?: QueueStatus;
+  orderedEntryIds?: string[];
+}
+
+export interface ListWaitingRoomChairsRequest {
+  clinicId: string;
+}
+
+export interface CreateWaitingRoomChairRequest {
+  clinicId: string;
+  name: string;
+  code?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateWaitingRoomChairRequest {
+  clinicId: string;
+  chairId: string;
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+}
+
 export interface AppointmentServiceClient {
-  getAppointment(
-    request: GetAppointmentRequest,
-  ): Observable<AppointmentReply>;
+  getAppointment(request: GetAppointmentRequest): Observable<AppointmentReply>;
   listAppointments(
     request: ListAppointmentsRequest,
   ): Observable<AppointmentsListReply>;
@@ -210,13 +287,32 @@ export interface AppointmentServiceClient {
     request: ListQueueEntriesRequest,
   ): Observable<QueueEntriesListReply>;
   getQueueEntry(request: GetQueueEntryRequest): Observable<QueueEntryReply>;
-  checkInPatient(
-    request: CheckInPatientRequest,
-  ): Observable<QueueEntryReply>;
+  checkInPatient(request: CheckInPatientRequest): Observable<QueueEntryReply>;
   updateQueueStatus(
     request: UpdateQueueStatusRequest,
   ): Observable<QueueEntryReply>;
   updateQueueNotes(
     request: UpdateQueueNotesRequest,
   ): Observable<QueueEntryReply>;
+  getWaitingRoomState(
+    request: GetWaitingRoomStateRequest,
+  ): Observable<WaitingRoomStateReply>;
+  updateWaitingRoomStatus(
+    request: UpdateWaitingRoomStatusRequest,
+  ): Observable<QueueEntryReply>;
+  assignWaitingRoomChair(
+    request: AssignWaitingRoomChairRequest,
+  ): Observable<QueueEntryReply>;
+  reorderWaitingRoomEntries(
+    request: ReorderWaitingRoomEntriesRequest,
+  ): Observable<QueueEntriesListReply>;
+  listWaitingRoomChairs(
+    request: ListWaitingRoomChairsRequest,
+  ): Observable<WaitingRoomChairsListReply>;
+  createWaitingRoomChair(
+    request: CreateWaitingRoomChairRequest,
+  ): Observable<WaitingRoomChairReply>;
+  updateWaitingRoomChair(
+    request: UpdateWaitingRoomChairRequest,
+  ): Observable<WaitingRoomChairReply>;
 }

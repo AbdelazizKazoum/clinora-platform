@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 4 complete; Task 5 ready  
+Status: Task 5 complete; Task 6 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -30,7 +30,7 @@ the next task.
 - [x] Task 2: Add chair/operatory domain and persistence in appointment service
 - [x] Task 3: Extend queue entries with chair and manual ordering fields
 - [x] Task 4: Add waiting room use cases inside appointment service
-- [ ] Task 5: Update appointment gRPC contract and service presentation
+- [x] Task 5: Update appointment gRPC contract and service presentation
 - [ ] Task 6: Expose waiting room routes through the API Gateway
 - [ ] Task 7: Update queue outbox events and Gateway SSE streaming
 - [ ] Task 8: Create frontend waiting-room feature data boundary
@@ -582,16 +582,18 @@ message GetWaitingRoomStateRequest {
 }
 
 message UpdateWaitingRoomStatusRequest {
-  string queue_entry_id = 1;
-  string status = 2;
-  optional string chair_id = 3;
-  optional string correction_reason = 4;
-  repeated string target_ordered_entry_ids = 5;
+  string clinic_id = 1;
+  string queue_entry_id = 2;
+  string status = 3;
+  optional string chair_id = 4;
+  optional string correction_reason = 5;
+  repeated string target_ordered_entry_ids = 6;
 }
 
 message AssignWaitingRoomChairRequest {
-  string queue_entry_id = 1;
-  string chair_id = 2;
+  string clinic_id = 1;
+  string queue_entry_id = 2;
+  string chair_id = 3;
 }
 
 message ReorderWaitingRoomEntriesRequest {
@@ -613,12 +615,19 @@ message CreateWaitingRoomChairRequest {
 }
 
 message UpdateWaitingRoomChairRequest {
-  string chair_id = 1;
-  optional string name = 2;
-  optional string code = 3;
-  optional bool is_active = 4;
+  string clinic_id = 1;
+  string chair_id = 2;
+  optional string name = 3;
+  optional string code = 4;
+  optional bool is_active = 5;
 }
 ```
+
+Task 5 implementation note:
+
+- Waiting-room service-level mutation requests include `clinic_id` explicitly so
+  appointment-service presentation keeps tenant scope visible. The Gateway may
+  still derive this value from authenticated HTTP clinic scope in Task 6.
 
 Task 5 should also update
 `libs/contracts/appointment/src/lib/appointment.contract.ts`,
@@ -1126,6 +1135,26 @@ Acceptance criteria:
 - Gateway can call all needed waiting room operations through the appointment
   gRPC client.
 - Contract changes are covered by service and Gateway tests.
+
+Task 5 result:
+
+- Completed on 2026-08-04.
+- Added waiting-room gRPC methods and reply/request messages to
+  `libs/contracts/appointment/src/lib/appointment.proto`.
+- Extended `QueueEntryReply` with `chairId`, `chairName`, and `manualOrder`.
+- Added waiting-room chair, state, ordering, and mutation interfaces to
+  `libs/contracts/appointment/src/lib/appointment.contract.ts`.
+- Updated appointment-service gRPC presentation to map waiting-room state,
+  chair replies, status movement, chair assignment, reorder, and chair
+  management calls.
+- Updated the API Gateway appointment-service client interface and gRPC adapter
+  so Task 6 can expose HTTP routes without reaching around the service boundary.
+- Verification passed:
+  `pnpm nx test contracts-appointment`,
+  `pnpm nx test appointment-service`,
+  `pnpm nx test api-gateway`,
+  `pnpm nx build appointment-service`,
+  `pnpm nx build api-gateway`.
 
 ### Task 6: Expose Waiting Room Routes Through The API Gateway
 
