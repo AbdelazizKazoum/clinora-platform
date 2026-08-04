@@ -30,7 +30,7 @@ so it can be implemented, reviewed, and stabilized before moving forward.
 - [x] Task 14. Add Cancellation Flow
 - [x] Task 15. Add Check-In Dialog
 - [x] Task 16. Polish Responsive Ubold Schedule UX
-- [ ] Task 17. Final Integration Verification
+- [x] Task 17. Final Integration Verification
 - [ ] Task 18. Document Completion Notes
 
 After finishing and verifying any task, check both the execution checklist and
@@ -55,9 +55,9 @@ task.
       failure, and event revert behavior.
 - [x] Check-in tests cover status eligibility, queue command mapping, and
       duplicate check-in errors.
-- [ ] Final frontend verification runs `pnpm nx test frontend`.
-- [ ] Final frontend verification runs `pnpm nx lint frontend`.
-- [ ] Final frontend verification runs `pnpm nx build frontend`.
+- [x] Final frontend verification runs `pnpm nx test frontend`.
+- [x] Final frontend verification runs `pnpm nx lint frontend`.
+- [x] Final frontend verification runs `pnpm nx build frontend`.
 
 ## Task 1. Confirm Ubold Calendar Dependencies
 
