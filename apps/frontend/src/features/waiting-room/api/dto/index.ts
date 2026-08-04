@@ -14,6 +14,7 @@ export type {
 export type {
   WaitingRoomChairResponseDto,
   WaitingRoomChairsListResponseDto,
+  WaitingRoomEntriesListResponseDto,
   WaitingRoomEntryResponseDto,
   WaitingRoomOrderingResponseDto,
   WaitingRoomStateResponseDto,

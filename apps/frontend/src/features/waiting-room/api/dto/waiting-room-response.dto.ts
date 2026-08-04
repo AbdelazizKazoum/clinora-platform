@@ -54,3 +54,7 @@ export interface WaitingRoomStateResponseDto {
 export interface WaitingRoomChairsListResponseDto {
   chairs: WaitingRoomChairResponseDto[];
 }
+
+export interface WaitingRoomEntriesListResponseDto {
+  queueEntries: WaitingRoomEntryResponseDto[];
+}

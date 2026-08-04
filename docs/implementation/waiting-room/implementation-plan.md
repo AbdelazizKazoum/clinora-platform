@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 8 complete; Task 9 ready  
+Status: Task 9 complete; Task 10 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -34,7 +34,7 @@ the next task.
 - [x] Task 6: Expose waiting room routes through the API Gateway
 - [x] Task 7: Update queue outbox events and Gateway SSE streaming
 - [x] Task 8: Create frontend waiting-room feature data boundary
-- [ ] Task 9: Add waiting room queries, commands, hooks, and stream handling
+- [x] Task 9: Add waiting room queries, commands, hooks, and stream handling
 - [ ] Task 10: Build Ubold-style realtime board shell
 - [ ] Task 11: Add Kanban-style status movement and manual reordering
 - [ ] Task 12: Add chair assignment and chair management UI
@@ -1305,6 +1305,24 @@ Acceptance criteria:
 
 - Components can read and mutate waiting room state through hooks only.
 - Live events update cached board data without a full refresh.
+
+Task 9 result:
+
+- Completed on 2026-08-04.
+- Added waiting-room TanStack Query keys for clinic-scoped state and chair
+  caches.
+- Added API query functions for waiting-room state and chairs.
+- Added API command functions for status movement, notes, chair assignment,
+  manual/auto reorder, chair creation, and chair updates.
+- Added query hooks and mutation hooks that expose the waiting-room API through
+  typed frontend commands/models only.
+- Added cache reconciliation helpers for entry, reorder, chair, and SSE events.
+- Added `useWaitingRoomEvents` to open the queue SSE stream and merge live
+  waiting-room events into TanStack Query cache.
+- Added API, hook, cache, and stream reconciliation tests.
+- Verification passed:
+  `pnpm nx test frontend`,
+  `pnpm nx build frontend`.
 
 ### Task 10: Build Ubold-Style Realtime Board Shell
 

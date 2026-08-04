@@ -41,6 +41,11 @@ export {
   mapWaitingRoomEntryFromDto,
   mapWaitingRoomStateFromDto,
 } from './waiting-room.mapper';
+export { waitingRoomQueryKeys } from './waiting-room-query-keys';
+export {
+  applyWaitingRoomEventToChairs,
+  applyWaitingRoomEventToState,
+} from './waiting-room-cache';
 export {
   canLaunchTreatmentFromWaitingRoom,
   getChairDisplayName,
