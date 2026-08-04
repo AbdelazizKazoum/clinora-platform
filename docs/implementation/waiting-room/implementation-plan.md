@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 7 complete; Task 8 ready  
+Status: Task 8 complete; Task 9 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -33,7 +33,7 @@ the next task.
 - [x] Task 5: Update appointment gRPC contract and service presentation
 - [x] Task 6: Expose waiting room routes through the API Gateway
 - [x] Task 7: Update queue outbox events and Gateway SSE streaming
-- [ ] Task 8: Create frontend waiting-room feature data boundary
+- [x] Task 8: Create frontend waiting-room feature data boundary
 - [ ] Task 9: Add waiting room queries, commands, hooks, and stream handling
 - [ ] Task 10: Build Ubold-style realtime board shell
 - [ ] Task 11: Add Kanban-style status movement and manual reordering
@@ -1265,6 +1265,24 @@ Acceptance criteria:
 - Waiting room UI code can consume typed frontend models without touching raw
   transport DTOs.
 - The feature boundary is independent from appointment feature internals.
+
+Task 8 result:
+
+- Completed on 2026-08-04.
+- Added `apps/frontend/src/features/waiting-room` with public API exports,
+  BFF-relative path helpers, response/request/SSE DTOs, frontend models,
+  command types, pure mappers, and lightweight display/rule helpers.
+- Mapped Gateway HTTP DTOs from camelCase transport fields into frontend models
+  with `Date` values and nullable optional strings.
+- Mapped queue SSE snake_case payloads into the same frontend entry/chair/event
+  model used by HTTP state reads.
+- Added path, mapper, and rule tests for the new feature boundary.
+- Verification passed:
+  `pnpm nx test frontend`,
+  `pnpm nx build frontend`.
+  Direct `pnpm exec next build` from `apps/frontend` was also used while
+  clearing an intermediate Nx post-build IO error; after `pnpm nx reset`, the
+  Nx build passed.
 
 ### Task 9: Add Waiting Room Queries, Commands, Hooks, And Stream Handling
 
