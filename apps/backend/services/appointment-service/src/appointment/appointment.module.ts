@@ -5,6 +5,7 @@ import { ManageAppointmentsUseCase } from './application/use-cases/manage-appoin
 import { ManageQueueUseCase } from './application/use-cases/manage-queue.use-case';
 import {
   APPOINTMENT_REPOSITORY,
+  CHAIR_REPOSITORY,
   CLINIC_SERVICE_PORT,
   OUTBOX_REPOSITORY,
   PATIENT_SERVICE_PORT,
@@ -16,9 +17,11 @@ import { OutboxRelayService } from './infrastructure/nats/outbox-relay.service';
 import { PatientGrpcClientModule } from './infrastructure/grpc/patient-grpc-client.module';
 import { PatientServiceGrpcAdapter } from './infrastructure/grpc/patient-service-grpc.adapter';
 import { AppointmentTypeOrmEntity } from './infrastructure/persistence/entities/appointment.typeorm-entity';
+import { ChairTypeOrmEntity } from './infrastructure/persistence/entities/chair.typeorm-entity';
 import { OutboxTypeOrmEntity } from './infrastructure/persistence/entities/outbox.typeorm-entity';
 import { QueueEntryTypeOrmEntity } from './infrastructure/persistence/entities/queue-entry.typeorm-entity';
 import { AppointmentRepository } from './infrastructure/persistence/repositories/appointment.repository';
+import { ChairRepository } from './infrastructure/persistence/repositories/chair.repository';
 import { OutboxRepository } from './infrastructure/persistence/repositories/outbox.repository';
 import { QueueRepository } from './infrastructure/persistence/repositories/queue.repository';
 import { AppointmentGrpcController } from './presentation/grpc/appointment.grpc-controller';
@@ -27,6 +30,7 @@ import { AppointmentGrpcController } from './presentation/grpc/appointment.grpc-
   imports: [
     TypeOrmModule.forFeature([
       AppointmentTypeOrmEntity,
+      ChairTypeOrmEntity,
       QueueEntryTypeOrmEntity,
       OutboxTypeOrmEntity,
     ]),
@@ -38,6 +42,7 @@ import { AppointmentGrpcController } from './presentation/grpc/appointment.grpc-
     ManageAppointmentsUseCase,
     ManageQueueUseCase,
     { provide: APPOINTMENT_REPOSITORY, useClass: AppointmentRepository },
+    { provide: CHAIR_REPOSITORY, useClass: ChairRepository },
     { provide: QUEUE_REPOSITORY, useClass: QueueRepository },
     { provide: OUTBOX_REPOSITORY, useClass: OutboxRepository },
     { provide: PATIENT_SERVICE_PORT, useClass: PatientServiceGrpcAdapter },

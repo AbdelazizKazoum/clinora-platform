@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: planning reference  
+Status: Task 2 complete; Task 3 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -26,8 +26,8 @@ the next task.
 
 ## Implementation Status
 
-- [ ] Task 1: Finalize waiting room backend contract and API shape
-- [ ] Task 2: Add chair/operatory domain and persistence in appointment service
+- [x] Task 1: Finalize waiting room backend contract and API shape
+- [x] Task 2: Add chair/operatory domain and persistence in appointment service
 - [ ] Task 3: Extend queue entries with chair and manual ordering fields
 - [ ] Task 4: Add waiting room use cases inside appointment service
 - [ ] Task 5: Update appointment gRPC contract and service presentation
@@ -334,7 +334,40 @@ Chair setup can start simple:
 
 ## API Shape
 
-Prefer a waiting-room-oriented HTTP API exposed through the BFF:
+Task 1 inspection found the current backend surface is queue-oriented:
+
+- `libs/contracts/appointment/src/lib/appointment.proto` exposes appointment
+  methods plus `ListQueueEntries`, `GetQueueEntry`, `CheckInPatient`,
+  `UpdateQueueStatus`, and `UpdateQueueNotes`.
+- `libs/contracts/appointment/src/lib/appointment.contract.ts` mirrors those
+  methods as gRPC-compatible TypeScript interfaces.
+- `apps/backend/services/appointment-service/src/appointment/presentation/grpc`
+  serves the queue methods through `AppointmentGrpcController`.
+- `apps/backend/api-gateway/src/modules/appointments/queue.controller.ts`
+  exposes the compatibility HTTP queue API at
+  `/api/v1/clinics/{clinicId}/queue`.
+- Queue persistence currently has no chair assignment or manual ordering
+  fields, and Gateway SSE currently subscribes only to
+  `queue.checked_in`, `queue.status.updated`, and `queue.notes.updated`.
+
+Final decision:
+
+- Keep the existing `/queue` HTTP routes and queue gRPC methods for appointment
+  check-in compatibility.
+- Add waiting-room-specific gRPC methods to the appointment contract rather
+  than overloading the existing queue methods with chair and ordering behavior.
+- Extend `QueueEntryReply` additively with `chairId`, `chairName`, and
+  `manualOrder` when Task 5 updates the executable proto and contract.
+- Reuse the existing `UpdateQueueNotes` gRPC method for the waiting-room notes
+  route because its command semantics are already correct.
+- Implement a new API Gateway module at
+  `apps/backend/api-gateway/src/modules/waiting-room` in Task 6. It will expose
+  waiting-room-oriented HTTP routes and call the appointment-service gRPC client
+  through a waiting-room facade.
+- Keep waiting-room business rules in appointment-service use cases. The
+  Gateway validates transport DTOs, roles, and clinic scope only.
+
+Final waiting-room HTTP API exposed through the same-origin BFF:
 
 ```txt
 GET   /api/bff/clinics/{clinicId}/waiting-room
@@ -348,27 +381,257 @@ POST  /api/bff/clinics/{clinicId}/waiting-room/chairs
 PATCH /api/bff/clinics/{clinicId}/waiting-room/chairs/{chairId}
 ```
 
-Recommended command shapes:
+Direct Gateway routes use the same paths under `/api/v1` instead of
+`/api/bff`.
+
+The existing compatibility API remains:
+
+```txt
+GET   /api/bff/clinics/{clinicId}/queue
+POST  /api/bff/clinics/{clinicId}/queue
+GET   /api/bff/clinics/{clinicId}/queue/{queueEntryId}
+PATCH /api/bff/clinics/{clinicId}/queue/{queueEntryId}/status
+PATCH /api/bff/clinics/{clinicId}/queue/{queueEntryId}/notes
+```
+
+Compatibility rules:
+
+- `POST /queue` remains the appointment check-in command and continues to
+  create `ARRIVED` queue entries.
+- Waiting-room state reads include entries created by `/queue` check-in.
+- Existing queue responses may gain additive `chairId`, `chairName`, and
+  `manualOrder` fields after Task 5. Existing consumers can ignore them.
+- After chair enforcement lands, moving to `IN_CHAIR` through the old
+  `/queue/{queueEntryId}/status` route without a chair is allowed to fail with
+  `400`. New waiting-room clients must use the `/waiting-room` status route and
+  send `chairId` when seating a patient.
+- Queue notes remain compatible: the waiting-room notes route delegates to the
+  same backend command semantics as `/queue/{queueEntryId}/notes`.
+
+Final response DTO shapes:
+
+```ts
+interface WaitingRoomEntryDto {
+  id: string;
+  clinicId: string;
+  appointmentId: string;
+  patientId: string;
+  patientName: string;
+  patientPhone: string;
+  doctorId: string;
+  doctorName: string;
+  appointmentType: string;
+  status: QueueStatus;
+  priority: QueuePriority;
+  queueNotes: string;
+  chairId: string;
+  chairName: string;
+  manualOrder?: number;
+  arrivedAt: string;
+  calledAt: string;
+  seatedAt: string;
+  completedAt: string;
+  updatedAt: string;
+}
+
+interface WaitingRoomChairDto {
+  id: string;
+  clinicId: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  isAvailable: boolean;
+  occupiedByEntryId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface WaitingRoomOrderingDto {
+  mode: 'AUTO' | 'MANUAL';
+  manualStatuses: QueueStatus[];
+}
+
+interface WaitingRoomStateResponse {
+  entries: WaitingRoomEntryDto[];
+  chairs: WaitingRoomChairDto[];
+  ordering: WaitingRoomOrderingDto;
+  generatedAt: string;
+}
+
+interface WaitingRoomChairsListResponse {
+  chairs: WaitingRoomChairDto[];
+}
+```
+
+Response notes:
+
+- Optional string response values continue the existing appointment contract
+  convention: use `""` for absent scalar strings.
+- `manualOrder` is omitted when an entry is using automatic order.
+- `isAvailable` and `occupiedByEntryId` are computed for the current waiting
+  room state. Deactivated chairs return `isAvailable: false`.
+- `ordering.mode` is `MANUAL` when at least one visible status column has
+  persisted manual order; otherwise it is `AUTO`.
+
+Final request DTO shapes:
 
 ```ts
 interface UpdateWaitingRoomStatusBody {
   status: 'ARRIVED' | 'WAITING' | 'IN_CHAIR' | 'DONE';
   chairId?: string;
   correctionReason?: string;
+  targetOrderedEntryIds?: string[];
 }
 
 interface ReorderWaitingRoomBody {
-  status: 'ARRIVED' | 'WAITING' | 'IN_CHAIR' | 'DONE';
-  orderedEntryIds: string[];
+  mode: 'AUTO' | 'MANUAL';
+  status?: 'ARRIVED' | 'WAITING' | 'IN_CHAIR' | 'DONE';
+  orderedEntryIds?: string[];
 }
 
 interface AssignWaitingRoomChairBody {
   chairId: string;
 }
+
+interface CreateWaitingRoomChairBody {
+  name: string;
+  code?: string;
+  isActive?: boolean;
+}
+
+interface UpdateWaitingRoomChairBody {
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+}
 ```
 
-The exact gRPC contract may keep queue naming internally, but the Gateway HTTP
-surface should use waiting-room language for frontend clarity.
+Command rules:
+
+- `UpdateWaitingRoomStatusBody.chairId` is required when `status` is
+  `IN_CHAIR` and the entry does not already have a valid chair assignment.
+- `correctionReason` is required for backward moves in the status flow.
+- `targetOrderedEntryIds` lets one drag/drop move persist both the status change
+  and the manual ordering of the destination column in one backend command.
+- `ReorderWaitingRoomBody.mode = 'MANUAL'` requires `status` and
+  `orderedEntryIds`. The ordered IDs must belong to the requested clinic and
+  status after the move.
+- `ReorderWaitingRoomBody.mode = 'AUTO'` clears persisted manual order for the
+  supplied `status`; when `status` is omitted, it clears all waiting-room status
+  columns for the clinic.
+- Chair `code` is optional display metadata. If omitted, the backend stores an
+  empty string and uses `name` as the human-readable identifier.
+
+Final appointment gRPC contract target for Task 5:
+
+```proto
+service AppointmentService {
+  rpc GetWaitingRoomState (GetWaitingRoomStateRequest)
+      returns (WaitingRoomStateReply);
+  rpc UpdateWaitingRoomStatus (UpdateWaitingRoomStatusRequest)
+      returns (QueueEntryReply);
+  rpc AssignWaitingRoomChair (AssignWaitingRoomChairRequest)
+      returns (QueueEntryReply);
+  rpc ReorderWaitingRoomEntries (ReorderWaitingRoomEntriesRequest)
+      returns (QueueEntriesListReply);
+  rpc ListWaitingRoomChairs (ListWaitingRoomChairsRequest)
+      returns (WaitingRoomChairsListReply);
+  rpc CreateWaitingRoomChair (CreateWaitingRoomChairRequest)
+      returns (WaitingRoomChairReply);
+  rpc UpdateWaitingRoomChair (UpdateWaitingRoomChairRequest)
+      returns (WaitingRoomChairReply);
+}
+
+message QueueEntryReply {
+  // Existing fields 1-17 remain unchanged.
+  string chair_id = 18;
+  string chair_name = 19;
+  optional int32 manual_order = 20;
+}
+
+message WaitingRoomChairReply {
+  string id = 1;
+  string clinic_id = 2;
+  string name = 3;
+  string code = 4;
+  bool is_active = 5;
+  bool is_available = 6;
+  string occupied_by_entry_id = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message WaitingRoomOrderingReply {
+  string mode = 1;
+  repeated string manual_statuses = 2;
+}
+
+message WaitingRoomStateReply {
+  repeated QueueEntryReply entries = 1;
+  repeated WaitingRoomChairReply chairs = 2;
+  WaitingRoomOrderingReply ordering = 3;
+  string generated_at = 4;
+}
+
+message WaitingRoomChairsListReply {
+  repeated WaitingRoomChairReply chairs = 1;
+}
+
+message GetWaitingRoomStateRequest {
+  string clinic_id = 1;
+}
+
+message UpdateWaitingRoomStatusRequest {
+  string queue_entry_id = 1;
+  string status = 2;
+  optional string chair_id = 3;
+  optional string correction_reason = 4;
+  repeated string target_ordered_entry_ids = 5;
+}
+
+message AssignWaitingRoomChairRequest {
+  string queue_entry_id = 1;
+  string chair_id = 2;
+}
+
+message ReorderWaitingRoomEntriesRequest {
+  string clinic_id = 1;
+  string mode = 2;
+  optional string status = 3;
+  repeated string ordered_entry_ids = 4;
+}
+
+message ListWaitingRoomChairsRequest {
+  string clinic_id = 1;
+}
+
+message CreateWaitingRoomChairRequest {
+  string clinic_id = 1;
+  string name = 2;
+  optional string code = 3;
+  optional bool is_active = 4;
+}
+
+message UpdateWaitingRoomChairRequest {
+  string chair_id = 1;
+  optional string name = 2;
+  optional string code = 3;
+  optional bool is_active = 4;
+}
+```
+
+Task 5 should also update
+`libs/contracts/appointment/src/lib/appointment.contract.ts`,
+`apps/backend/api-gateway/src/clients/appointment`, and the service gRPC
+presentation layer to match the proto exactly.
+
+Role access target:
+
+| Capability                                                       | Allowed roles                                      |
+| ---------------------------------------------------------------- | -------------------------------------------------- |
+| Read waiting-room state and chairs                               | `admin`, `doctor`, `secretary`, `dental_assistant` |
+| Update waiting-room status, notes, chair assignment, or ordering | `admin`, `secretary`, `dental_assistant`           |
+| Create/update/deactivate chairs                                  | `admin`, `secretary`                               |
 
 ## Realtime Events
 
@@ -382,7 +645,7 @@ queue.status.updated
 queue.notes.updated
 ```
 
-Add or extend events for:
+Final waiting-room event subjects:
 
 ```txt
 queue.reordered
@@ -400,6 +663,36 @@ Recommended stream behavior:
 - Cards updated by another user briefly highlight.
 - If an event arrives while a card is being moved, the frontend queues or merges
   the event after the movement completes.
+
+Event payload target:
+
+```ts
+interface QueueStreamEvent {
+  type:
+    | 'queue.checked_in'
+    | 'queue.status.updated'
+    | 'queue.notes.updated'
+    | 'queue.reordered'
+    | 'queue.chair.assigned'
+    | 'queue.chair.updated';
+  entry?: Record<string, unknown>;
+  entries?: Record<string, unknown>[];
+  chair?: Record<string, unknown>;
+}
+```
+
+Payload rules:
+
+- All event payloads include `clinic_id`.
+- Entry payloads include the same queue fields as `QueueEntryReply`, including
+  `chair_id`, `chair_name`, and `manual_order` after Task 5.
+- `queue.reordered` includes `status` and ordered `entries` for the affected
+  status when manual ordering changes, or all visible entries when automatic
+  ordering is restored for all statuses.
+- `queue.chair.assigned` includes `entry` and the assigned `chair`.
+- `queue.chair.updated` includes `chair`; if the update changes current
+  availability or a displayed chair name, clients should refresh or reconcile
+  the waiting-room state.
 
 The Gateway SSE route must authenticate the user and enforce clinic scope before
 streaming events.
@@ -682,6 +975,15 @@ Acceptance criteria:
 - The implementation target is clear before schema and contract edits begin.
 - Compatibility with existing `/queue` check-in is documented.
 
+Task 1 result:
+
+- Completed on 2026-08-04.
+- Final HTTP route names, DTOs, gRPC method targets, queue compatibility rules,
+  role targets, and SSE event targets are recorded in `## API Shape` and
+  `## Realtime Events`.
+- No executable proto, Gateway route, persistence, or frontend code was changed
+  in this task.
+
 ### Task 2: Add Chair/Operatory Domain And Persistence
 
 Depends on Task 1.
@@ -705,6 +1007,20 @@ Acceptance criteria:
 
 - Appointment service can persist and retrieve clinic-scoped chairs.
 - Deactivated chairs remain stored but are excluded from assignable chair lists.
+
+Task 2 result:
+
+- Completed on 2026-08-04.
+- Added service-owned chair domain and persistence infrastructure inside the
+  appointment bounded context.
+- Chose the first-version invariant that active chair names and non-empty codes
+  must be unique within a clinic; inactive historical chairs can keep duplicate
+  names or codes.
+- Registered the chair TypeORM entity, repository binding, and migration in the
+  appointment service composition.
+- Verification passed:
+  `pnpm nx test appointment-service`,
+  `pnpm nx build appointment-service`.
 
 ### Task 3: Extend Queue Entries With Chair And Manual Ordering Fields
 

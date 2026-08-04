@@ -4,10 +4,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AppointmentModule } from './appointment/appointment.module';
 import { AppointmentTypeOrmEntity } from './appointment/infrastructure/persistence/entities/appointment.typeorm-entity';
+import { ChairTypeOrmEntity } from './appointment/infrastructure/persistence/entities/chair.typeorm-entity';
 import { OutboxTypeOrmEntity } from './appointment/infrastructure/persistence/entities/outbox.typeorm-entity';
 import { QueueEntryTypeOrmEntity } from './appointment/infrastructure/persistence/entities/queue-entry.typeorm-entity';
 import { CreateAppointmentTables20260511000001 } from './appointment/infrastructure/persistence/migrations/20260511000001-CreateAppointmentTables';
 import { SeedInitialAppointments20260511000002 } from './appointment/infrastructure/persistence/migrations/20260511000002-SeedInitialAppointments';
+import { CreateWaitingRoomChairs20260804000001 } from './appointment/infrastructure/persistence/migrations/20260804000001-CreateWaitingRoomChairs';
 import { validateAppointmentEnvironment } from './configuration/appointment-environment';
 import { HealthModule } from './health/health.module';
 
@@ -28,12 +30,14 @@ import { HealthModule } from './health/health.module';
         database: config.getOrThrow<string>('DB_NAME'),
         entities: [
           AppointmentTypeOrmEntity,
+          ChairTypeOrmEntity,
           QueueEntryTypeOrmEntity,
           OutboxTypeOrmEntity,
         ],
         migrations: [
           CreateAppointmentTables20260511000001,
           SeedInitialAppointments20260511000002,
+          CreateWaitingRoomChairs20260804000001,
         ],
         migrationsRun: config.getOrThrow<boolean>('DB_MIGRATIONS_RUN'),
         synchronize: false,
