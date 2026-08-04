@@ -23,8 +23,8 @@ export interface AppointmentResponseDto {
 }
 
 export interface AppointmentsListResponseDto {
-  appointments: AppointmentResponseDto[];
-  total: number;
+  appointments?: AppointmentResponseDto[];
+  total?: number;
 }
 
 export interface ConflictResponseDto {

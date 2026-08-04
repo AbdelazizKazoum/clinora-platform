@@ -113,6 +113,13 @@ describe('appointment mappers', () => {
     });
   });
 
+  it('maps an omitted empty appointments collection to an empty result', () => {
+    expect(mapAppointmentsListFromDto({ total: 0 })).toEqual({
+      appointments: [],
+      total: 0,
+    });
+  });
+
   it('maps check-in command fields into the Gateway body', () => {
     expect(
       mapCheckInAppointmentCommandToDto({

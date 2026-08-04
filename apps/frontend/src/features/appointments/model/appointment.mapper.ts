@@ -75,10 +75,14 @@ export const mapAppointmentFromDto = (
 
 export const mapAppointmentsListFromDto = (
   dto: AppointmentsListResponseDto,
-): { appointments: Appointment[]; total: number } => ({
-  appointments: dto.appointments.map(mapAppointmentFromDto),
-  total: dto.total,
-});
+): { appointments: Appointment[]; total: number } => {
+  const appointments = (dto.appointments ?? []).map(mapAppointmentFromDto);
+
+  return {
+    appointments,
+    total: dto.total ?? appointments.length,
+  };
+};
 
 export const mapListAppointmentsQueryToDto = (
   query: ListAppointmentsQuery,

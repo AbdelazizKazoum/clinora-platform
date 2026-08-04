@@ -856,12 +856,21 @@ const AppointmentCalendarShell = () => {
           </AppointmentScheduleEmptyState>
         )}
 
-        <SimpleBar className="card-body">
+        <SimpleBar
+          autoHide={false}
+          className="appointment-schedule-calendar-scroll card-body"
+          scrollableNodeProps={{
+            'aria-label': 'Appointment calendar',
+            role: 'region',
+            tabIndex: 0,
+          }}
+        >
           <div
             aria-busy={isInitialLoading}
-            className={`appointment-schedule-calendar-frame${
+            className={`appointment-schedule-calendar-frame appointment-schedule-calendar-view-${renderedCalendarSkeletonView}${
               isInitialLoading ? ' appointment-schedule-calendar-loading' : ''
             }`}
+            style={{ minHeight: calendarHeight }}
           >
             {isInitialLoading && (
               <AppointmentScheduleSkeleton
@@ -899,7 +908,7 @@ const AppointmentCalendarShell = () => {
                 events={events}
                 handleWindowResize={true}
                 headerToolbar={calendarToolbar}
-                height={calendarHeight}
+                height="auto"
                 initialView={isCompactViewport ? 'listWeek' : 'dayGridMonth'}
                 key={
                   isCompactViewport ? 'compact-calendar' : 'desktop-calendar'
@@ -914,6 +923,7 @@ const AppointmentCalendarShell = () => {
                 slotDuration="00:30:00"
                 slotMaxTime="19:00:00"
                 slotMinTime="07:00:00"
+                stickyHeaderDates={true}
               />
             </div>
           </div>
