@@ -314,6 +314,10 @@ describe(ManageWaitingRoomUseCase.name, () => {
       eventType: 'queue.chair.assigned',
       payload: expect.objectContaining({
         clinic_id: clinicId,
+        entry: expect.objectContaining({
+          id: 'queue-1',
+          chair_id: 'chair-1',
+        }),
         chair: expect.objectContaining({ id: 'chair-1' }),
       }),
     });

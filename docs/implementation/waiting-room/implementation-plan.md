@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 6 complete; Task 7 ready  
+Status: Task 7 complete; Task 8 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -32,7 +32,7 @@ the next task.
 - [x] Task 4: Add waiting room use cases inside appointment service
 - [x] Task 5: Update appointment gRPC contract and service presentation
 - [x] Task 6: Expose waiting room routes through the API Gateway
-- [ ] Task 7: Update queue outbox events and Gateway SSE streaming
+- [x] Task 7: Update queue outbox events and Gateway SSE streaming
 - [ ] Task 8: Create frontend waiting-room feature data boundary
 - [ ] Task 9: Add waiting room queries, commands, hooks, and stream handling
 - [ ] Task 10: Build Ubold-style realtime board shell
@@ -1220,6 +1220,26 @@ Acceptance criteria:
 
 - Browser clients can receive enough event data to keep the board live.
 - No cross-clinic event leakage is possible.
+
+Task 7 result:
+
+- Completed on 2026-08-04.
+- Normalized chair outbox payloads so `queue.chair.assigned` includes
+  `{ clinic_id, entry, chair }` and `queue.chair.updated` includes
+  `{ clinic_id, chair }`.
+- Added `updated_at` to compatibility queue entry event payloads.
+- Updated Gateway queue SSE broadcasting to subscribe to
+  `queue.reordered`, `queue.chair.assigned`, and `queue.chair.updated` in
+  addition to the existing queue subjects.
+- Normalized SSE messages into a stable `{ type, clinic_id, entry?, entries?,
+chair?, status? }` envelope while preserving clinic-scoped filtering.
+- Updated appointment API documentation for queue event subjects and payload
+  shape.
+- Verification passed:
+  `pnpm nx test appointment-service`,
+  `pnpm nx test api-gateway`,
+  `pnpm nx build appointment-service`,
+  `pnpm nx build api-gateway`.
 
 ### Task 8: Create Frontend Waiting-Room Feature Data Boundary
 

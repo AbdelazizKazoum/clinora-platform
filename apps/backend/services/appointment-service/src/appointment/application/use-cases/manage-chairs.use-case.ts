@@ -30,7 +30,10 @@ export class ManageChairsUseCase {
     const chair = await this.chairs.create(input);
     await this.outbox.add({
       eventType: 'queue.chair.updated',
-      payload: this.chairPayload(chair),
+      payload: {
+        clinic_id: chair.clinicId,
+        chair: this.chairPayload(chair),
+      },
     });
     return chair;
   }
@@ -43,7 +46,10 @@ export class ManageChairsUseCase {
     const chair = await this.chairs.update(clinicId, chairId, input);
     await this.outbox.add({
       eventType: 'queue.chair.updated',
-      payload: this.chairPayload(chair),
+      payload: {
+        clinic_id: chair.clinicId,
+        chair: this.chairPayload(chair),
+      },
     });
     return chair;
   }

@@ -54,9 +54,11 @@ describe(ManageChairsUseCase.name, () => {
     expect(outbox.add).toHaveBeenCalledWith({
       eventType: 'queue.chair.updated',
       payload: expect.objectContaining({
-        id: 'chair-1',
         clinic_id: 'clinic-1',
-        is_active: true,
+        chair: expect.objectContaining({
+          id: 'chair-1',
+          is_active: true,
+        }),
       }),
     });
   });
@@ -75,6 +77,9 @@ describe(ManageChairsUseCase.name, () => {
       eventType: 'queue.chair.updated',
       payload: expect.objectContaining({
         clinic_id: 'clinic-1',
+        chair: expect.objectContaining({
+          id: 'chair-1',
+        }),
       }),
     });
   });

@@ -1,7 +1,7 @@
 # Appointment API contract for frontend integration
 
 Status: HTTP routes implemented with authenticated role and clinic-scope access  
-Last verified: 2026-08-02
+Last verified: 2026-08-04
 
 This document is the frontend-facing HTTP contract for the appointment bounded
 context. The appointment service owns appointment scheduling, doctor conflict
@@ -109,14 +109,14 @@ type QueueStatus = 'ARRIVED' | 'WAITING' | 'IN_CHAIR' | 'DONE';
 
 The Gateway enforces these roles from the authenticated token:
 
-| Capability | Allowed roles |
-| ---------- | ------------- |
-| List/get appointments | `admin`, `doctor`, `secretary`, `dental_assistant` |
-| Create/update/reschedule appointments | `admin`, `doctor`, `secretary` |
-| Check appointment conflicts | `admin`, `doctor`, `secretary` |
-| List/get queue entries | `admin`, `doctor`, `secretary`, `dental_assistant` |
-| Check in a patient | `admin`, `secretary`, `dental_assistant` |
-| Update queue status or notes | `admin`, `secretary`, `dental_assistant` |
+| Capability                            | Allowed roles                                      |
+| ------------------------------------- | -------------------------------------------------- |
+| List/get appointments                 | `admin`, `doctor`, `secretary`, `dental_assistant` |
+| Create/update/reschedule appointments | `admin`, `doctor`, `secretary`                     |
+| Check appointment conflicts           | `admin`, `doctor`, `secretary`                     |
+| List/get queue entries                | `admin`, `doctor`, `secretary`, `dental_assistant` |
+| Check in a patient                    | `admin`, `secretary`, `dental_assistant`           |
+| Update queue status or notes          | `admin`, `secretary`, `dental_assistant`           |
 
 Frontend permission checks are only UX. The backend remains the source of truth.
 
@@ -167,6 +167,9 @@ interface QueueEntryDto {
   status: QueueStatus;
   priority: QueuePriority;
   queueNotes: string;
+  chairId: string;
+  chairName: string;
+  manualOrder?: number;
   arrivedAt: string;
   calledAt: string;
   seatedAt: string;
@@ -195,14 +198,14 @@ Response notes:
 All appointment paths below are relative to
 `/api/bff/clinics/{clinicId}/appointments` in frontend code.
 
-| Method | Path | Purpose | Success response |
-| ------ | ---- | ------- | ---------------- |
-| `GET` | `/` | List and filter appointments | `200 AppointmentsListResponse` |
-| `POST` | `/` | Create an appointment | `201 AppointmentDto` |
-| `GET` | `/conflicts` | Check whether a doctor has a conflicting slot | `200 ConflictResponse` |
-| `GET` | `/{appointmentId}` | Get one appointment | `200 AppointmentDto` |
-| `PUT` | `/{appointmentId}` | Partially update an appointment | `200 AppointmentDto` |
-| `PATCH` | `/{appointmentId}/timing` | Move an appointment to a new doctor/time slot | `200 AppointmentDto` |
+| Method  | Path                      | Purpose                                       | Success response               |
+| ------- | ------------------------- | --------------------------------------------- | ------------------------------ |
+| `GET`   | `/`                       | List and filter appointments                  | `200 AppointmentsListResponse` |
+| `POST`  | `/`                       | Create an appointment                         | `201 AppointmentDto`           |
+| `GET`   | `/conflicts`              | Check whether a doctor has a conflicting slot | `200 ConflictResponse`         |
+| `GET`   | `/{appointmentId}`        | Get one appointment                           | `200 AppointmentDto`           |
+| `PUT`   | `/{appointmentId}`        | Partially update an appointment               | `200 AppointmentDto`           |
+| `PATCH` | `/{appointmentId}/timing` | Move an appointment to a new doctor/time slot | `200 AppointmentDto`           |
 
 Use the dedicated `/conflicts` route exactly as shown. Do not treat `conflicts`
 as an appointment ID.
@@ -280,14 +283,14 @@ GET /api/bff/clinics/{clinicId}/appointments
 
 Query fields:
 
-| Query field | Type | Rules and behavior |
-| ----------- | ---- | ------------------ |
-| `page` | integer | Minimum `1`; default `1` |
-| `limit` | integer | `1..100`; default `50` |
-| `startDate` | ISO date string | Lower date bound. With `endDate`, returns appointments overlapping the range |
-| `endDate` | ISO date string | Upper date bound. With `startDate`, returns appointments overlapping the range |
-| `doctorId` | UUID | Filters by doctor staff user ID |
-| `status` | `AppointmentStatus` | Exact enum filter |
+| Query field | Type                | Rules and behavior                                                             |
+| ----------- | ------------------- | ------------------------------------------------------------------------------ |
+| `page`      | integer             | Minimum `1`; default `1`                                                       |
+| `limit`     | integer             | `1..100`; default `50`                                                         |
+| `startDate` | ISO date string     | Lower date bound. With `endDate`, returns appointments overlapping the range   |
+| `endDate`   | ISO date string     | Upper date bound. With `startDate`, returns appointments overlapping the range |
+| `doctorId`  | UUID                | Filters by doctor staff user ID                                                |
+| `status`    | `AppointmentStatus` | Exact enum filter                                                              |
 
 Results are ordered by `startAt` ascending, then `createdAt` ascending.
 
@@ -320,13 +323,13 @@ GET /api/bff/clinics/{clinicId}/appointments/conflicts
 
 Query fields:
 
-| Query field | Type | Rules and behavior |
-| ----------- | ---- | ------------------ |
-| `doctorId` | UUID | Required doctor staff user ID |
-| `startAt` | ISO date string | Required proposed start |
-| `endAt` | ISO date string | Required proposed end, must be after `startAt` |
-| `excludeStatus` | `AppointmentStatus` | Optional status to ignore |
-| `excludeAppointmentId` | UUID | Optional appointment to ignore while editing |
+| Query field            | Type                | Rules and behavior                             |
+| ---------------------- | ------------------- | ---------------------------------------------- |
+| `doctorId`             | UUID                | Required doctor staff user ID                  |
+| `startAt`              | ISO date string     | Required proposed start                        |
+| `endAt`                | ISO date string     | Required proposed end, must be after `startAt` |
+| `excludeStatus`        | `AppointmentStatus` | Optional status to ignore                      |
+| `excludeAppointmentId` | UUID                | Optional appointment to ignore while editing   |
 
 The conflict check ignores existing `CANCELLED` and `NO_SHOW` appointments.
 
@@ -414,13 +417,13 @@ notes at the same time.
 All queue paths below are relative to `/api/bff/clinics/{clinicId}/queue` in
 frontend code.
 
-| Method | Path | Purpose | Success response |
-| ------ | ---- | ------- | ---------------- |
-| `GET` | `/` | List current clinic queue | `200 QueueEntriesListResponse` |
-| `POST` | `/` | Check in a patient for an appointment | `201 QueueEntryDto` |
-| `GET` | `/{queueEntryId}` | Get one queue entry | `200 QueueEntryDto` |
-| `PATCH` | `/{queueEntryId}/status` | Move a queue entry through the visit flow | `200 QueueEntryDto` |
-| `PATCH` | `/{queueEntryId}/notes` | Replace queue notes | `200 QueueEntryDto` |
+| Method  | Path                     | Purpose                                   | Success response               |
+| ------- | ------------------------ | ----------------------------------------- | ------------------------------ |
+| `GET`   | `/`                      | List current clinic queue                 | `200 QueueEntriesListResponse` |
+| `POST`  | `/`                      | Check in a patient for an appointment     | `201 QueueEntryDto`            |
+| `GET`   | `/{queueEntryId}`        | Get one queue entry                       | `200 QueueEntryDto`            |
+| `PATCH` | `/{queueEntryId}/status` | Move a queue entry through the visit flow | `200 QueueEntryDto`            |
+| `PATCH` | `/{queueEntryId}/notes`  | Replace queue notes                       | `200 QueueEntryDto`            |
 
 ### List queue entries
 
@@ -510,11 +513,11 @@ interface UpdateQueueStatusBody {
 Status timestamps are set by the backend the first time the entry reaches each
 step:
 
-| Status | Timestamp field set |
-| ------ | ------------------- |
-| `WAITING` | `calledAt` |
-| `IN_CHAIR` | `seatedAt` |
-| `DONE` | `completedAt` |
+| Status     | Timestamp field set |
+| ---------- | ------------------- |
+| `WAITING`  | `calledAt`          |
+| `IN_CHAIR` | `seatedAt`          |
+| `DONE`     | `completedAt`       |
 
 Moving backward in the queue flow requires `correctionReason`. The backend
 appends it to `queueNotes` with a correction marker. For example, changing from
@@ -543,16 +546,16 @@ intentionally clears the note.
 
 Frontend code should branch on HTTP status before reading a success shape.
 
-| Status | Meaning |
-| ------ | ------- |
-| `400` | Invalid UUID, invalid enum, invalid date, missing field, invalid timing, invalid clinic relationship, or queue status rollback without correction reason |
-| `401` | No valid authenticated frontend session |
-| `403` | Authenticated user is not allowed for this role or clinic scope |
-| `404` | Appointment or queue entry was not found |
-| `409` | Doctor slot conflict, invalid appointment timing, or appointment already checked in |
-| `500` | Unexpected appointment request failure |
-| `502` | BFF could not reach the API Gateway |
-| `503` | API Gateway could not reach the appointment service |
+| Status | Meaning                                                                                                                                                  |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | Invalid UUID, invalid enum, invalid date, missing field, invalid timing, invalid clinic relationship, or queue status rollback without correction reason |
+| `401`  | No valid authenticated frontend session                                                                                                                  |
+| `403`  | Authenticated user is not allowed for this role or clinic scope                                                                                          |
+| `404`  | Appointment or queue entry was not found                                                                                                                 |
+| `409`  | Doctor slot conflict, invalid appointment timing, or appointment already checked in                                                                      |
+| `500`  | Unexpected appointment request failure                                                                                                                   |
+| `502`  | BFF could not reach the API Gateway                                                                                                                      |
+| `503`  | API Gateway could not reach the appointment service                                                                                                      |
 
 Typical Gateway validation error:
 
@@ -593,20 +596,39 @@ when the query `clinicId` does not match the authenticated `clinic_id` claim.
 
 Queue event subjects:
 
-| Subject | Meaning |
-| ------- | ------- |
-| `queue.checked_in` | A patient was checked into the waiting room |
-| `queue.status.updated` | A queue entry changed visit-flow status |
-| `queue.notes.updated` | Queue notes were replaced |
+| Subject                | Meaning                                                 |
+| ---------------------- | ------------------------------------------------------- |
+| `queue.checked_in`     | A patient was checked into the waiting room             |
+| `queue.status.updated` | A queue entry changed visit-flow status                 |
+| `queue.notes.updated`  | Queue notes were replaced                               |
+| `queue.reordered`      | Manual or automatic queue ordering changed              |
+| `queue.chair.assigned` | A seated queue entry was assigned to another chair      |
+| `queue.chair.updated`  | A chair was created, renamed, activated, or deactivated |
 
 SSE messages contain:
 
 ```ts
 interface QueueStreamEvent {
-  type: 'queue.checked_in' | 'queue.status.updated' | 'queue.notes.updated';
-  entry: Record<string, unknown>;
+  type:
+    | 'queue.checked_in'
+    | 'queue.status.updated'
+    | 'queue.notes.updated'
+    | 'queue.reordered'
+    | 'queue.chair.assigned'
+    | 'queue.chair.updated';
+  clinic_id: string;
+  entry?: Record<string, unknown>;
+  entries?: Record<string, unknown>[];
+  chair?: Record<string, unknown>;
+  status?: QueueStatus;
 }
 ```
+
+Entry payloads use snake_case field names from the appointment-service outbox
+and include queue entry data such as `chair_id`, `chair_name`, `manual_order`,
+and `updated_at`. `queue.reordered` carries ordered `entries` and the affected
+`status` when one status column changed. `queue.chair.assigned` carries both the
+updated `entry` and assigned `chair`. `queue.chair.updated` carries `chair`.
 
 The Gateway also sends periodic heartbeat messages with data `":heartbeat"`.
 

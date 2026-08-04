@@ -149,7 +149,8 @@ export class ManageWaitingRoomUseCase {
     await this.outbox.add({
       eventType: 'queue.chair.assigned',
       payload: {
-        ...this.queuePayload(updated),
+        clinic_id: clinicId,
+        entry: this.queuePayload(updated),
         chair: this.chairPayload(chair),
       },
     });

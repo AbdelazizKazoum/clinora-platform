@@ -103,6 +103,7 @@ export class ManageQueueUseCase {
       called_at: entry.calledAt?.toISOString(),
       seated_at: entry.seatedAt?.toISOString(),
       completed_at: entry.completedAt?.toISOString(),
+      updated_at: entry.updatedAt.toISOString(),
     };
   }
 }
