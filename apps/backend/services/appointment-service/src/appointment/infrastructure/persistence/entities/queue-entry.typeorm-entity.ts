@@ -7,84 +7,104 @@ import {
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
-} from "typeorm";
-import {QueuePriority} from "../../../domain/enums/queue-priority.enum";
-import {QueueStatus} from "../../../domain/enums/queue-status.enum";
-import {AppointmentTypeOrmEntity} from "./appointment.typeorm-entity";
+} from 'typeorm';
+import { QueuePriority } from '../../../domain/enums/queue-priority.enum';
+import { QueueStatus } from '../../../domain/enums/queue-status.enum';
+import { AppointmentTypeOrmEntity } from './appointment.typeorm-entity';
 
-@Entity("queue_entries")
-@Unique("uq_queue_appointment", ["appointment_id"])
-@Index("idx_queue_clinic_waiting_room", [
-  "clinic_id",
-  "status",
-  "priority",
-  "arrived_at",
+@Entity('queue_entries')
+@Unique('uq_queue_appointment', ['appointment_id'])
+@Index('idx_queue_clinic_waiting_room', [
+  'clinic_id',
+  'status',
+  'priority',
+  'arrived_at',
 ])
-@Index("idx_queue_clinic_doctor", [
-  "clinic_id",
-  "doctor_id",
-  "status",
-  "priority",
+@Index('idx_queue_clinic_doctor', [
+  'clinic_id',
+  'doctor_id',
+  'status',
+  'priority',
 ])
-@Index("idx_queue_clinic_date", ["clinic_id", "arrived_at"])
+@Index('idx_queue_clinic_date', ['clinic_id', 'arrived_at'])
+@Index('idx_queue_clinic_status_manual_order', [
+  'clinic_id',
+  'status',
+  'manual_order',
+])
+@Index('idx_queue_clinic_chair', ['clinic_id', 'chair_id', 'status'])
 export class QueueEntryTypeOrmEntity {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({name: "clinic_id", length: 36})
+  @Column({ name: 'clinic_id', length: 36 })
   clinic_id!: string;
 
-  @Column({name: "appointment_id", length: 36})
+  @Column({ name: 'appointment_id', length: 36 })
   appointment_id!: string;
 
-  @ManyToOne(() => AppointmentTypeOrmEntity, {onDelete: "CASCADE"})
-  @JoinColumn({name: "appointment_id"})
+  @ManyToOne(() => AppointmentTypeOrmEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'appointment_id' })
   appointment!: AppointmentTypeOrmEntity;
 
-  @Column({name: "patient_id", length: 36})
+  @Column({ name: 'patient_id', length: 36 })
   patient_id!: string;
 
-  @Column({name: "patient_name", length: 255})
+  @Column({ name: 'patient_name', length: 255 })
   patient_name!: string;
 
-  @Column({name: "patient_phone", length: 30, nullable: true, type: "varchar"})
+  @Column({
+    name: 'patient_phone',
+    length: 30,
+    nullable: true,
+    type: 'varchar',
+  })
   patient_phone!: string | null;
 
-  @Column({name: "doctor_id", length: 36})
+  @Column({ name: 'doctor_id', length: 36 })
   doctor_id!: string;
 
-  @Column({name: "doctor_name", length: 255})
+  @Column({ name: 'doctor_name', length: 255 })
   doctor_name!: string;
 
   @Column({
-    name: "appointment_type",
+    name: 'appointment_type',
     length: 100,
     nullable: true,
-    type: "varchar",
+    type: 'varchar',
   })
   appointment_type!: string | null;
 
-  @Column({type: "enum", enum: QueueStatus, default: QueueStatus.ARRIVED})
+  @Column({ type: 'enum', enum: QueueStatus, default: QueueStatus.ARRIVED })
   status!: QueueStatus;
 
-  @Column({type: "enum", enum: QueuePriority, default: QueuePriority.NORMAL})
+  @Column({ type: 'enum', enum: QueuePriority, default: QueuePriority.NORMAL })
   priority!: QueuePriority;
 
-  @Column({name: "queue_notes", type: "text", nullable: true})
+  @Column({ name: 'queue_notes', type: 'text', nullable: true })
   queue_notes!: string | null;
 
-  @Column({name: "arrived_at", type: "datetime"})
+  @Column({ name: 'chair_id', length: 36, nullable: true, type: 'varchar' })
+  chair_id!: string | null;
+
+  @Column({ name: 'chair_name', length: 100, nullable: true, type: 'varchar' })
+  chair_name!: string | null;
+
+  @Column({ name: 'manual_order', type: 'int', nullable: true })
+  manual_order!: number | null;
+
+  @Column({ name: 'arrived_at', type: 'datetime' })
   arrived_at!: Date;
 
-  @Column({name: "called_at", type: "datetime", nullable: true})
+  @Column({ name: 'called_at', type: 'datetime', nullable: true })
   called_at!: Date | null;
 
-  @Column({name: "seated_at", type: "datetime", nullable: true})
+  @Column({ name: 'seated_at', type: 'datetime', nullable: true })
   seated_at!: Date | null;
 
-  @Column({name: "completed_at", type: "datetime", nullable: true})
+  @Column({ name: 'completed_at', type: 'datetime', nullable: true })
   completed_at!: Date | null;
 
-  @UpdateDateColumn({name: "updated_at"})
+  @UpdateDateColumn({ name: 'updated_at' })
   updated_at!: Date;
 }

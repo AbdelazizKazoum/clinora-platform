@@ -1,5 +1,5 @@
-import {QueueEntry} from "../../../domain/entities/queue-entry";
-import {QueueEntryTypeOrmEntity} from "../entities/queue-entry.typeorm-entity";
+import { QueueEntry } from '../../../domain/entities/queue-entry';
+import { QueueEntryTypeOrmEntity } from '../entities/queue-entry.typeorm-entity';
 
 export class QueueEntryMapper {
   static toDomain(e: QueueEntryTypeOrmEntity): QueueEntry {
@@ -16,6 +16,9 @@ export class QueueEntryMapper {
       e.status,
       e.priority,
       e.queue_notes,
+      e.chair_id,
+      e.chair_name,
+      e.manual_order,
       e.arrived_at,
       e.called_at,
       e.seated_at,

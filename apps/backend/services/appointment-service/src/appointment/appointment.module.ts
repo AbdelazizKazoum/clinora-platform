@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ManageAppointmentsUseCase } from './application/use-cases/manage-appointments.use-case';
+import { ManageChairsUseCase } from './application/use-cases/manage-chairs.use-case';
 import { ManageQueueUseCase } from './application/use-cases/manage-queue.use-case';
+import { ManageWaitingRoomUseCase } from './application/use-cases/manage-waiting-room.use-case';
 import {
   APPOINTMENT_REPOSITORY,
   CHAIR_REPOSITORY,
@@ -40,7 +42,9 @@ import { AppointmentGrpcController } from './presentation/grpc/appointment.grpc-
   controllers: [AppointmentGrpcController],
   providers: [
     ManageAppointmentsUseCase,
+    ManageChairsUseCase,
     ManageQueueUseCase,
+    ManageWaitingRoomUseCase,
     { provide: APPOINTMENT_REPOSITORY, useClass: AppointmentRepository },
     { provide: CHAIR_REPOSITORY, useClass: ChairRepository },
     { provide: QUEUE_REPOSITORY, useClass: QueueRepository },

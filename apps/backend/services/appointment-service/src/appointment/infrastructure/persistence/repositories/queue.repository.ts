@@ -3,18 +3,22 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
-import {InjectRepository} from "@nestjs/typeorm";
-import {Repository} from "typeorm";
-import {QueueEntry} from "../../../domain/entities/queue-entry";
-import {QueuePriority} from "../../../domain/enums/queue-priority.enum";
-import {QueueStatus} from "../../../domain/enums/queue-status.enum";
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { QueueEntry } from '../../../domain/entities/queue-entry';
+import { QueuePriority } from '../../../domain/enums/queue-priority.enum';
+import { QueueStatus } from '../../../domain/enums/queue-status.enum';
 import {
+  AssignQueueChairInput,
   CheckInPatientInput,
+  ClearQueueManualOrderInput,
   IQueueRepository,
-} from "../../../domain/repositories/queue-repository.interface";
-import {QueueEntryTypeOrmEntity} from "../entities/queue-entry.typeorm-entity";
-import {QueueEntryMapper} from "../mappers/queue-entry.mapper";
+  ReorderQueueEntriesInput,
+  UpdateWaitingRoomStatusInput,
+} from '../../../domain/repositories/queue-repository.interface';
+import { QueueEntryTypeOrmEntity } from '../entities/queue-entry.typeorm-entity';
+import { QueueEntryMapper } from '../mappers/queue-entry.mapper';
 
 const QUEUE_ORDER: QueueStatus[] = [
   QueueStatus.ARRIVED,
@@ -33,7 +37,7 @@ export class QueueRepository implements IQueueRepository {
   async create(input: CheckInPatientInput): Promise<QueueEntry> {
     const existing = await this.findByAppointmentId(input.appointmentId);
     if (existing) {
-      throw new ConflictException("Appointment is already checked in");
+      throw new ConflictException('Appointment is already checked in');
     }
 
     const saved = await this.repo.save({
@@ -48,6 +52,9 @@ export class QueueRepository implements IQueueRepository {
       status: QueueStatus.ARRIVED,
       priority: input.priority ?? QueuePriority.NORMAL,
       queue_notes: input.notes ?? null,
+      chair_id: null,
+      chair_name: null,
+      manual_order: null,
       arrived_at: input.arrivedAt ?? new Date(),
       called_at: null,
       seated_at: null,
@@ -58,27 +65,48 @@ export class QueueRepository implements IQueueRepository {
   }
 
   async findById(id: string): Promise<QueueEntry | null> {
-    const entity = await this.repo.findOne({where: {id}});
+    const entity = await this.repo.findOne({ where: { id } });
     return entity ? QueueEntryMapper.toDomain(entity) : null;
   }
 
   async findByAppointmentId(appointmentId: string): Promise<QueueEntry | null> {
     const entity = await this.repo.findOne({
-      where: {appointment_id: appointmentId},
+      where: { appointment_id: appointmentId },
     });
+    return entity ? QueueEntryMapper.toDomain(entity) : null;
+  }
+
+  async findInChairByChairId(
+    clinicId: string,
+    chairId: string,
+    excludeEntryId?: string,
+  ): Promise<QueueEntry | null> {
+    const qb = this.repo
+      .createQueryBuilder('q')
+      .where('q.clinic_id = :clinicId', { clinicId })
+      .andWhere('q.chair_id = :chairId', { chairId })
+      .andWhere('q.status = :status', { status: QueueStatus.IN_CHAIR });
+
+    if (excludeEntryId) {
+      qb.andWhere('q.id != :excludeEntryId', { excludeEntryId });
+    }
+
+    const entity = await qb.getOne();
     return entity ? QueueEntryMapper.toDomain(entity) : null;
   }
 
   async listByClinic(clinicId: string): Promise<QueueEntry[]> {
     const entities = await this.repo
-      .createQueryBuilder("q")
-      .where("q.clinic_id = :clinicId", {clinicId})
+      .createQueryBuilder('q')
+      .where('q.clinic_id = :clinicId', { clinicId })
       .orderBy(
         "FIELD(q.status, 'ARRIVED', 'WAITING', 'IN_CHAIR', 'DONE')",
-        "ASC",
+        'ASC',
       )
-      .addOrderBy("FIELD(q.priority, 'EMERGENCY', 'URGENT', 'NORMAL')", "ASC")
-      .addOrderBy("q.arrived_at", "ASC")
+      .addOrderBy('CASE WHEN q.manual_order IS NULL THEN 1 ELSE 0 END', 'ASC')
+      .addOrderBy('q.manual_order', 'ASC')
+      .addOrderBy("FIELD(q.priority, 'EMERGENCY', 'URGENT', 'NORMAL')", 'ASC')
+      .addOrderBy('q.arrived_at', 'ASC')
       .getMany();
 
     return entities.map(QueueEntryMapper.toDomain);
@@ -89,9 +117,15 @@ export class QueueRepository implements IQueueRepository {
     status: QueueStatus,
     correctionReason?: string,
   ): Promise<QueueEntry> {
-    const existing = await this.repo.findOne({where: {id}});
-    if (!existing)
-      throw new NotFoundException(`Queue entry "${id}" not found`);
+    return this.updateWaitingRoomStatus({ id, status, correctionReason });
+  }
+
+  async updateWaitingRoomStatus(
+    input: UpdateWaitingRoomStatusInput,
+  ): Promise<QueueEntry> {
+    const { id, status, correctionReason } = input;
+    const existing = await this.repo.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException(`Queue entry "${id}" not found`);
 
     const currentIndex = QUEUE_ORDER.indexOf(existing.status);
     const nextIndex = QUEUE_ORDER.indexOf(status);
@@ -100,7 +134,7 @@ export class QueueRepository implements IQueueRepository {
     }
     if (nextIndex < currentIndex && !correctionReason?.trim()) {
       throw new BadRequestException(
-        "Correction reason is required when reverting queue status",
+        'Correction reason is required when reverting queue status',
       );
     }
 
@@ -108,6 +142,8 @@ export class QueueRepository implements IQueueRepository {
     const saved = await this.repo.save({
       ...existing,
       status,
+      ...(input.chairId !== undefined ? { chair_id: input.chairId } : {}),
+      ...(input.chairName !== undefined ? { chair_name: input.chairName } : {}),
       queue_notes: correctionReason
         ? this.appendCorrection(existing.queue_notes, correctionReason)
         : existing.queue_notes,
@@ -128,10 +164,53 @@ export class QueueRepository implements IQueueRepository {
     return QueueEntryMapper.toDomain(saved);
   }
 
+  async assignChair(input: AssignQueueChairInput): Promise<QueueEntry> {
+    const existing = await this.repo.findOne({ where: { id: input.id } });
+    if (!existing) {
+      throw new NotFoundException(`Queue entry "${input.id}" not found`);
+    }
+
+    const saved = await this.repo.save({
+      ...existing,
+      chair_id: input.chairId,
+      chair_name: input.chairName,
+    });
+    return QueueEntryMapper.toDomain(saved);
+  }
+
+  async reorderStatus(input: ReorderQueueEntriesInput): Promise<QueueEntry[]> {
+    await this.repo.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(QueueEntryTypeOrmEntity);
+      await Promise.all(
+        input.orderedEntryIds.map((id, index) =>
+          repository.update(
+            { id, clinic_id: input.clinicId, status: input.status },
+            { manual_order: index + 1 },
+          ),
+        ),
+      );
+    });
+
+    return this.listByClinic(input.clinicId);
+  }
+
+  async clearManualOrder(
+    input: ClearQueueManualOrderInput,
+  ): Promise<QueueEntry[]> {
+    await this.repo.update(
+      {
+        clinic_id: input.clinicId,
+        ...(input.status ? { status: input.status } : {}),
+      },
+      { manual_order: null },
+    );
+
+    return this.listByClinic(input.clinicId);
+  }
+
   async updateNotes(id: string, notes?: string | null): Promise<QueueEntry> {
-    const existing = await this.repo.findOne({where: {id}});
-    if (!existing)
-      throw new NotFoundException(`Queue entry "${id}" not found`);
+    const existing = await this.repo.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException(`Queue entry "${id}" not found`);
 
     const saved = await this.repo.save({
       ...existing,

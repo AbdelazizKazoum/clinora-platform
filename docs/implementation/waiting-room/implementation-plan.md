@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 2 complete; Task 3 ready  
+Status: Task 4 complete; Task 5 ready  
 Created: 2026-08-04
 
 ## Goal
@@ -28,8 +28,8 @@ the next task.
 
 - [x] Task 1: Finalize waiting room backend contract and API shape
 - [x] Task 2: Add chair/operatory domain and persistence in appointment service
-- [ ] Task 3: Extend queue entries with chair and manual ordering fields
-- [ ] Task 4: Add waiting room use cases inside appointment service
+- [x] Task 3: Extend queue entries with chair and manual ordering fields
+- [x] Task 4: Add waiting room use cases inside appointment service
 - [ ] Task 5: Update appointment gRPC contract and service presentation
 - [ ] Task 6: Expose waiting room routes through the API Gateway
 - [ ] Task 7: Update queue outbox events and Gateway SSE streaming
@@ -1044,6 +1044,24 @@ Acceptance criteria:
 - Existing queue list/check-in/status/notes behavior still works.
 - Queue entries can carry chair and manual order data.
 
+Task 3 result:
+
+- Completed on 2026-08-04.
+- Added `chairId`, `chairName`, and `manualOrder` to the queue domain entity
+  and TypeORM persistence entity.
+- Added a service-owned migration for `queue_entries.chair_id`,
+  `queue_entries.chair_name`, `queue_entries.manual_order`, and supporting
+  clinic/status/chair indexes.
+- Updated queue persistence mapping and queue event payload generation to carry
+  the new fields when present.
+- Preserved check-in behavior by creating new queue entries with no chair and
+  no manual order by default.
+- Made queue listing manual-order aware while preserving the existing
+  priority/arrival ordering for entries without manual order.
+- Verification passed:
+  `pnpm nx test appointment-service`,
+  `pnpm nx build appointment-service`.
+
 ### Task 4: Add Waiting Room Use Cases Inside Appointment Service
 
 Depends on Tasks 2 and 3.
@@ -1067,6 +1085,24 @@ Acceptance criteria:
 
 - Business rules are enforced in appointment-service application/domain code.
 - Controllers remain transport mappers only.
+
+Task 4 result:
+
+- Completed on 2026-08-04.
+- Added appointment-service application use cases for waiting-room state,
+  waiting-room status movement, chair assignment, queue notes, manual reorder,
+  auto reorder, and chair management.
+- Enforced active chair selection before `IN_CHAIR`, occupied-chair rejection,
+  correction reasons for backward status movement, clinic scope for queue
+  entries and chairs, and target-status validation for manual reorder.
+- Added queue repository primitives for chair occupancy lookup, status movement
+  with chair snapshots, chair assignment, manual reorder persistence, and manual
+  order clearing.
+- Added outbox events for waiting-room status, notes, chair assignment, chair
+  updates, and reorder changes.
+- Verification passed:
+  `pnpm nx test appointment-service`,
+  `pnpm nx build appointment-service`.
 
 ### Task 5: Update Appointment gRPC Contract And Service Presentation
 

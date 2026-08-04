@@ -3,20 +3,20 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
-import {QueueEntry} from "../../domain/entities/queue-entry";
-import {QueueStatus} from "../../domain/enums/queue-status.enum";
+} from '@nestjs/common';
+import { QueueEntry } from '../../domain/entities/queue-entry';
+import { QueueStatus } from '../../domain/enums/queue-status.enum';
 import {
   CheckInPatientInput,
   IQueueRepository,
-} from "../../domain/repositories/queue-repository.interface";
-import {IOutboxRepository} from "../../domain/repositories/outbox-repository.interface";
+} from '../../domain/repositories/queue-repository.interface';
+import { IOutboxRepository } from '../../domain/repositories/outbox-repository.interface';
 import {
   APPOINTMENT_REPOSITORY,
   OUTBOX_REPOSITORY,
   QUEUE_REPOSITORY,
-} from "../../appointment.tokens";
-import {IAppointmentRepository} from "../../domain/repositories/appointment-repository.interface";
+} from '../../appointment.tokens';
+import { IAppointmentRepository } from '../../domain/repositories/appointment-repository.interface';
 
 @Injectable()
 export class ManageQueueUseCase {
@@ -42,15 +42,19 @@ export class ManageQueueUseCase {
   async checkIn(input: CheckInPatientInput): Promise<QueueEntry> {
     const appointment = await this.appointments.findById(input.appointmentId);
     if (!appointment) {
-      throw new NotFoundException(`Appointment "${input.appointmentId}" not found`);
+      throw new NotFoundException(
+        `Appointment "${input.appointmentId}" not found`,
+      );
     }
     if (appointment.clinicId !== input.clinicId) {
-      throw new BadRequestException("Appointment does not belong to this clinic");
+      throw new BadRequestException(
+        'Appointment does not belong to this clinic',
+      );
     }
 
     const created = await this.queue.create(input);
     await this.outbox.add({
-      eventType: "queue.checked_in",
+      eventType: 'queue.checked_in',
       payload: this.queuePayload(created),
     });
     return created;
@@ -63,7 +67,7 @@ export class ManageQueueUseCase {
   ): Promise<QueueEntry> {
     const updated = await this.queue.updateStatus(id, status, correctionReason);
     await this.outbox.add({
-      eventType: "queue.status.updated",
+      eventType: 'queue.status.updated',
       payload: this.queuePayload(updated),
     });
     return updated;
@@ -72,7 +76,7 @@ export class ManageQueueUseCase {
   async updateNotes(id: string, notes?: string | null): Promise<QueueEntry> {
     const updated = await this.queue.updateNotes(id, notes);
     await this.outbox.add({
-      eventType: "queue.notes.updated",
+      eventType: 'queue.notes.updated',
       payload: this.queuePayload(updated),
     });
     return updated;
@@ -92,6 +96,9 @@ export class ManageQueueUseCase {
       status: entry.status,
       priority: entry.priority,
       queue_notes: entry.notes ?? undefined,
+      chair_id: entry.chairId ?? undefined,
+      chair_name: entry.chairName ?? undefined,
+      manual_order: entry.manualOrder ?? undefined,
       arrived_at: entry.arrivedAt.toISOString(),
       called_at: entry.calledAt?.toISOString(),
       seated_at: entry.seatedAt?.toISOString(),

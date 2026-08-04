@@ -1,5 +1,5 @@
-import {QueuePriority} from "../enums/queue-priority.enum";
-import {QueueStatus} from "../enums/queue-status.enum";
+import { QueuePriority } from '../enums/queue-priority.enum';
+import { QueueStatus } from '../enums/queue-status.enum';
 
 export class QueueEntry {
   constructor(
@@ -15,6 +15,9 @@ export class QueueEntry {
     public readonly status: QueueStatus,
     public readonly priority: QueuePriority,
     public readonly notes: string | null,
+    public readonly chairId: string | null,
+    public readonly chairName: string | null,
+    public readonly manualOrder: number | null,
     public readonly arrivedAt: Date,
     public readonly calledAt: Date | null,
     public readonly seatedAt: Date | null,
