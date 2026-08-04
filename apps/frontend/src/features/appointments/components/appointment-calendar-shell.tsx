@@ -38,8 +38,8 @@ import {
 import {
   APPOINTMENT_STATUSES,
   appointmentStatusCalendarClassNames,
-  appointmentStatusDotClassNames,
   appointmentStatusLabels,
+  appointmentStatusSidebarClassNames,
   executeAppointmentInlineReschedule,
   projectActiveDoctorProviders,
   toggleVisibleProviderId,
@@ -267,12 +267,6 @@ const AppointmentCalendarShell = () => {
     !staffMembers.isError &&
     providers.length === 0 &&
     Boolean(clinicId);
-  const hasNoAppointments =
-    !isInitialLoading &&
-    !appointments.isError &&
-    Boolean(calendarRange) &&
-    providers.length > 0 &&
-    filteredAppointments.length === 0;
   const isAppointmentSavePending =
     isSubmittingAppointment || isCreatingAppointment || isUpdatingAppointment;
   const isCompactViewport =
@@ -688,7 +682,7 @@ const AppointmentCalendarShell = () => {
 
   return (
     <div className="appointment-schedule outlook-box gap-1">
-      <Card className="appointment-schedule-sidebar h-100 mb-0 d-none d-lg-flex rounded-end-0 overflow-y-auto outlook-left-menu outlook-left-menu-sm">
+      <Card className="appointment-schedule-sidebar h-100 mb-0 d-none d-lg-flex rounded-end-0 overflow-y-auto outlook-left-menu outlook-left-menu-lg">
         <CardBody>
           <Button
             className="w-100 btn-new-event"
@@ -699,24 +693,23 @@ const AppointmentCalendarShell = () => {
             New Appointment
           </Button>
 
-          <div className="mt-4">
-            <h5 className="fs-sm text-uppercase text-muted mb-2">Status</h5>
-            <div className="d-grid gap-2">
+          <div className="appointment-schedule-statuses">
+            <p className="text-muted mt-2 fst-italic fs-xs mb-3">
+              Appointment status colors
+            </p>
+            <div className="appointment-schedule-status-list" role="list">
               {APPOINTMENT_STATUSES.map((status) => (
                 <div
-                  className="d-flex align-items-center justify-content-between gap-2"
+                  className={`appointment-schedule-status-item fw-semibold ${appointmentStatusSidebarClassNames[status]}`}
                   key={status}
+                  role="listitem"
                 >
-                  <span className="d-inline-flex align-items-center gap-2">
-                    <span
-                      aria-hidden="true"
-                      className={`rounded-circle ${appointmentStatusDotClassNames[status]}`}
-                      style={{ height: 8, width: 8 }}
-                    />
-                    <span className="fw-medium">
-                      {appointmentStatusLabels[status]}
-                    </span>
-                  </span>
+                  <Icon
+                    aria-hidden="true"
+                    className="appointment-schedule-status-icon"
+                    icon="circle"
+                  />
+                  <span>{appointmentStatusLabels[status]}</span>
                 </div>
               ))}
             </div>
@@ -844,15 +837,6 @@ const AppointmentCalendarShell = () => {
         {hasNoDoctors && (
           <AppointmentScheduleEmptyState icon="stethoscope" title="No Doctors">
             No active doctors are available for scheduling.
-          </AppointmentScheduleEmptyState>
-        )}
-
-        {hasNoAppointments && (
-          <AppointmentScheduleEmptyState
-            icon="calendar-x"
-            title="No Appointments"
-          >
-            No appointments match the visible doctors and calendar range.
           </AppointmentScheduleEmptyState>
         )}
 

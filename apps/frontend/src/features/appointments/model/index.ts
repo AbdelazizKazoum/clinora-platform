@@ -7,6 +7,7 @@ export {
   appointmentStatusCalendarClassNames,
   appointmentStatusDotClassNames,
   appointmentStatusLabels,
+  appointmentStatusSidebarClassNames,
   bookingChannelLabels,
   queuePriorityLabels,
   queueStatusLabels,

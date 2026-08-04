@@ -88,6 +88,14 @@ export const appointmentStatusCalendarClassNames = {
   COMPLETED: 'bg-primary-subtle text-primary border-start border-3 border-primary',
 } satisfies Record<AppointmentStatus, string>;
 
+export const appointmentStatusSidebarClassNames = {
+  PENDING: 'bg-warning-subtle text-warning',
+  CONFIRMED: 'bg-success-subtle text-success',
+  CANCELLED: 'bg-danger-subtle text-danger',
+  NO_SHOW: 'bg-secondary-subtle text-secondary',
+  COMPLETED: 'bg-primary-subtle text-primary',
+} satisfies Record<AppointmentStatus, string>;
+
 export const appointmentStatusDotClassNames = {
   PENDING: 'bg-warning',
   CONFIRMED: 'bg-success',

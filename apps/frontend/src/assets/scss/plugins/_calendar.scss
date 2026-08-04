@@ -396,6 +396,33 @@
 .appointment-schedule {
     min-width: 0;
 
+    .appointment-schedule-sidebar {
+        flex: 0 0 320px;
+
+        .btn-new-event {
+            min-height: 38px;
+            white-space: nowrap;
+        }
+    }
+
+    .appointment-schedule-status-item {
+        align-items: center;
+        border-radius: 2px;
+        display: flex;
+        font-size: 0.8125rem;
+        margin: 6px 0;
+        min-width: 0;
+        padding: 8px 16px;
+        text-align: start;
+    }
+
+    .appointment-schedule-status-icon {
+        flex: 0 0 auto;
+        height: 0.875rem;
+        margin-inline-end: 0.75rem;
+        width: 0.875rem;
+    }
+
     .appointment-schedule-main {
         display: flex;
         flex-direction: column;
