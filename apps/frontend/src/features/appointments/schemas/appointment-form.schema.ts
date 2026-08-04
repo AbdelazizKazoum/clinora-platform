@@ -1,4 +1,5 @@
 import {
+  APPOINTMENT_DEFAULT_DURATION_MINUTES,
   APPOINTMENT_DURATION_OPTIONS,
   APPOINTMENT_STATUSES,
   BOOKING_CHANNELS,
@@ -118,10 +119,10 @@ export const createAppointmentFormValues = (
   const startAt = options.startAt ?? new Date();
   const appointmentDuration = appointment
     ? calculateDurationMinutes(appointment.startAt, appointment.endAt)
-    : 30;
+    : APPOINTMENT_DEFAULT_DURATION_MINUTES;
   const durationMinutes = isDurationOption(appointmentDuration)
     ? appointmentDuration
-    : 30;
+    : APPOINTMENT_DEFAULT_DURATION_MINUTES;
 
   return {
     patientId: appointment?.patientId ?? '',

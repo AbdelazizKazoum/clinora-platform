@@ -17,7 +17,9 @@ export {
   type QueueStatus,
 } from './appointment';
 export {
+  APPOINTMENT_DEFAULT_DURATION_MINUTES,
   APPOINTMENT_DURATION_OPTIONS,
+  APPOINTMENT_MIN_DURATION_MINUTES,
   appointmentDurationLabels,
   type AppointmentDurationOption,
 } from './appointment-duration';

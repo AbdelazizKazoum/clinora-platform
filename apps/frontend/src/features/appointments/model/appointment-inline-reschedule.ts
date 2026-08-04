@@ -1,4 +1,5 @@
 import type { Appointment } from './appointment';
+import { APPOINTMENT_MIN_DURATION_MINUTES } from './appointment-duration';
 import type { RescheduleAppointmentCommand } from './appointment.commands';
 import type {
   CheckAppointmentConflictsQuery,
@@ -67,6 +68,13 @@ export const buildAppointmentInlineRescheduleCommand = ({
     !isValidDate(resolvedEndAt) ||
     !isValidAppointmentTiming(newStartAt, resolvedEndAt)
   ) {
+    return null;
+  }
+
+  const resizedDurationMilliseconds =
+    resolvedEndAt.getTime() - newStartAt.getTime();
+
+  if (resizedDurationMilliseconds < APPOINTMENT_MIN_DURATION_MINUTES * 60_000) {
     return null;
   }
 

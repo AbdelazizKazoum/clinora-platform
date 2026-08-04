@@ -55,6 +55,26 @@ describe('appointment inline reschedule', () => {
     expect(command?.newEndAt.toISOString()).toBe('2026-08-03T11:00:00.000Z');
   });
 
+  it('allows an appointment to be resized to the 15-minute minimum', () => {
+    const command = buildAppointmentInlineRescheduleCommand({
+      appointment: makeAppointment(),
+      newEndAt: date('2026-08-03T10:15:00.000Z'),
+      newStartAt: date('2026-08-03T10:00:00.000Z'),
+    });
+
+    expect(command?.newEndAt.toISOString()).toBe('2026-08-03T10:15:00.000Z');
+  });
+
+  it('rejects an appointment resized below the 15-minute minimum', () => {
+    const command = buildAppointmentInlineRescheduleCommand({
+      appointment: makeAppointment(),
+      newEndAt: date('2026-08-03T10:14:00.000Z'),
+      newStartAt: date('2026-08-03T10:00:00.000Z'),
+    });
+
+    expect(command).toBeNull();
+  });
+
   it('uses a new doctor when resource-aware input supplies one', () => {
     const command = buildAppointmentInlineRescheduleCommand({
       appointment: makeAppointment(),

@@ -76,7 +76,6 @@ const compactCalendarHeight = 580;
 const calendarPage = 1;
 const calendarPageLimit = 100;
 const calendarMobileBreakpoint = 768;
-const calendarTimeGridEventMinHeight = 44;
 
 interface CalendarRange {
   startDate: Date;
@@ -898,12 +897,12 @@ const AppointmentCalendarShell = () => {
                 }}
                 dateClick={handleDateClick}
                 datesSet={handleDatesSet}
+                defaultTimedEventDuration="00:30:00"
                 editable={!isReschedulingAppointment}
                 eventClick={handleEventClick}
                 eventContent={renderCalendarEventContent}
                 eventDrop={handleEventDrop}
                 eventDurationEditable={!isReschedulingAppointment}
-                eventMinHeight={calendarTimeGridEventMinHeight}
                 eventResizableFromStart={true}
                 eventResize={handleEventResize}
                 eventStartEditable={!isReschedulingAppointment}
@@ -922,7 +921,8 @@ const AppointmentCalendarShell = () => {
                   listPlugin,
                 ]}
                 selectable={true}
-                slotDuration="00:30:00"
+                snapDuration="00:15:00"
+                slotDuration="00:15:00"
                 slotMaxTime="19:00:00"
                 slotMinTime="07:00:00"
                 stickyHeaderDates={true}

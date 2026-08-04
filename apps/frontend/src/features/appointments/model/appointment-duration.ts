@@ -3,6 +3,9 @@ export const APPOINTMENT_DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
 export type AppointmentDurationOption =
   (typeof APPOINTMENT_DURATION_OPTIONS)[number];
 
+export const APPOINTMENT_MIN_DURATION_MINUTES = APPOINTMENT_DURATION_OPTIONS[0];
+export const APPOINTMENT_DEFAULT_DURATION_MINUTES: AppointmentDurationOption = 30;
+
 export const appointmentDurationLabels = {
   15: '15 min',
   30: '30 min',
