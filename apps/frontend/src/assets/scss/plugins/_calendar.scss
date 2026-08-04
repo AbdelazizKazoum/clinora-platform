@@ -351,7 +351,8 @@
     .fc-timegrid-event-harness {
         .fc-timegrid-event {
             &.bg-#{$color}-subtle {
-                .fc-event-title {
+                .fc-event-title,
+                .fc-event-main {
                     color: $value !important;
                 }
             }
@@ -755,6 +756,29 @@
 
     .fc-event-main {
         min-width: 0;
+    }
+
+    // Ubold's generic event spacing is too large for positioned time-grid
+    // events. Keep timed appointments roomy enough for both detail lines.
+    .fc-timegrid-slot {
+        height: 1.75rem;
+    }
+
+    .fc-timegrid-event {
+        margin: 1px 2px;
+        padding: 0.25rem 0.4rem;
+        text-align: start;
+
+        .fc-event-main,
+        .fc-event-main-frame {
+            min-height: 0;
+            height: 100%;
+        }
+
+        .appointment-schedule-event-content {
+            height: 100%;
+            justify-content: center;
+        }
     }
 
     .appointment-schedule-event-content {
