@@ -21,6 +21,7 @@ import {
   type WaitingRoomChair,
 } from '../model';
 import styles from './waiting-room-board.module.scss';
+import WaitingRoomIconAvatar from './waiting-room-icon-avatar';
 
 export interface WaitingRoomChairFormValues {
   code: string;
@@ -235,9 +236,7 @@ const WaitingRoomChairManagementModal = ({
                 <tr key={chair.id}>
                   <td>
                     <div className="d-flex align-items-center gap-2">
-                      <span className="avatar-sm avatar-title rounded bg-primary-subtle text-primary flex-shrink-0">
-                        <Icon icon="armchair" />
-                      </span>
+                      <WaitingRoomIconAvatar icon="armchair" />
                       <div>
                         <div className="fw-semibold">{chair.name}</div>
                         <div className="text-muted fs-xs">

@@ -13,6 +13,7 @@ import {
   type WaitingRoomEntry,
 } from '../model';
 import styles from './waiting-room-board.module.scss';
+import WaitingRoomIconAvatar from './waiting-room-icon-avatar';
 
 interface WaitingRoomChairAssignmentModalProps {
   chairs: WaitingRoomChair[];
@@ -121,9 +122,7 @@ const WaitingRoomChairAssignmentModal = ({
           onChange={() => setSelectedChairId(chair.id)}
           type="radio"
         />
-        <span className="avatar-sm avatar-title rounded bg-primary-subtle text-primary flex-shrink-0">
-          <Icon icon="armchair" />
-        </span>
+        <WaitingRoomIconAvatar icon="armchair" />
         <span className="min-w-0 flex-grow-1">
           <span className="d-flex flex-wrap align-items-center gap-2 fw-semibold">
             {displayName}
@@ -175,9 +174,7 @@ const WaitingRoomChairAssignmentModal = ({
           )}
 
           <div className="d-flex align-items-start gap-2 mb-3">
-            <span className="avatar-sm avatar-title rounded bg-primary-subtle text-primary flex-shrink-0">
-              <Icon icon="user-round-check" />
-            </span>
+            <WaitingRoomIconAvatar icon="user-round-check" />
             <div>
               <p className="mb-1 fw-semibold">{entry.patientName}</p>
               <p className="text-muted fs-sm mb-0">

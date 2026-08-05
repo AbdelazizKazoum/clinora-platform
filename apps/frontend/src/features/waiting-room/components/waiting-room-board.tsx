@@ -20,6 +20,7 @@ import {
 } from '../model';
 import styles from './waiting-room-board.module.scss';
 import WaitingRoomEntryCard from './waiting-room-entry-card';
+import WaitingRoomIconAvatar from './waiting-room-icon-avatar';
 
 interface BoardColumnConfig {
   icon: string;
@@ -115,11 +116,12 @@ const WaitingRoomBoard = ({
                     )}
                   >
                     <div className="kanban-item py-2 px-3 d-flex align-items-center gap-2">
-                      <span
-                        className={`avatar-xs avatar-title rounded-circle bg-${column.variant}-subtle text-${column.variant}`}
-                      >
-                        <Icon icon={column.icon} />
-                      </span>
+                      <WaitingRoomIconAvatar
+                        icon={column.icon}
+                        shape="circle"
+                        size="xs"
+                        variant={column.variant}
+                      />
                       <h5
                         className="m-0"
                         id={`waiting-room-column-${column.status}`}

@@ -2,6 +2,7 @@ import Icon from '@/components/wrappers/Icon';
 import { Alert, Button, Spinner } from 'react-bootstrap';
 
 import type { WaitingRoomConnectionStatus } from '../hooks';
+import WaitingRoomIconAvatar from './waiting-room-icon-avatar';
 
 interface WaitingRoomConnectionAlertProps {
   connectionStatus: WaitingRoomConnectionStatus;
@@ -25,13 +26,11 @@ const WaitingRoomConnectionAlert = ({
       className="d-flex flex-wrap align-items-center gap-3"
       variant={isOffline ? 'danger' : 'warning'}
     >
-      <span
-        className={`avatar-sm avatar-title rounded-circle flex-shrink-0 bg-${
-          isOffline ? 'danger' : 'warning'
-        }-subtle text-${isOffline ? 'danger' : 'warning'}`}
-      >
-        <Icon icon={isOffline ? 'wifi-off' : 'radio-tower'} />
-      </span>
+      <WaitingRoomIconAvatar
+        icon={isOffline ? 'wifi-off' : 'radio-tower'}
+        shape="circle"
+        variant={isOffline ? 'danger' : 'warning'}
+      />
       <div className="flex-grow-1">
         <p className="fw-semibold mb-1">
           {isOffline ? 'You are offline' : 'Live updates are disconnected'}

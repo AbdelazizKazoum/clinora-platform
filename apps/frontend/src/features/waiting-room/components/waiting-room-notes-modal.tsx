@@ -1,11 +1,11 @@
 'use client';
 
-import Icon from '@/components/wrappers/Icon';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
 
 import type { WaitingRoomEntry } from '../model';
+import WaitingRoomIconAvatar from './waiting-room-icon-avatar';
 
 interface WaitingRoomNotesModalProps {
   entry: WaitingRoomEntry;
@@ -50,9 +50,7 @@ const WaitingRoomNotesModal = ({
           {error && <Alert variant="danger">{error}</Alert>}
 
           <div className="d-flex align-items-center gap-2 mb-3">
-            <span className="avatar-sm avatar-title rounded bg-warning-subtle text-warning flex-shrink-0">
-              <Icon icon="notebook-pen" />
-            </span>
+            <WaitingRoomIconAvatar icon="notebook-pen" variant="warning" />
             <div className="min-w-0">
               <p className="fw-semibold text-truncate mb-0">
                 {entry.patientName}

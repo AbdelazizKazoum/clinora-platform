@@ -112,11 +112,13 @@ const WaitingRoomPatientDetailsPanel = ({
               <div className="d-flex align-items-center gap-3">
                 <span
                   className={clsx(
-                    'avatar-lg avatar-title rounded-circle bg-primary-subtle text-primary fw-semibold flex-shrink-0',
+                    'avatar-lg flex-shrink-0',
                     styles.patientDetailsAvatar,
                   )}
                 >
-                  {getWaitingRoomPatientInitials(entry.patientName)}
+                  <span className="avatar-title rounded-circle bg-primary-subtle text-primary fw-semibold">
+                    {getWaitingRoomPatientInitials(entry.patientName)}
+                  </span>
                 </span>
                 <div className="min-w-0">
                   <h4 className="text-truncate mb-1">{entry.patientName}</h4>

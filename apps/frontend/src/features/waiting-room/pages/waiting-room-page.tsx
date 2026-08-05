@@ -19,6 +19,7 @@ import WaitingRoomChairManagementModal, {
 } from '../components/waiting-room-chair-management-modal';
 import WaitingRoomConnectionAlert from '../components/waiting-room-connection-alert';
 import WaitingRoomCorrectionModal from '../components/waiting-room-correction-modal';
+import WaitingRoomIconAvatar from '../components/waiting-room-icon-avatar';
 import WaitingRoomNotesModal from '../components/waiting-room-notes-modal';
 import WaitingRoomPatientDetailsPanel from '../components/waiting-room-patient-details-panel';
 import WaitingRoomSummaryCards, {
@@ -589,9 +590,11 @@ const WaitingRoomPage = () => {
 
       {waitingRoomStateQuery.isError && isPermissionError && (
         <Alert className="d-flex align-items-start gap-3" variant="warning">
-          <span className="avatar-sm avatar-title rounded-circle bg-warning-subtle text-warning flex-shrink-0">
-            <Icon icon="shield-alert" />
-          </span>
+          <WaitingRoomIconAvatar
+            icon="shield-alert"
+            shape="circle"
+            variant="warning"
+          />
           <div>
             <p className="fw-semibold mb-1">Waiting room access denied</p>
             <p className="mb-0 fs-sm">

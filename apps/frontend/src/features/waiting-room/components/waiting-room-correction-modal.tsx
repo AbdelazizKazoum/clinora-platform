@@ -1,6 +1,5 @@
 'use client';
 
-import Icon from '@/components/wrappers/Icon';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
@@ -10,6 +9,7 @@ import {
   type QueueStatus,
   type WaitingRoomEntry,
 } from '../model';
+import WaitingRoomIconAvatar from './waiting-room-icon-avatar';
 
 interface WaitingRoomCorrectionModalProps {
   destinationStatus: QueueStatus;
@@ -66,9 +66,7 @@ const WaitingRoomCorrectionModal = ({
           )}
 
           <div className="d-flex align-items-start gap-2 mb-3">
-            <span className="avatar-sm avatar-title rounded bg-warning-subtle text-warning flex-shrink-0">
-              <Icon icon="history" />
-            </span>
+            <WaitingRoomIconAvatar icon="history" variant="warning" />
             <div>
               <p className="mb-1">
                 Move <span className="fw-semibold">{entry.patientName}</span>{' '}
