@@ -150,7 +150,7 @@ export const LayoutProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      const width = window.outerWidth
+      const width = window.innerWidth
 
       if (settings.orientation === 'vertical') {
         if (width <= 768) {
@@ -171,6 +171,7 @@ export const LayoutProvider = ({ children }: { children: ReactNode }) => {
 
     const debouncedResize = debounce(handleResize, 200)
 
+    handleResize()
     window.addEventListener('resize', debouncedResize)
 
     return () => {

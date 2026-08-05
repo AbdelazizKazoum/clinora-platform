@@ -78,6 +78,7 @@ const Detail = ({
 interface WaitingRoomPatientDetailsPanelProps {
   canEditNotes: boolean;
   entry: WaitingRoomEntry | null;
+  isInteractionDisabled: boolean;
   onEditNotes: (entry: WaitingRoomEntry) => void;
   onHide: () => void;
   onStartTreatment: (entry: WaitingRoomEntry) => void;
@@ -86,6 +87,7 @@ interface WaitingRoomPatientDetailsPanelProps {
 const WaitingRoomPatientDetailsPanel = ({
   canEditNotes,
   entry,
+  isInteractionDisabled,
   onEditNotes,
   onHide,
   onStartTreatment,
@@ -173,6 +175,7 @@ const WaitingRoomPatientDetailsPanel = ({
                   <Button
                     aria-label={`Edit notes for ${entry.patientName}`}
                     className="btn-icon"
+                    disabled={isInteractionDisabled}
                     onClick={() => onEditNotes(entry)}
                     size="sm"
                     title="Edit queue notes"
@@ -232,7 +235,10 @@ const WaitingRoomPatientDetailsPanel = ({
 
             <div className="border-top p-3 d-grid gap-2">
               {canLaunchTreatmentFromWaitingRoom(entry) && (
-                <Button onClick={() => onStartTreatment(entry)}>
+                <Button
+                  disabled={isInteractionDisabled}
+                  onClick={() => onStartTreatment(entry)}
+                >
                   <Icon icon="play" className="me-2" />
                   Start Treatment
                 </Button>
@@ -251,6 +257,7 @@ const WaitingRoomPatientDetailsPanel = ({
                 {canEditNotes && (
                   <Button
                     className="flex-grow-1"
+                    disabled={isInteractionDisabled}
                     onClick={() => onEditNotes(entry)}
                     variant="outline-secondary"
                   >

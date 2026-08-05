@@ -2,6 +2,7 @@
 
 import PageBreadcrumb from '@/components/PageBreadcrumb';
 import Icon from '@/components/wrappers/Icon';
+import { ApiError } from '@/lib/api';
 import { useNotificationStore } from '@/store';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +17,7 @@ import WaitingRoomChairAssignmentModal from '../components/waiting-room-chair-as
 import WaitingRoomChairManagementModal, {
   type WaitingRoomChairFormValues,
 } from '../components/waiting-room-chair-management-modal';
+import WaitingRoomConnectionAlert from '../components/waiting-room-connection-alert';
 import WaitingRoomCorrectionModal from '../components/waiting-room-correction-modal';
 import WaitingRoomNotesModal from '../components/waiting-room-notes-modal';
 import WaitingRoomPatientDetailsPanel from '../components/waiting-room-patient-details-panel';
@@ -36,6 +38,7 @@ import {
 import {
   buildWaitingRoomTreatmentPath,
   filterWaitingRoomEntries,
+  groupWaitingRoomEntriesByStatus,
   getWaitingRoomDoctorOptions,
   getWaitingRoomSummary,
   projectWaitingRoomBoardMove,
@@ -110,7 +113,7 @@ const WaitingRoomPage = () => {
     sessionStatus === 'authenticated' ? clinicId : undefined,
   );
 
-  useWaitingRoomEvents(
+  const liveState = useWaitingRoomEvents(
     sessionStatus === 'authenticated' ? clinicId : undefined,
   );
 
@@ -153,6 +156,11 @@ const WaitingRoomPage = () => {
     !isInitialLoading && waitingRoomStateQuery.isFetching;
   const hasInitialError =
     waitingRoomStateQuery.isError && !waitingRoomStateQuery.data;
+  const isPermissionError =
+    waitingRoomStateQuery.error instanceof ApiError &&
+    (waitingRoomStateQuery.error.status === 401 ||
+      waitingRoomStateQuery.error.status === 403);
+  const hasBlockingError = hasInitialError || isPermissionError;
   const persistedOrdering = waitingRoomStateQuery.data?.ordering ?? {
     mode: 'AUTO' as const,
     manualStatuses: [],
@@ -161,11 +169,14 @@ const WaitingRoomPage = () => {
     manualOrderingRequested || persistedOrdering.mode === 'MANUAL';
   const isOrderingPending =
     isPersistingBoard || reorderMutation.isPending || statusMutation.isPending;
+  const isInteractionDisabled = isOrderingPending || !liveState.isOnline;
+  const canReorderEntries =
+    canManageQueue && isManualOrderingEnabled && !hasActiveFilters;
   const isDragEnabled =
     canManageQueue &&
     isManualOrderingEnabled &&
     !hasActiveFilters &&
-    !isOrderingPending;
+    !isInteractionDisabled;
   const displayedManualStatuses = useMemo(
     () =>
       waitingRoomStatusFlow.filter((status) =>
@@ -224,6 +235,8 @@ const WaitingRoomPage = () => {
   const handleBoardMove = async (
     input: WaitingRoomBoardMoveInput,
   ): Promise<void> => {
+    if (!canManageQueue || !liveState.isOnline) return;
+
     const move = projectWaitingRoomBoardMove(boardEntries, input);
     if (!move) return;
 
@@ -277,6 +290,11 @@ const WaitingRoomPage = () => {
   const handleCorrectionSubmit = async (reason: string): Promise<void> => {
     if (!pendingCorrectionMove) return;
 
+    if (!liveState.isOnline) {
+      setCorrectionError('Reconnect before correcting the queue status.');
+      return;
+    }
+
     setCorrectionError(null);
 
     try {
@@ -299,6 +317,11 @@ const WaitingRoomPage = () => {
 
   const handleChairSubmit = async (chairId: string): Promise<void> => {
     if (!clinicId || !pendingChairSelection) return;
+
+    if (!liveState.isOnline) {
+      setChairError('Reconnect before changing the chair assignment.');
+      return;
+    }
 
     setChairError(null);
 
@@ -356,6 +379,11 @@ const WaitingRoomPage = () => {
   ): Promise<void> => {
     if (!clinicId) return;
 
+    if (!liveState.isOnline) {
+      setChairManagementError('Reconnect before creating a chair.');
+      return;
+    }
+
     setChairManagementError(null);
     try {
       const chair = await createChairMutation.createWaitingRoomChair({
@@ -380,6 +408,11 @@ const WaitingRoomPage = () => {
     values: WaitingRoomChairFormValues,
   ): Promise<void> => {
     if (!clinicId) return;
+
+    if (!liveState.isOnline) {
+      setChairManagementError('Reconnect before updating a chair.');
+      return;
+    }
 
     setChairManagementError(null);
     try {
@@ -438,7 +471,7 @@ const WaitingRoomPage = () => {
     });
   };
 
-  const handleCorrectionRequest = (
+  const handleStatusMoveRequest = (
     entry: WaitingRoomEntry,
     destinationStatus: QueueStatus,
   ): void => {
@@ -460,10 +493,41 @@ const WaitingRoomPage = () => {
     });
   };
 
+  const handleAccessibleReorder = (
+    entry: WaitingRoomEntry,
+    direction: 'down' | 'up',
+  ): void => {
+    const statusEntries =
+      groupWaitingRoomEntriesByStatus(boardEntries)[entry.status];
+    const sourceIndex = statusEntries.findIndex(
+      (candidate) => candidate.id === entry.id,
+    );
+    if (sourceIndex === -1) return;
+
+    const destinationIndex =
+      direction === 'up' ? sourceIndex - 1 : sourceIndex + 1;
+    if (destinationIndex < 0 || destinationIndex >= statusEntries.length) {
+      return;
+    }
+
+    void handleBoardMove({
+      destinationIndex,
+      destinationStatus: entry.status,
+      entryId: entry.id,
+      sourceIndex,
+      sourceStatus: entry.status,
+    });
+  };
+
   const handleNotesSubmit = async (
     queueNotes: string | null,
   ): Promise<void> => {
     if (!clinicId || !notesEntry) return;
+
+    if (!liveState.isOnline) {
+      setNotesError('Reconnect before saving queue notes.');
+      return;
+    }
 
     setNotesError(null);
     try {
@@ -512,7 +576,33 @@ const WaitingRoomPage = () => {
         </Alert>
       )}
 
-      {waitingRoomStateQuery.isError && (
+      {clinicId && sessionStatus === 'authenticated' && !isInitialLoading && (
+        <WaitingRoomConnectionAlert
+          connectionStatus={liveState.connectionStatus}
+          isRetrying={waitingRoomStateQuery.isFetching}
+          onRetry={() => {
+            liveState.reconnect();
+            void waitingRoomStateQuery.refetch();
+          }}
+        />
+      )}
+
+      {waitingRoomStateQuery.isError && isPermissionError && (
+        <Alert className="d-flex align-items-start gap-3" variant="warning">
+          <span className="avatar-sm avatar-title rounded-circle bg-warning-subtle text-warning flex-shrink-0">
+            <Icon icon="shield-alert" />
+          </span>
+          <div>
+            <p className="fw-semibold mb-1">Waiting room access denied</p>
+            <p className="mb-0 fs-sm">
+              Your current clinic role does not allow access to this waiting
+              room. Contact a clinic administrator if this is unexpected.
+            </p>
+          </div>
+        </Alert>
+      )}
+
+      {waitingRoomStateQuery.isError && !isPermissionError && (
         <Alert
           className="d-flex flex-wrap align-items-center justify-content-between gap-2"
           variant="danger"
@@ -540,8 +630,20 @@ const WaitingRoomPage = () => {
           <WaitingRoomSummarySkeleton />
           <WaitingRoomBoardSkeleton />
         </>
-      ) : clinicId && !hasInitialError ? (
+      ) : clinicId && !hasBlockingError ? (
         <>
+          {!canManageQueue && (
+            <Alert
+              className="d-flex align-items-center gap-2 py-2"
+              variant="info"
+            >
+              <Icon icon="eye" className="flex-shrink-0" />
+              <span className="fs-sm">
+                You have view-only access to the waiting room.
+              </span>
+            </Alert>
+          )}
+
           <WaitingRoomSummaryCards summary={summary} />
 
           <div className="outlook-box kanban-app mb-3">
@@ -549,10 +651,12 @@ const WaitingRoomPage = () => {
               <WaitingRoomToolbar
                 canManageChairs={canManageChairs}
                 canManageQueue={canManageQueue}
+                connectionStatus={liveState.connectionStatus}
                 doctorId={doctorId}
                 doctors={doctors}
                 hasActiveFilters={hasActiveFilters}
                 isManualOrderingEnabled={isManualOrderingEnabled}
+                isInteractionDisabled={isInteractionDisabled}
                 isOrderingPending={isOrderingPending}
                 isRefreshing={isBackgroundFetching}
                 manualStatuses={displayedManualStatuses}
@@ -588,8 +692,10 @@ const WaitingRoomPage = () => {
               ) : (
                 <WaitingRoomBoard
                   canManageQueue={canManageQueue}
+                  canReorderEntries={canReorderEntries}
                   entries={filteredEntries}
                   isDragEnabled={isDragEnabled}
+                  isInteractionDisabled={isInteractionDisabled}
                   manualStatuses={displayedManualStatuses}
                   onAssignChair={
                     canManageQueue
@@ -599,14 +705,16 @@ const WaitingRoomPage = () => {
                         }
                       : undefined
                   }
-                  onCorrectStatus={handleCorrectionRequest}
                   onEditNotes={(entry) => {
                     setNotesError(null);
                     setNotesEntryId(entry.id);
                   }}
                   onMove={handleBoardMove}
+                  onMoveStatus={handleStatusMoveRequest}
+                  onReorder={handleAccessibleReorder}
                   onSelectEntry={(entry) => setSelectedEntryId(entry.id)}
                   onStartTreatment={handleStartTreatment}
+                  recentlyUpdatedEntryIds={liveState.recentlyUpdatedEntryIds}
                 />
               )}
             </Card>
@@ -672,6 +780,7 @@ const WaitingRoomPage = () => {
           <WaitingRoomPatientDetailsPanel
             canEditNotes={canManageQueue}
             entry={selectedEntry}
+            isInteractionDisabled={!liveState.isOnline}
             onEditNotes={(entry) => {
               setNotesError(null);
               setNotesEntryId(entry.id);

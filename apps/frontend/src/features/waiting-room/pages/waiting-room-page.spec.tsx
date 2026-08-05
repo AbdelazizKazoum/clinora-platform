@@ -11,6 +11,7 @@ import type { Session } from 'next-auth';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+import { ApiError } from '@/lib/api';
 import { useNotificationStore } from '@/store';
 
 import {
@@ -22,6 +23,7 @@ import {
   useUpdateWaitingRoomStatus,
   useWaitingRoomEvents,
   useWaitingRoomState,
+  type WaitingRoomConnectionStatus,
 } from '../hooks';
 import type {
   WaitingRoomChair,
@@ -135,6 +137,7 @@ const updateWaitingRoomChair = jest.fn();
 const updateWaitingRoomNotes = jest.fn();
 const showNotification = jest.fn();
 const push = jest.fn();
+const reconnect = jest.fn();
 
 const session: Session = {
   expires: '2026-08-06T00:00:00.000Z',
@@ -201,9 +204,12 @@ const createState = (
 const arrangePage = (
   options: {
     data?: WaitingRoomState | undefined;
+    connectionStatus?: WaitingRoomConnectionStatus;
     error?: Error;
     isError?: boolean;
     isLoading?: boolean;
+    isOnline?: boolean;
+    recentlyUpdatedEntryIds?: string[];
     role?: Session['user']['role'];
     sessionStatus?: 'authenticated' | 'loading';
   } = {},
@@ -212,9 +218,12 @@ const arrangePage = (
     ? options.data
     : createState([createEntry()]);
   const {
+    connectionStatus = 'connected',
     error = new Error('Waiting room unavailable'),
     isError = false,
     isLoading = false,
+    isOnline = true,
+    recentlyUpdatedEntryIds = [],
     role = 'secretary',
     sessionStatus = 'authenticated',
   } = options;
@@ -269,6 +278,13 @@ const arrangePage = (
     isPending: false,
     reset: jest.fn(),
     updateWaitingRoomNotes,
+  });
+  jest.mocked(useWaitingRoomEvents).mockReturnValue({
+    connectionStatus,
+    isOnline,
+    lastEventAt: null,
+    recentlyUpdatedEntryIds,
+    reconnect,
   });
   jest.mocked(useRouter).mockReturnValue({ push } as never);
   jest
@@ -338,6 +354,16 @@ describe(WaitingRoomPage.name, () => {
     expect(useWaitingRoomEvents).toHaveBeenCalledWith(clinicId);
   });
 
+  it('highlights entries changed by a recent live update', () => {
+    arrangePage({ recentlyUpdatedEntryIds: ['entry-1'] });
+
+    render(<WaitingRoomPage />);
+
+    expect(
+      screen.getByLabelText('Recently updated from live queue'),
+    ).toBeTruthy();
+  });
+
   it('distinguishes the initial empty state from a filtered-empty board', () => {
     arrangePage();
 
@@ -368,6 +394,60 @@ describe(WaitingRoomPage.name, () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it('explains permission failures without offering a futile retry', () => {
+    arrangePage({
+      error: new ApiError('Forbidden', 403),
+      isError: true,
+    });
+
+    render(<WaitingRoomPage />);
+
+    expect(screen.getByText('Waiting room access denied')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /retry/i })).toBeNull();
+    expect(screen.queryByText('Sara Amrani')).toBeNull();
+  });
+
+  it('pauses queue mutations offline and lets the user retry the connection', () => {
+    arrangePage({ connectionStatus: 'offline', isOnline: false });
+
+    render(<WaitingRoomPage />);
+
+    expect(screen.getByText('You are offline')).toBeTruthy();
+    expect(
+      screen
+        .getByRole('button', { name: 'Manual Order' })
+        .hasAttribute('disabled'),
+    ).toBe(true);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    const statusAction = screen.getByRole('button', { name: 'Mark done' });
+    expect(statusAction.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(statusAction);
+    expect(updateWaitingRoomStatus).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry connection' }));
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an SSE disconnection while keeping REST queue actions available', () => {
+    arrangePage({ connectionStatus: 'disconnected' });
+
+    render(<WaitingRoomPage />);
+
+    expect(screen.getByText('Live updates are disconnected')).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    expect(
+      screen
+        .getByRole('button', { name: 'Mark done' })
+        .hasAttribute('disabled'),
+    ).toBe(false);
+  });
+
   it('enables manual ordering and persists same-column movement', async () => {
     arrangePage({
       data: createState([
@@ -392,6 +472,69 @@ describe(WaitingRoomPage.name, () => {
         status: 'WAITING',
       });
     });
+  });
+
+  it('reorders a manual queue through keyboard-accessible card actions', async () => {
+    arrangePage({
+      data: createState([
+        createEntry({ id: 'entry-1', patientName: 'First Patient' }),
+        createEntry({ id: 'entry-2', patientName: 'Second Patient' }),
+      ]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Second Patient' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move Second Patient up' }),
+    );
+
+    await waitFor(() => {
+      expect(reorderWaitingRoomEntries).toHaveBeenCalledWith({
+        clinicId,
+        mode: 'MANUAL',
+        orderedEntryIds: ['entry-2', 'entry-1'],
+        status: 'WAITING',
+      });
+    });
+  });
+
+  it('moves a patient between queue columns without drag and drop', async () => {
+    arrangePage();
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Mark done' }));
+
+    await waitFor(() => {
+      expect(updateWaitingRoomStatus).toHaveBeenCalledWith({
+        chairId: undefined,
+        clinicId,
+        correctionReason: undefined,
+        entryId: 'entry-1',
+        status: 'DONE',
+        targetOrderedEntryIds: ['entry-1'],
+      });
+    });
+  });
+
+  it('opens chair selection from the accessible status menu', () => {
+    arrangePage({ data: createState([createEntry()], [createChair()]) });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Move to chair' }));
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(
+      screen.getByRole('radio', { name: 'Select Operatory 1 (OP-1)' }),
+    ).toBeTruthy();
   });
 
   it('requires an available chair selection before submitting a seat move', () => {
@@ -680,6 +823,9 @@ describe(WaitingRoomPage.name, () => {
     arrangePage({ role: 'doctor' });
     render(<WaitingRoomPage />);
 
+    expect(
+      screen.getByText('You have view-only access to the waiting room.'),
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Manual Order' })).toBeNull();
     fireEvent.click(
       screen.getByRole('button', { name: 'Actions for Sara Amrani' }),

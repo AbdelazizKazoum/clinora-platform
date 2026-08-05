@@ -1,7 +1,69 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 import { waitingRoomQueryKeys } from '../model';
-import { mergeWaitingRoomStreamEvent } from './use-waiting-room-events';
+import {
+  getUpdatedEntryIdsFromQueueEvent,
+  mergeWaitingRoomStreamEvent,
+} from './use-waiting-room-events';
+
+describe(getUpdatedEntryIdsFromQueueEvent.name, () => {
+  it('returns unique entry ids for single-entry and reorder events', () => {
+    expect(
+      getUpdatedEntryIdsFromQueueEvent({
+        clinic_id: 'clinic-a',
+        type: 'queue.status.updated',
+        entry: {
+          id: 'queue-1',
+          clinic_id: 'clinic-a',
+          appointment_id: 'appointment-1',
+          patient_id: 'patient-1',
+          patient_name: 'Sara Amrani',
+          doctor_id: 'doctor-1',
+          doctor_name: 'Dr. Salma El Mansouri',
+          status: 'WAITING',
+          priority: 'NORMAL',
+          arrived_at: '2026-08-04T08:00:00.000Z',
+          updated_at: '2026-08-04T08:05:00.000Z',
+        },
+      }),
+    ).toEqual(['queue-1']);
+
+    expect(
+      getUpdatedEntryIdsFromQueueEvent({
+        clinic_id: 'clinic-a',
+        type: 'queue.reordered',
+        entries: [
+          {
+            id: 'queue-1',
+            clinic_id: 'clinic-a',
+            appointment_id: 'appointment-1',
+            patient_id: 'patient-1',
+            patient_name: 'Sara Amrani',
+            doctor_id: 'doctor-1',
+            doctor_name: 'Dr. Salma El Mansouri',
+            status: 'WAITING',
+            priority: 'NORMAL',
+            arrived_at: '2026-08-04T08:00:00.000Z',
+            updated_at: '2026-08-04T08:05:00.000Z',
+          },
+          {
+            id: 'queue-2',
+            clinic_id: 'clinic-a',
+            appointment_id: 'appointment-2',
+            patient_id: 'patient-2',
+            patient_name: 'Omar Tazi',
+            doctor_id: 'doctor-1',
+            doctor_name: 'Dr. Salma El Mansouri',
+            status: 'WAITING',
+            priority: 'URGENT',
+            arrived_at: '2026-08-04T08:02:00.000Z',
+            updated_at: '2026-08-04T08:06:00.000Z',
+          },
+        ],
+      }),
+    ).toEqual(['queue-1', 'queue-2']);
+  });
+});
 
 describe('mergeWaitingRoomStreamEvent', () => {
   it('merges stream events into state and chair caches', () => {

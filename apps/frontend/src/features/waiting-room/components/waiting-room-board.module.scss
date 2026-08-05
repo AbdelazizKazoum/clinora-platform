@@ -33,6 +33,46 @@
   width: 2.5rem;
 }
 
+.entryActionMenu {
+  max-height: min(30rem, calc(100vh - 2rem));
+  min-width: 13rem;
+  overflow-y: auto;
+}
+
+.entryIdentity {
+  min-width: 0;
+}
+
+.entryNameHeading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.entryNameButton {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbarHeading {
+  min-width: 13rem;
+}
+
+.toolbarSearch {
+  min-width: 15rem;
+}
+
+.toolbarFilter {
+  flex: 0 1 11rem;
+  min-width: 10rem;
+}
+
+.connectingIcon {
+  animation: waiting-room-spin 1s linear infinite;
+}
+
 .patientDetailsPanel {
   width: min(28rem, 100vw) !important;
 }
@@ -104,6 +144,15 @@
   border-inline-start: 3px solid transparent !important;
 }
 
+.recentlyUpdated {
+  animation: waiting-room-highlight 2.8s ease-out;
+  box-shadow: 0 0 0 2px rgba(var(--bs-success-rgb), 0.35) !important;
+}
+
+.liveUpdateBadge {
+  animation: waiting-room-fade-in 0.2s ease-out;
+}
+
 .liveDot {
   animation: waiting-room-pulse 1.8s ease-out infinite;
 }
@@ -125,6 +174,55 @@
   }
 }
 
+@keyframes waiting-room-highlight {
+  from {
+    background-color: rgba(var(--bs-success-rgb), 0.16);
+  }
+
+  to {
+    background-color: var(--bs-card-bg);
+  }
+}
+
+@keyframes waiting-room-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes waiting-room-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connectingIcon,
+  .liveDot,
+  .liveUpdateBadge,
+  .recentlyUpdated {
+    animation: none;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .toolbarHeading {
+    flex-basis: 100%;
+  }
+
+  .toolbarSearch {
+    flex-basis: 100%;
+  }
+
+  .toolbarFilter {
+    flex: 1 1 calc(50% - 0.25rem);
+  }
+}
+
 @media (max-width: 767.98px) {
   .boardColumn {
     flex-basis: 17.5rem;
@@ -137,5 +235,43 @@
 
   .patientDetailsGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .entryActionMenu {
+    inset: auto 1rem 1rem !important;
+    max-height: calc(100dvh - 5rem);
+    min-width: 0;
+    position: fixed !important;
+    transform: none !important;
+  }
+
+  .boardColumn {
+    flex-basis: max(17.5rem, calc(100vw - 4rem));
+    max-width: calc(100vw - 3rem);
+    min-width: max(17.5rem, calc(100vw - 4rem)) !important;
+  }
+
+  .toolbarTopRow :global(.btn-group) {
+    display: flex;
+    width: 100%;
+  }
+
+  .toolbarTopRow :global(.btn-group) > button {
+    flex: 1 1 50%;
+    min-width: 0;
+  }
+
+  .toolbarActionButton {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
+  }
+
+  .toolbarFilter,
+  .toolbarSearch {
+    flex-basis: 100%;
+    min-width: 0;
+    width: 100%;
   }
 }

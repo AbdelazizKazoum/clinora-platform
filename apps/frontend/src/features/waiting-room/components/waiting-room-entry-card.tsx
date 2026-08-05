@@ -8,11 +8,12 @@ import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 import {
   canLaunchTreatmentFromWaitingRoom,
   getEntryChairLabel,
-  getPreviousQueueStatus,
   getWaitingRoomPatientInitials,
   queuePriorityBadgeClassNames,
   queuePriorityLabels,
   queueStatusLabels,
+  requiresQueueStatusCorrectionReason,
+  waitingRoomStatusFlow,
   type QueueStatus,
   type WaitingRoomEntry,
 } from '../model';
@@ -64,32 +65,46 @@ const getEntryTiming = (
 };
 
 interface WaitingRoomEntryCardProps {
+  canMoveDown: boolean;
+  canMoveUp: boolean;
   canManageQueue: boolean;
+  canReorderEntries: boolean;
   dragHandleProps?: DraggableProvidedDragHandleProps;
   entry: WaitingRoomEntry;
   isDragging?: boolean;
+  isInteractionDisabled: boolean;
+  isRecentlyUpdated: boolean;
   onAssignChair?: (entry: WaitingRoomEntry) => void;
-  onCorrectStatus: (entry: WaitingRoomEntry, status: QueueStatus) => void;
   onEditNotes: (entry: WaitingRoomEntry) => void;
+  onMoveStatus: (entry: WaitingRoomEntry, status: QueueStatus) => void;
+  onReorder: (entry: WaitingRoomEntry, direction: 'down' | 'up') => void;
   onSelect: (entry: WaitingRoomEntry) => void;
   onStartTreatment: (entry: WaitingRoomEntry) => void;
 }
 
 const WaitingRoomEntryCard = ({
+  canMoveDown,
+  canMoveUp,
   canManageQueue,
+  canReorderEntries,
   dragHandleProps,
   entry,
   isDragging = false,
+  isInteractionDisabled,
+  isRecentlyUpdated,
   onAssignChair,
-  onCorrectStatus,
   onEditNotes,
+  onMoveStatus,
+  onReorder,
   onSelect,
   onStartTreatment,
 }: WaitingRoomEntryCardProps) => {
   const timing = getEntryTiming(entry);
   const chairLabel = getEntryChairLabel(entry);
-  const correctionStatus = getPreviousQueueStatus(entry.status);
   const canStartTreatment = canLaunchTreatmentFromWaitingRoom(entry);
+  const statusActions = waitingRoomStatusFlow.filter(
+    (status) => status !== entry.status,
+  );
 
   return (
     <Card
@@ -97,6 +112,7 @@ const WaitingRoomEntryCard = ({
         'border-0 shadow-sm mb-2',
         priorityCardClassNames[entry.priority],
         isDragging && 'shadow-lg',
+        isRecentlyUpdated && styles.recentlyUpdated,
       )}
     >
       <CardBody className="p-3">
@@ -110,12 +126,14 @@ const WaitingRoomEntryCard = ({
             {getWaitingRoomPatientInitials(entry.patientName)}
           </span>
 
-          <div className="min-w-0 flex-grow-1">
-            <div className="d-flex align-items-center gap-1">
-              <h5 className="mb-0 min-w-0 text-truncate">
+          <div className={`flex-grow-1 ${styles.entryIdentity}`}>
+            <div
+              className={`d-flex align-items-center gap-1 ${styles.entryIdentity}`}
+            >
+              <h5 className={`mb-0 ${styles.entryNameHeading}`}>
                 <Button
                   aria-label={`View details for ${entry.patientName}`}
-                  className="border-0 p-0 fw-semibold text-body text-decoration-none text-truncate mw-100"
+                  className={`border-0 p-0 fw-semibold text-body text-decoration-none ${styles.entryNameButton}`}
                   onClick={() => onSelect(entry)}
                   variant="link"
                 >
@@ -131,6 +149,15 @@ const WaitingRoomEntryCard = ({
             <span className="text-muted fs-xs text-truncate d-block">
               {entry.appointmentType ?? 'Dental appointment'}
             </span>
+            {isRecentlyUpdated && (
+              <span
+                aria-label="Recently updated from live queue"
+                className={`badge badge-soft-success text-success mt-1 ${styles.liveUpdateBadge}`}
+              >
+                <Icon icon="radio" className="me-1" />
+                Updated
+              </span>
+            )}
           </div>
 
           <Dropdown align="end" className="flex-shrink-0">
@@ -142,7 +169,7 @@ const WaitingRoomEntryCard = ({
             >
               <Icon icon="ellipsis-vertical" className="fs-lg" />
             </Dropdown.Toggle>
-            <Dropdown.Menu>
+            <Dropdown.Menu className={styles.entryActionMenu}>
               <Dropdown.Item
                 as="button"
                 onClick={() => onSelect(entry)}
@@ -154,6 +181,7 @@ const WaitingRoomEntryCard = ({
               {canStartTreatment && (
                 <Dropdown.Item
                   as="button"
+                  disabled={isInteractionDisabled}
                   onClick={() => onStartTreatment(entry)}
                   type="button"
                 >
@@ -166,6 +194,7 @@ const WaitingRoomEntryCard = ({
                   <Dropdown.Divider />
                   <Dropdown.Item
                     as="button"
+                    disabled={isInteractionDisabled}
                     onClick={() => onEditNotes(entry)}
                     type="button"
                   >
@@ -175,6 +204,7 @@ const WaitingRoomEntryCard = ({
                   {entry.status === 'IN_CHAIR' && onAssignChair && (
                     <Dropdown.Item
                       as="button"
+                      disabled={isInteractionDisabled}
                       onClick={() => onAssignChair(entry)}
                       type="button"
                     >
@@ -182,15 +212,60 @@ const WaitingRoomEntryCard = ({
                       Change chair
                     </Dropdown.Item>
                   )}
-                  {correctionStatus && (
-                    <Dropdown.Item
-                      as="button"
-                      onClick={() => onCorrectStatus(entry, correctionStatus)}
-                      type="button"
-                    >
-                      <Icon icon="history" className="me-2" />
-                      Correct to {queueStatusLabels[correctionStatus]}
-                    </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Header>Move patient</Dropdown.Header>
+                  {statusActions.map((status) => {
+                    const isCorrection = requiresQueueStatusCorrectionReason(
+                      entry.status,
+                      status,
+                    );
+                    const label = isCorrection
+                      ? `Correct to ${queueStatusLabels[status]}`
+                      : status === 'IN_CHAIR'
+                        ? 'Move to chair'
+                        : `Mark ${queueStatusLabels[status].toLowerCase()}`;
+
+                    return (
+                      <Dropdown.Item
+                        as="button"
+                        disabled={isInteractionDisabled}
+                        key={status}
+                        onClick={() => onMoveStatus(entry, status)}
+                        type="button"
+                      >
+                        <Icon
+                          icon={isCorrection ? 'history' : 'arrow-right'}
+                          className="me-2"
+                        />
+                        {label}
+                      </Dropdown.Item>
+                    );
+                  })}
+                  {canReorderEntries && (
+                    <>
+                      <Dropdown.Divider />
+                      <Dropdown.Header>Queue position</Dropdown.Header>
+                      <Dropdown.Item
+                        aria-label={`Move ${entry.patientName} up`}
+                        as="button"
+                        disabled={isInteractionDisabled || !canMoveUp}
+                        onClick={() => onReorder(entry, 'up')}
+                        type="button"
+                      >
+                        <Icon icon="arrow-up" className="me-2" />
+                        Move up
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        aria-label={`Move ${entry.patientName} down`}
+                        as="button"
+                        disabled={isInteractionDisabled || !canMoveDown}
+                        onClick={() => onReorder(entry, 'down')}
+                        type="button"
+                      >
+                        <Icon icon="arrow-down" className="me-2" />
+                        Move down
+                      </Dropdown.Item>
+                    </>
                   )}
                 </>
               )}
@@ -250,6 +325,7 @@ const WaitingRoomEntryCard = ({
         {canStartTreatment && (
           <Button
             className="w-100 mt-3"
+            disabled={isInteractionDisabled}
             onClick={() => onStartTreatment(entry)}
             size="sm"
           >
@@ -264,7 +340,7 @@ const WaitingRoomEntryCard = ({
           <span className="d-flex align-items-center gap-1">
             <Icon icon="clock-3" />
             {timing.label} {getElapsedTimeLabel(timing.date)}
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             {timeFormatter.format(timing.date)}
           </span>
           <span

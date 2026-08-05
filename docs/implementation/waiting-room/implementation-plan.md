@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 13 complete; Task 14 ready
+Status: Task 14 complete; Task 15 ready
 Created: 2026-08-04
 
 ## Goal
@@ -39,7 +39,7 @@ the next task.
 - [x] Task 11: Add Kanban-style status movement and manual reordering
 - [x] Task 12: Add chair assignment and chair management UI
 - [x] Task 13: Add patient details panel, notes, correction, and treatment launch
-- [ ] Task 14: Add role-aware UX, responsive polish, and loading/error states
+- [x] Task 14: Add role-aware UX, responsive polish, and loading/error states
 - [ ] Task 15: Add focused tests and final integration verification
 - [ ] Task 16: Update API documentation and completion notes
 
@@ -1567,6 +1567,34 @@ Acceptance criteria:
 - The waiting room feels production-ready on common clinic devices.
 - Users can operate the queue through menus/buttons when card movement is not
   convenient.
+
+Task 14 result:
+
+- Kept mutation actions aligned with the existing Gateway roles while adding a
+  clear view-only state for doctors and a dedicated access-denied response for
+  `401` and `403` failures.
+- Promoted SSE connectivity into a typed live-state contract with connecting,
+  connected, disconnected, and offline states, explicit recovery, and
+  short-lived entry highlights for incoming queue events.
+- Disabled server mutations while the browser is offline. An SSE-only
+  disconnection remains visible and recoverable without unnecessarily blocking
+  REST commands while network access is still available.
+- Added keyboard-accessible status movement, chair movement, correction, and
+  manual up/down ordering to every patient card, preserving the same projection
+  and backend command paths used by drag and drop.
+- Added responsive toolbar, filter, card text, dropdown, motion-reduction, and
+  narrow-screen menu behavior. Fixed the shared shell breakpoint initialization
+  so the mobile sidebar is off-canvas on first render rather than after resize.
+- Added focused page and stream-helper coverage for role visibility, permission
+  errors, offline/disconnected states, retries, accessible movements, manual
+  reordering, chair selection, and live-update highlighting.
+- Verification passed: `pnpm nx test frontend --runInBand
+--testPathPatterns=waiting-room --silent` (68 tests), `pnpm nx lint frontend`
+  (0 errors; 8 existing shell warnings), and `pnpm nx build frontend
+--skip-nx-cache`.
+- Browser verification passed at `1440x1000`, `900x900`, and `390x844` with no
+  document overflow, control overflow, long-name/badge collision, or clipped
+  mobile action menu.
 
 ### Task 15: Add Focused Tests And Final Integration Verification
 
