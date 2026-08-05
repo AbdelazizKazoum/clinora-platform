@@ -65,6 +65,32 @@ const state = (
 });
 
 describe('waiting-room cache reconciliation', () => {
+  it('adds schedule check-ins from the queue stream to waiting-room state', () => {
+    const result = applyWaitingRoomEventToState(
+      state({
+        entries: [entry({ id: 'queue-1', status: 'WAITING' })],
+      }),
+      {
+        type: 'queue.checked_in',
+        clinicId: 'clinic-1',
+        entry: entry({
+          id: 'queue-2',
+          patientName: 'New Arrival',
+          status: 'ARRIVED',
+        }),
+      },
+    );
+
+    expect(result?.entries.map((candidate) => candidate.id)).toEqual([
+      'queue-1',
+      'queue-2',
+    ]);
+    expect(result?.entries[1]).toMatchObject({
+      patientName: 'New Arrival',
+      status: 'ARRIVED',
+    });
+  });
+
   it('upserts entry events into waiting-room state', () => {
     const result = applyWaitingRoomEventToState(state(), {
       type: 'queue.status.updated',

@@ -34,7 +34,10 @@ describe('ManageQueueUseCase', () => {
     );
   }
 
-  function queueEntry(status = QueueStatus.ARRIVED): QueueEntry {
+  function queueEntry(
+    status = QueueStatus.ARRIVED,
+    notes: string | null = null,
+  ): QueueEntry {
     return new QueueEntry(
       'queue-1',
       'clinic-1',
@@ -47,7 +50,7 @@ describe('ManageQueueUseCase', () => {
       'Checkup',
       status,
       QueuePriority.NORMAL,
-      null,
+      notes,
       null,
       null,
       null,
@@ -113,6 +116,24 @@ describe('ManageQueueUseCase', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('rejects check-ins for appointments outside the clinic scope', async () => {
+    const { useCase, queue, outbox } = setup();
+
+    await expect(
+      useCase.checkIn({
+        clinicId: 'clinic-2',
+        appointmentId: 'appointment-1',
+        patientId: 'patient-1',
+        patientName: 'Patient One',
+        doctorId: 'doctor-1',
+        doctorName: 'Doctor One',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(queue.create).not.toHaveBeenCalled();
+    expect(outbox.add).not.toHaveBeenCalled();
+  });
+
   it('requires a reason before reverting queue status', async () => {
     const { useCase } = setup();
 
@@ -159,6 +180,28 @@ describe('ManageQueueUseCase', () => {
         chair_name: undefined,
         manual_order: undefined,
         arrived_at: now.toISOString(),
+      }),
+    });
+  });
+
+  it('publishes waiting-room note updates through the queue event stream', async () => {
+    const { useCase, queue, outbox } = setup();
+    queue.updateNotes.mockResolvedValueOnce(
+      queueEntry(QueueStatus.WAITING, 'Patient prefers quiet room'),
+    );
+
+    await useCase.updateNotes('queue-1', 'Patient prefers quiet room');
+
+    expect(queue.updateNotes).toHaveBeenCalledWith(
+      'queue-1',
+      'Patient prefers quiet room',
+    );
+    expect(outbox.add).toHaveBeenCalledWith({
+      eventType: 'queue.notes.updated',
+      payload: expect.objectContaining({
+        id: 'queue-1',
+        queue_notes: 'Patient prefers quiet room',
+        status: QueueStatus.WAITING,
       }),
     });
   });

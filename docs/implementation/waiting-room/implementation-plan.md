@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 14 complete; Task 15 ready
+Status: Task 15 complete; Task 16 ready
 Created: 2026-08-04
 
 ## Goal
@@ -40,7 +40,7 @@ the next task.
 - [x] Task 12: Add chair assignment and chair management UI
 - [x] Task 13: Add patient details panel, notes, correction, and treatment launch
 - [x] Task 14: Add role-aware UX, responsive polish, and loading/error states
-- [ ] Task 15: Add focused tests and final integration verification
+- [x] Task 15: Add focused tests and final integration verification
 - [ ] Task 16: Update API documentation and completion notes
 
 ## Architectural Direction
@@ -1615,6 +1615,27 @@ Acceptance criteria:
 - Automated tests cover critical waiting-room behavior.
 - Build and lint pass for affected projects.
 - Manual end-to-end clinic queue flow is verified.
+
+Task 15 result:
+
+- Completed on 2026-08-05.
+- Added focused Gateway DTO validation tests for invalid waiting-room statuses,
+  UUIDs, manual reorder payloads, and chair management payload shape.
+- Added appointment-service coverage for clinic-scoped check-in rejection and
+  queue note update events.
+- Added frontend cache coverage proving `queue.checked_in` SSE events add newly
+  checked-in appointments to the waiting-room state.
+- Verification passed: `pnpm nx test contracts-appointment --runInBand
+--silent`, `pnpm nx test appointment-service --runInBand --silent`, `pnpm nx
+test api-gateway --runInBand --silent`, `pnpm nx test frontend --runInBand
+--silent`, `pnpm nx build appointment-service`, `pnpm nx build api-gateway`,
+  `pnpm nx lint frontend`, and `pnpm nx build frontend --skip-nx-cache`.
+- Frontend lint passed with 0 errors and the existing 8 shared layout/template
+  warnings.
+- Browser integration verification passed against `http://localhost:3000/waiting-room`
+  with mocked authenticated session, BFF responses, and SSE: initial queue
+  render, schedule check-in via `queue.checked_in`, notes save, chair seating,
+  treatment launch, and horizontal overflow check.
 
 ### Task 16: Update API Documentation And Completion Notes
 
