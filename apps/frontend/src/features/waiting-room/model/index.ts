@@ -50,6 +50,7 @@ export {
   canLaunchTreatmentFromWaitingRoom,
   getChairDisplayName,
   getEntryChairLabel,
+  getPreviousQueueStatus,
   getQueueStatusIndex,
   isBackwardQueueStatusMove,
   isChairAssignable,
@@ -58,6 +59,11 @@ export {
   waitingRoomStatusFlow,
   waitingRoomVisibleStatuses,
 } from './waiting-room.rules';
+export {
+  buildWaitingRoomTreatmentPath,
+  getWaitingRoomTreatmentContext,
+  type WaitingRoomTreatmentContext,
+} from './waiting-room-treatment';
 export {
   filterWaitingRoomEntries,
   getWaitingRoomDoctorOptions,

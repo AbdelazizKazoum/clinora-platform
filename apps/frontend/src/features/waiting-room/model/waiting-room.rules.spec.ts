@@ -3,6 +3,7 @@ import {
   canLaunchTreatmentFromWaitingRoom,
   getChairDisplayName,
   getEntryChairLabel,
+  getPreviousQueueStatus,
   isBackwardQueueStatusMove,
   isChairAssignable,
   isChairSelectableForEntry,
@@ -60,6 +61,8 @@ describe('waiting-room rules and display metadata', () => {
     expect(isBackwardQueueStatusMove('IN_CHAIR', 'WAITING')).toBe(true);
     expect(requiresQueueStatusCorrectionReason('DONE', 'ARRIVED')).toBe(true);
     expect(isBackwardQueueStatusMove('WAITING', 'IN_CHAIR')).toBe(false);
+    expect(getPreviousQueueStatus('IN_CHAIR')).toBe('WAITING');
+    expect(getPreviousQueueStatus('ARRIVED')).toBeNull();
   });
 
   it('centralizes chair and entry display helpers', () => {
@@ -89,6 +92,11 @@ describe('waiting-room rules and display metadata', () => {
     expect(canLaunchTreatmentFromWaitingRoom(entry())).toBe(false);
     expect(
       canLaunchTreatmentFromWaitingRoom(entry({ status: 'IN_CHAIR' })),
+    ).toBe(false);
+    expect(
+      canLaunchTreatmentFromWaitingRoom(
+        entry({ chairId: 'chair-1', status: 'IN_CHAIR' }),
+      ),
     ).toBe(true);
     expect(queueStatusLabels.IN_CHAIR).toBe('In Chair');
     expect(queueStatusBadgeClassNames.WAITING).toContain('warning');

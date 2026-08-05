@@ -4,10 +4,12 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { Session } from 'next-auth';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 import { useNotificationStore } from '@/store';
 
@@ -16,6 +18,7 @@ import {
   useCreateWaitingRoomChair,
   useReorderWaitingRoomEntries,
   useUpdateWaitingRoomChair,
+  useUpdateWaitingRoomNotes,
   useUpdateWaitingRoomStatus,
   useWaitingRoomEvents,
   useWaitingRoomState,
@@ -44,6 +47,21 @@ jest.mock('@/components/wrappers/SimpleBar', () => ({
 }));
 
 let mockDragEndHandler: ((result: DropResult) => void) | undefined;
+
+Object.defineProperty(window, 'matchMedia', {
+  configurable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    addEventListener: jest.fn(),
+    addListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+    matches: false,
+    media: query,
+    onchange: null,
+    removeEventListener: jest.fn(),
+    removeListener: jest.fn(),
+  })),
+  writable: true,
+});
 
 jest.mock('@hello-pangea/dnd', () => ({
   DragDropContext: ({
@@ -88,11 +106,16 @@ jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
 }));
 
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+}));
+
 jest.mock('../hooks', () => ({
   useAssignWaitingRoomChair: jest.fn(),
   useCreateWaitingRoomChair: jest.fn(),
   useReorderWaitingRoomEntries: jest.fn(),
   useUpdateWaitingRoomChair: jest.fn(),
+  useUpdateWaitingRoomNotes: jest.fn(),
   useUpdateWaitingRoomStatus: jest.fn(),
   useWaitingRoomEvents: jest.fn(),
   useWaitingRoomState: jest.fn(),
@@ -109,7 +132,9 @@ const updateWaitingRoomStatus = jest.fn();
 const assignWaitingRoomChair = jest.fn();
 const createWaitingRoomChair = jest.fn();
 const updateWaitingRoomChair = jest.fn();
+const updateWaitingRoomNotes = jest.fn();
 const showNotification = jest.fn();
+const push = jest.fn();
 
 const session: Session = {
   expires: '2026-08-06T00:00:00.000Z',
@@ -239,6 +264,13 @@ const arrangePage = (
     reset: jest.fn(),
     updateWaitingRoomChair,
   });
+  jest.mocked(useUpdateWaitingRoomNotes).mockReturnValue({
+    error: null,
+    isPending: false,
+    reset: jest.fn(),
+    updateWaitingRoomNotes,
+  });
+  jest.mocked(useRouter).mockReturnValue({ push } as never);
   jest
     .mocked(useNotificationStore)
     .mockImplementation((selector) => selector({ showNotification } as never));
@@ -263,6 +295,7 @@ describe(WaitingRoomPage.name, () => {
     );
     createWaitingRoomChair.mockResolvedValue(createChair());
     updateWaitingRoomChair.mockResolvedValue(createChair());
+    updateWaitingRoomNotes.mockResolvedValue(createEntry());
   });
 
   it('renders a loading board without empty-state copy', () => {
@@ -565,6 +598,115 @@ describe(WaitingRoomPage.name, () => {
         targetOrderedEntryIds: ['waiting', 'done'],
       });
     });
+  });
+
+  it('opens patient details with visit data and the status timeline', () => {
+    arrangePage({
+      data: createState([
+        createEntry({
+          chairId: 'chair-1',
+          chairName: 'Operatory 1',
+          seatedAt: new Date('2026-08-05T08:10:00.000Z'),
+          status: 'IN_CHAIR',
+        }),
+      ]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View details for Sara Amrani' }),
+    );
+
+    const panel = screen.getByRole('dialog');
+
+    expect(
+      within(panel).getByRole('heading', { name: 'Patient details' }),
+    ).toBeTruthy();
+    expect(within(panel).getByText('Status timeline')).toBeTruthy();
+    expect(within(panel).getByText('Operatory 1')).toBeTruthy();
+    expect(within(panel).getByText('Called')).toBeTruthy();
+    expect(within(panel).getByText('Seated')).toBeTruthy();
+    expect(within(panel).getByText('Completed')).toBeTruthy();
+  });
+
+  it('persists queue notes from the card action', async () => {
+    arrangePage();
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit notes' }));
+    fireEvent.change(screen.getByLabelText('Notes'), {
+      target: { value: '  Patient prefers the quiet operatory  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save notes' }));
+
+    await waitFor(() => {
+      expect(updateWaitingRoomNotes).toHaveBeenCalledWith({
+        clinicId,
+        entryId: 'entry-1',
+        queueNotes: 'Patient prefers the quiet operatory',
+      });
+    });
+  });
+
+  it('opens the backend-backed correction workflow from the card action', async () => {
+    arrangePage();
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Correct to Arrived' }));
+    fireEvent.change(screen.getByLabelText('Correction reason'), {
+      target: { value: 'Called by mistake' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm correction' }));
+
+    await waitFor(() => {
+      expect(updateWaitingRoomStatus).toHaveBeenCalledWith({
+        chairId: undefined,
+        clinicId,
+        correctionReason: 'Called by mistake',
+        entryId: 'entry-1',
+        status: 'ARRIVED',
+        targetOrderedEntryIds: ['entry-1'],
+      });
+    });
+  });
+
+  it('hides notes, correction, and ordering controls from read-only doctors', () => {
+    arrangePage({ role: 'doctor' });
+    render(<WaitingRoomPage />);
+
+    expect(screen.queryByRole('button', { name: 'Manual Order' })).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    expect(screen.queryByRole('button', { name: 'Edit notes' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Correct to Arrived' }),
+    ).toBeNull();
+  });
+
+  it('launches treatment with the complete seated queue context', () => {
+    arrangePage({
+      data: createState([
+        createEntry({
+          chairId: 'chair-1',
+          chairName: 'Operatory 1',
+          status: 'IN_CHAIR',
+        }),
+      ]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Treatment' }));
+
+    expect(push).toHaveBeenCalledWith(
+      '/visits/new?patientId=patient-1&appointmentId=appointment-1&queueEntryId=entry-1&chairId=chair-1&doctorId=doctor-1',
+    );
   });
 
   it('restores automatic ordering through the backend command', async () => {

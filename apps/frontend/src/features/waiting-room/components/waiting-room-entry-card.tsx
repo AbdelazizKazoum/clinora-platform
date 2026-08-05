@@ -6,10 +6,13 @@ import clsx from 'clsx';
 import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 
 import {
+  canLaunchTreatmentFromWaitingRoom,
   getEntryChairLabel,
+  getPreviousQueueStatus,
   getWaitingRoomPatientInitials,
   queuePriorityBadgeClassNames,
   queuePriorityLabels,
+  queueStatusLabels,
   type QueueStatus,
   type WaitingRoomEntry,
 } from '../model';
@@ -61,20 +64,32 @@ const getEntryTiming = (
 };
 
 interface WaitingRoomEntryCardProps {
+  canManageQueue: boolean;
   dragHandleProps?: DraggableProvidedDragHandleProps;
   entry: WaitingRoomEntry;
   isDragging?: boolean;
   onAssignChair?: (entry: WaitingRoomEntry) => void;
+  onCorrectStatus: (entry: WaitingRoomEntry, status: QueueStatus) => void;
+  onEditNotes: (entry: WaitingRoomEntry) => void;
+  onSelect: (entry: WaitingRoomEntry) => void;
+  onStartTreatment: (entry: WaitingRoomEntry) => void;
 }
 
 const WaitingRoomEntryCard = ({
+  canManageQueue,
   dragHandleProps,
   entry,
   isDragging = false,
   onAssignChair,
+  onCorrectStatus,
+  onEditNotes,
+  onSelect,
+  onStartTreatment,
 }: WaitingRoomEntryCardProps) => {
   const timing = getEntryTiming(entry);
   const chairLabel = getEntryChairLabel(entry);
+  const correctionStatus = getPreviousQueueStatus(entry.status);
+  const canStartTreatment = canLaunchTreatmentFromWaitingRoom(entry);
 
   return (
     <Card
@@ -97,8 +112,15 @@ const WaitingRoomEntryCard = ({
 
           <div className="min-w-0 flex-grow-1">
             <div className="d-flex align-items-center gap-1">
-              <h5 className="mb-0 fw-semibold text-truncate">
-                {entry.patientName}
+              <h5 className="mb-0 min-w-0 text-truncate">
+                <Button
+                  aria-label={`View details for ${entry.patientName}`}
+                  className="border-0 p-0 fw-semibold text-body text-decoration-none text-truncate mw-100"
+                  onClick={() => onSelect(entry)}
+                  variant="link"
+                >
+                  {entry.patientName}
+                </Button>
               </h5>
               <span
                 className={`badge flex-shrink-0 ${queuePriorityBadgeClassNames[entry.priority]}`}
@@ -121,19 +143,58 @@ const WaitingRoomEntryCard = ({
               <Icon icon="ellipsis-vertical" className="fs-lg" />
             </Dropdown.Toggle>
             <Dropdown.Menu>
-              {entry.status === 'IN_CHAIR' && onAssignChair && (
+              <Dropdown.Item
+                as="button"
+                onClick={() => onSelect(entry)}
+                type="button"
+              >
+                <Icon icon="panel-right-open" className="me-2" />
+                View details
+              </Dropdown.Item>
+              {canStartTreatment && (
+                <Dropdown.Item
+                  as="button"
+                  onClick={() => onStartTreatment(entry)}
+                  type="button"
+                >
+                  <Icon icon="play" className="me-2" />
+                  Start Treatment
+                </Dropdown.Item>
+              )}
+              {canManageQueue && (
                 <>
+                  <Dropdown.Divider />
                   <Dropdown.Item
                     as="button"
-                    onClick={() => onAssignChair(entry)}
+                    onClick={() => onEditNotes(entry)}
                     type="button"
                   >
-                    <Icon icon="armchair" className="me-2" />
-                    Change chair
+                    <Icon icon="notebook-pen" className="me-2" />
+                    Edit notes
                   </Dropdown.Item>
-                  <Dropdown.Divider />
+                  {entry.status === 'IN_CHAIR' && onAssignChair && (
+                    <Dropdown.Item
+                      as="button"
+                      onClick={() => onAssignChair(entry)}
+                      type="button"
+                    >
+                      <Icon icon="armchair" className="me-2" />
+                      Change chair
+                    </Dropdown.Item>
+                  )}
+                  {correctionStatus && (
+                    <Dropdown.Item
+                      as="button"
+                      onClick={() => onCorrectStatus(entry, correctionStatus)}
+                      type="button"
+                    >
+                      <Icon icon="history" className="me-2" />
+                      Correct to {queueStatusLabels[correctionStatus]}
+                    </Dropdown.Item>
+                  )}
                 </>
               )}
+              <Dropdown.Divider />
               {entry.patientPhone ? (
                 <>
                   <Dropdown.Item href={`tel:${entry.patientPhone}`}>
@@ -185,6 +246,17 @@ const WaitingRoomEntryCard = ({
             </div>
           )}
         </div>
+
+        {canStartTreatment && (
+          <Button
+            className="w-100 mt-3"
+            onClick={() => onStartTreatment(entry)}
+            size="sm"
+          >
+            <Icon icon="play" className="me-2" />
+            Start Treatment
+          </Button>
+        )}
 
         <hr className="border-dashed my-3" />
 

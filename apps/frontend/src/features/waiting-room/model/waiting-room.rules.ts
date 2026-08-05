@@ -27,6 +27,14 @@ export const requiresQueueStatusCorrectionReason = (
   nextStatus: QueueStatus,
 ): boolean => isBackwardQueueStatusMove(currentStatus, nextStatus);
 
+export const getPreviousQueueStatus = (
+  status: QueueStatus,
+): QueueStatus | null => {
+  const previousStatus = waitingRoomStatusFlow[getQueueStatusIndex(status) - 1];
+
+  return previousStatus ?? null;
+};
+
 export const isChairAssignable = (chair: WaitingRoomChair): boolean =>
   chair.isActive && chair.isAvailable;
 
@@ -44,4 +52,4 @@ export const getEntryChairLabel = (entry: WaitingRoomEntry): string | null =>
 
 export const canLaunchTreatmentFromWaitingRoom = (
   entry: WaitingRoomEntry,
-): boolean => entry.status === 'IN_CHAIR';
+): boolean => entry.status === 'IN_CHAIR' && Boolean(entry.chairId);

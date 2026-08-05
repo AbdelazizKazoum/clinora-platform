@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 12 complete; Task 13 ready
+Status: Task 13 complete; Task 14 ready
 Created: 2026-08-04
 
 ## Goal
@@ -38,7 +38,7 @@ the next task.
 - [x] Task 10: Build Ubold-style realtime board shell
 - [x] Task 11: Add Kanban-style status movement and manual reordering
 - [x] Task 12: Add chair assignment and chair management UI
-- [ ] Task 13: Add patient details panel, notes, correction, and treatment launch
+- [x] Task 13: Add patient details panel, notes, correction, and treatment launch
 - [ ] Task 14: Add role-aware UX, responsive polish, and loading/error states
 - [ ] Task 15: Add focused tests and final integration verification
 - [ ] Task 16: Update API documentation and completion notes
@@ -1513,6 +1513,36 @@ Acceptance criteria:
 
 - A seated patient can be sent to the treatment workspace from the board.
 - Notes and correction workflows are role-aware and backend-backed.
+
+Task 13 result:
+
+- Added a responsive selected-patient offcanvas using the waiting-room queue
+  projection for patient, appointment, provider, priority, phone, chair, and
+  queue-note context.
+- Adapted Ubold's timeline language to show arrival, called, seated, and
+  completed timestamps, including explicit not-recorded states.
+- Added queue-note editing from both patient cards and the details panel through
+  the existing waiting-room notes mutation and SSE-compatible cache update.
+- Exposed previous-status correction from the card action menu while preserving
+  the backend-required correction-reason modal and status command.
+- Matched frontend mutation visibility to the Gateway policy: `admin`,
+  `secretary`, and `dental_assistant` can edit notes, correct status, assign
+  chairs, and reorder; doctors retain read-only waiting-room access.
+- Added `Start Treatment` to seated entries and built a typed `/visits/new`
+  handoff containing `patientId`, `appointmentId`, `queueEntryId`, `chairId`,
+  and `doctorId`.
+- Did not add a waiting-room treatment endpoint. The dependent treatment
+  feature must make `/visits/new` consume and validate this handoff and, when
+  persistence is implemented, add create-visit-from-queue behavior inside the
+  treatment bounded context.
+- Added focused route-builder and page integration coverage for panel details,
+  timestamps, notes, menu correction, role visibility, and treatment launch.
+- Verification passed:
+  `pnpm nx test frontend --runInBand --testPathPatterns=waiting-room --skip-nx-cache`
+  (60 tests), `pnpm nx lint frontend --skip-nx-cache`, and
+  `pnpm nx build frontend --skip-nx-cache`.
+- Browser verification passed at `1440x1000` and `390x844` with no document
+  overflow or detail-field collisions.
 
 ### Task 14: Add Role-Aware UX, Responsive Polish, And Loading/Error States
 

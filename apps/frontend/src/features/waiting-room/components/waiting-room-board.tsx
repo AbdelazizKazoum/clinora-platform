@@ -35,22 +35,32 @@ const boardColumnConfigs: BoardColumnConfig[] = [
 ];
 
 interface WaitingRoomBoardProps {
+  canManageQueue: boolean;
   entries: WaitingRoomEntry[];
   isDragEnabled: boolean;
   manualStatuses: QueueStatus[];
-  onAssignChair: (entry: WaitingRoomEntry) => void;
+  onAssignChair?: (entry: WaitingRoomEntry) => void;
+  onCorrectStatus: (entry: WaitingRoomEntry, status: QueueStatus) => void;
+  onEditNotes: (entry: WaitingRoomEntry) => void;
   onMove: (move: WaitingRoomBoardMoveInput) => Promise<void> | void;
+  onSelectEntry: (entry: WaitingRoomEntry) => void;
+  onStartTreatment: (entry: WaitingRoomEntry) => void;
 }
 
 const isQueueStatus = (value: string): value is QueueStatus =>
   QUEUE_STATUSES.includes(value as QueueStatus);
 
 const WaitingRoomBoard = ({
+  canManageQueue,
   entries,
   isDragEnabled,
   manualStatuses,
   onAssignChair,
+  onCorrectStatus,
+  onEditNotes,
   onMove,
+  onSelectEntry,
+  onStartTreatment,
 }: WaitingRoomBoardProps) => {
   const groupedEntries = groupWaitingRoomEntriesByStatus(entries);
 
@@ -146,6 +156,7 @@ const WaitingRoomBoard = ({
                                 ref={draggableProvided.innerRef}
                               >
                                 <WaitingRoomEntryCard
+                                  canManageQueue={canManageQueue}
                                   dragHandleProps={
                                     draggableProvided.dragHandleProps ??
                                     undefined
@@ -153,6 +164,10 @@ const WaitingRoomBoard = ({
                                   entry={entry}
                                   isDragging={draggableSnapshot.isDragging}
                                   onAssignChair={onAssignChair}
+                                  onCorrectStatus={onCorrectStatus}
+                                  onEditNotes={onEditNotes}
+                                  onSelect={onSelectEntry}
+                                  onStartTreatment={onStartTreatment}
                                 />
                               </li>
                             )}

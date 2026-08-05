@@ -33,6 +33,30 @@
   width: 2.5rem;
 }
 
+.patientDetailsPanel {
+  width: min(28rem, 100vw) !important;
+}
+
+.patientDetailsAvatar {
+  height: 3.5rem;
+  width: 3.5rem;
+}
+
+.patientDetailsGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.patientDetailsGrid > * {
+  min-width: 0;
+}
+
+.patientDetailValue {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
 .chairOption {
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);
@@ -109,5 +133,9 @@
 
   .columnScroll {
     height: 32rem !important;
+  }
+
+  .patientDetailsGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -19,6 +19,7 @@ import styles from './waiting-room-board.module.scss';
 
 interface WaitingRoomToolbarProps {
   canManageChairs: boolean;
+  canManageQueue: boolean;
   doctorId: string | 'ALL';
   doctors: WaitingRoomDoctorOption[];
   hasActiveFilters: boolean;
@@ -39,10 +40,13 @@ interface WaitingRoomToolbarProps {
 }
 
 const getOrderingDescription = (
+  canManageQueue: boolean,
   isOrderingPending: boolean,
   isManualOrderingEnabled: boolean,
   hasActiveFilters: boolean,
 ): string => {
+  if (!canManageQueue)
+    return 'Queue ordering is managed by clinical support staff.';
   if (isOrderingPending) return 'Saving the shared queue order...';
   if (isManualOrderingEnabled && hasActiveFilters) {
     return 'Clear filters to drag patients without hiding queue positions.';
@@ -56,6 +60,7 @@ const getOrderingDescription = (
 
 const WaitingRoomToolbar = ({
   canManageChairs,
+  canManageQueue,
   doctorId,
   doctors,
   hasActiveFilters,
@@ -96,6 +101,7 @@ const WaitingRoomToolbar = ({
           </div>
           <p className="text-muted fs-xs mb-0 mt-1">
             {getOrderingDescription(
+              canManageQueue,
               isOrderingPending,
               isManualOrderingEnabled,
               hasActiveFilters,
@@ -103,37 +109,39 @@ const WaitingRoomToolbar = ({
           </p>
         </div>
 
-        <ButtonGroup aria-label="Queue ordering mode">
-          <Button
-            aria-pressed={!isManualOrderingEnabled}
-            disabled={isOrderingPending || !isManualOrderingEnabled}
-            onClick={onAutoReorder}
-            title="Restore priority and check-in time ordering"
-            type="button"
-            variant={!isManualOrderingEnabled ? 'primary' : 'outline-primary'}
-          >
-            {isOrderingPending && isManualOrderingEnabled ? (
-              <Spinner animation="border" className="me-1" size="sm" />
-            ) : (
-              <Icon icon="list-restart" className="me-1" />
-            )}
-            Auto Reorder
-          </Button>
-          <Button
-            aria-pressed={isManualOrderingEnabled}
-            disabled={isOrderingPending || isManualOrderingEnabled}
-            onClick={onManualOrder}
-            title="Enable persisted drag-and-drop queue ordering"
-            type="button"
-            variant={isManualOrderingEnabled ? 'primary' : 'outline-primary'}
-          >
-            <Icon icon="grip-vertical" className="me-1" />
-            Manual Order
-            {manualStatuses.length > 0 && (
-              <span className="ms-1">({manualStatuses.length})</span>
-            )}
-          </Button>
-        </ButtonGroup>
+        {canManageQueue && (
+          <ButtonGroup aria-label="Queue ordering mode">
+            <Button
+              aria-pressed={!isManualOrderingEnabled}
+              disabled={isOrderingPending || !isManualOrderingEnabled}
+              onClick={onAutoReorder}
+              title="Restore priority and check-in time ordering"
+              type="button"
+              variant={!isManualOrderingEnabled ? 'primary' : 'outline-primary'}
+            >
+              {isOrderingPending && isManualOrderingEnabled ? (
+                <Spinner animation="border" className="me-1" size="sm" />
+              ) : (
+                <Icon icon="list-restart" className="me-1" />
+              )}
+              Auto Reorder
+            </Button>
+            <Button
+              aria-pressed={isManualOrderingEnabled}
+              disabled={isOrderingPending || isManualOrderingEnabled}
+              onClick={onManualOrder}
+              title="Enable persisted drag-and-drop queue ordering"
+              type="button"
+              variant={isManualOrderingEnabled ? 'primary' : 'outline-primary'}
+            >
+              <Icon icon="grip-vertical" className="me-1" />
+              Manual Order
+              {manualStatuses.length > 0 && (
+                <span className="ms-1">({manualStatuses.length})</span>
+              )}
+            </Button>
+          </ButtonGroup>
+        )}
 
         <Button
           aria-label="Refresh waiting room"

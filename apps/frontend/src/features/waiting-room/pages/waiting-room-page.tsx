@@ -4,6 +4,7 @@ import PageBreadcrumb from '@/components/PageBreadcrumb';
 import Icon from '@/components/wrappers/Icon';
 import { useNotificationStore } from '@/store';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { Alert, Button, Card } from 'react-bootstrap';
 
@@ -16,6 +17,8 @@ import WaitingRoomChairManagementModal, {
   type WaitingRoomChairFormValues,
 } from '../components/waiting-room-chair-management-modal';
 import WaitingRoomCorrectionModal from '../components/waiting-room-correction-modal';
+import WaitingRoomNotesModal from '../components/waiting-room-notes-modal';
+import WaitingRoomPatientDetailsPanel from '../components/waiting-room-patient-details-panel';
 import WaitingRoomSummaryCards, {
   WaitingRoomSummarySkeleton,
 } from '../components/waiting-room-summary-cards';
@@ -25,11 +28,13 @@ import {
   useCreateWaitingRoomChair,
   useReorderWaitingRoomEntries,
   useUpdateWaitingRoomChair,
+  useUpdateWaitingRoomNotes,
   useUpdateWaitingRoomStatus,
   useWaitingRoomEvents,
   useWaitingRoomState,
 } from '../hooks';
 import {
+  buildWaitingRoomTreatmentPath,
   filterWaitingRoomEntries,
   getWaitingRoomDoctorOptions,
   getWaitingRoomSummary,
@@ -41,6 +46,7 @@ import {
   type WaitingRoomBoardMoveInput,
   type WaitingRoomChair,
   type WaitingRoomEntry,
+  type QueueStatus,
   type WaitingRoomPriorityFilter,
 } from '../model';
 
@@ -54,11 +60,17 @@ const getChairErrorMessage = (error: unknown): string =>
     ? error.message
     : 'Unable to save the chair change. Refresh availability and try again.';
 
+const getNotesErrorMessage = (error: unknown): string =>
+  error instanceof Error
+    ? error.message
+    : 'Unable to save the queue notes. Try again.';
+
 type PendingChairSelection =
   | { entry: WaitingRoomEntry; kind: 'assign' }
   | { entry: WaitingRoomEntry; kind: 'seat'; move: WaitingRoomBoardMove };
 
 const WaitingRoomPage = () => {
+  const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const clinicId = session?.user.clinicId;
   const [search, setSearch] = useState('');
@@ -82,6 +94,9 @@ const WaitingRoomPage = () => {
   const [chairManagementError, setChairManagementError] = useState<
     string | null
   >(null);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [notesEntryId, setNotesEntryId] = useState<string | null>(null);
+  const [notesError, setNotesError] = useState<string | null>(null);
   const showNotification = useNotificationStore(
     (state) => state.showNotification,
   );
@@ -90,6 +105,7 @@ const WaitingRoomPage = () => {
   const assignChairMutation = useAssignWaitingRoomChair();
   const createChairMutation = useCreateWaitingRoomChair();
   const updateChairMutation = useUpdateWaitingRoomChair();
+  const updateNotesMutation = useUpdateWaitingRoomNotes();
   const waitingRoomStateQuery = useWaitingRoomState(
     sessionStatus === 'authenticated' ? clinicId : undefined,
   );
@@ -103,6 +119,14 @@ const WaitingRoomPage = () => {
   const boardEntries = optimisticEntries ?? entries;
   const canManageChairs =
     session?.user.role === 'admin' || session?.user.role === 'secretary';
+  const canManageQueue =
+    session?.user.role === 'admin' ||
+    session?.user.role === 'secretary' ||
+    session?.user.role === 'dental_assistant';
+  const selectedEntry =
+    boardEntries.find((entry) => entry.id === selectedEntryId) ?? null;
+  const notesEntry =
+    boardEntries.find((entry) => entry.id === notesEntryId) ?? null;
   const doctors = useMemo(
     () => getWaitingRoomDoctorOptions(boardEntries),
     [boardEntries],
@@ -138,7 +162,10 @@ const WaitingRoomPage = () => {
   const isOrderingPending =
     isPersistingBoard || reorderMutation.isPending || statusMutation.isPending;
   const isDragEnabled =
-    isManualOrderingEnabled && !hasActiveFilters && !isOrderingPending;
+    canManageQueue &&
+    isManualOrderingEnabled &&
+    !hasActiveFilters &&
+    !isOrderingPending;
   const displayedManualStatuses = useMemo(
     () =>
       waitingRoomStatusFlow.filter((status) =>
@@ -411,6 +438,69 @@ const WaitingRoomPage = () => {
     });
   };
 
+  const handleCorrectionRequest = (
+    entry: WaitingRoomEntry,
+    destinationStatus: QueueStatus,
+  ): void => {
+    const sourceEntries = boardEntries.filter(
+      (candidate) => candidate.status === entry.status,
+    );
+    const destinationEntries = boardEntries.filter(
+      (candidate) => candidate.status === destinationStatus,
+    );
+
+    void handleBoardMove({
+      destinationIndex: destinationEntries.length,
+      destinationStatus,
+      entryId: entry.id,
+      sourceIndex: sourceEntries.findIndex(
+        (candidate) => candidate.id === entry.id,
+      ),
+      sourceStatus: entry.status,
+    });
+  };
+
+  const handleNotesSubmit = async (
+    queueNotes: string | null,
+  ): Promise<void> => {
+    if (!clinicId || !notesEntry) return;
+
+    setNotesError(null);
+    try {
+      await updateNotesMutation.updateWaitingRoomNotes({
+        clinicId,
+        entryId: notesEntry.id,
+        queueNotes,
+      });
+      showNotification({
+        message: queueNotes
+          ? `${notesEntry.patientName}'s queue notes were updated.`
+          : `${notesEntry.patientName}'s queue notes were cleared.`,
+        title: 'Queue notes saved',
+        variant: 'success',
+      });
+      setNotesEntryId(null);
+    } catch (error) {
+      setNotesError(getNotesErrorMessage(error));
+    }
+  };
+
+  const handleStartTreatment = (entry: WaitingRoomEntry): void => {
+    const path = buildWaitingRoomTreatmentPath(entry);
+
+    if (!path) {
+      showNotification({
+        message:
+          'Treatment can only start after the patient has an assigned chair.',
+        title: 'Treatment unavailable',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    router.push(path);
+  };
+
   return (
     <>
       <PageBreadcrumb title="Waiting Room" subtitle="Clinical" />
@@ -458,6 +548,7 @@ const WaitingRoomPage = () => {
             <Card className="h-100 mb-0 flex-grow-1 overflow-hidden">
               <WaitingRoomToolbar
                 canManageChairs={canManageChairs}
+                canManageQueue={canManageQueue}
                 doctorId={doctorId}
                 doctors={doctors}
                 hasActiveFilters={hasActiveFilters}
@@ -496,14 +587,26 @@ const WaitingRoomPage = () => {
                 />
               ) : (
                 <WaitingRoomBoard
+                  canManageQueue={canManageQueue}
                   entries={filteredEntries}
                   isDragEnabled={isDragEnabled}
                   manualStatuses={displayedManualStatuses}
-                  onAssignChair={(entry) => {
-                    setChairError(null);
-                    setPendingChairSelection({ entry, kind: 'assign' });
+                  onAssignChair={
+                    canManageQueue
+                      ? (entry) => {
+                          setChairError(null);
+                          setPendingChairSelection({ entry, kind: 'assign' });
+                        }
+                      : undefined
+                  }
+                  onCorrectStatus={handleCorrectionRequest}
+                  onEditNotes={(entry) => {
+                    setNotesError(null);
+                    setNotesEntryId(entry.id);
                   }}
                   onMove={handleBoardMove}
+                  onSelectEntry={(entry) => setSelectedEntryId(entry.id)}
+                  onStartTreatment={handleStartTreatment}
                 />
               )}
             </Card>
@@ -562,6 +665,31 @@ const WaitingRoomPage = () => {
                 setPendingCorrectionMove(null);
               }}
               onSubmit={handleCorrectionSubmit}
+              show
+            />
+          )}
+
+          <WaitingRoomPatientDetailsPanel
+            canEditNotes={canManageQueue}
+            entry={selectedEntry}
+            onEditNotes={(entry) => {
+              setNotesError(null);
+              setNotesEntryId(entry.id);
+            }}
+            onHide={() => setSelectedEntryId(null)}
+            onStartTreatment={handleStartTreatment}
+          />
+
+          {notesEntry && canManageQueue && (
+            <WaitingRoomNotesModal
+              entry={notesEntry}
+              error={notesError}
+              isSubmitting={updateNotesMutation.isPending}
+              onHide={() => {
+                setNotesError(null);
+                setNotesEntryId(null);
+              }}
+              onSubmit={handleNotesSubmit}
               show
             />
           )}
