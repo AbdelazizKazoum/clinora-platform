@@ -1,11 +1,12 @@
 # Appointment API contract for frontend integration
 
 Status: HTTP routes implemented with authenticated role and clinic-scope access  
-Last verified: 2026-08-04
+Last verified: 2026-08-05
 
 This document is the frontend-facing HTTP contract for the appointment bounded
 context. The appointment service owns appointment scheduling, doctor conflict
-checks, patient check-in, and the daily clinic queue.
+checks, patient check-in, the daily clinic queue, and waiting-room patient-flow
+business rules.
 
 The browser must not call the appointment service gRPC API directly. Frontend
 code should call the same-origin BFF, which forwards to the API Gateway. The API
@@ -15,8 +16,12 @@ Implementation sources:
 
 - API Gateway appointment controllers:
   `apps/backend/api-gateway/src/modules/appointments`
+- API Gateway waiting-room controller:
+  `apps/backend/api-gateway/src/modules/waiting-room`
 - API Gateway appointment validation DTOs:
   `apps/backend/api-gateway/src/modules/appointments/dto`
+- API Gateway waiting-room validation DTOs:
+  `apps/backend/api-gateway/src/modules/waiting-room/dto`
 - API Gateway appointment gRPC client:
   `apps/backend/api-gateway/src/clients/appointment`
 - Shared appointment contract:
@@ -35,6 +40,7 @@ Use the same-origin BFF URL:
 ```txt
 /api/bff/clinics/{clinicId}/appointments
 /api/bff/clinics/{clinicId}/queue
+/api/bff/clinics/{clinicId}/waiting-room
 ```
 
 Example:
@@ -66,6 +72,7 @@ Server-side tools may call the Gateway at:
 ```txt
 http://localhost:3001/api/v1/clinics/{clinicId}/appointments
 http://localhost:3001/api/v1/clinics/{clinicId}/queue
+http://localhost:3001/api/v1/clinics/{clinicId}/waiting-room
 ```
 
 Direct browser-to-Gateway calls are not part of the frontend contract.
@@ -117,6 +124,9 @@ The Gateway enforces these roles from the authenticated token:
 | List/get queue entries                | `admin`, `doctor`, `secretary`, `dental_assistant` |
 | Check in a patient                    | `admin`, `secretary`, `dental_assistant`           |
 | Update queue status or notes          | `admin`, `secretary`, `dental_assistant`           |
+| Read waiting-room state and chairs    | `admin`, `doctor`, `secretary`, `dental_assistant` |
+| Move entries, notes, chairs, ordering | `admin`, `secretary`, `dental_assistant`           |
+| Create/update waiting-room chairs     | `admin`, `secretary`                               |
 
 Frontend permission checks are only UX. The backend remains the source of truth.
 
@@ -180,6 +190,34 @@ interface QueueEntryDto {
 interface QueueEntriesListResponse {
   queueEntries: QueueEntryDto[];
 }
+
+interface WaitingRoomChairDto {
+  id: string;
+  clinicId: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+  isAvailable: boolean;
+  occupiedByEntryId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface WaitingRoomOrderingDto {
+  mode: 'AUTO' | 'MANUAL';
+  manualStatuses: QueueStatus[];
+}
+
+interface WaitingRoomStateResponse {
+  entries: QueueEntryDto[];
+  chairs: WaitingRoomChairDto[];
+  ordering: WaitingRoomOrderingDto;
+  generatedAt: string;
+}
+
+interface WaitingRoomChairsListResponse {
+  chairs: WaitingRoomChairDto[];
+}
 ```
 
 Response notes:
@@ -189,9 +227,14 @@ Response notes:
   to `patientPhone`, `type`, `notes`, `cancelledAt`, `cancellationReason`,
   `createdBy`, `appointmentType`, `queueNotes`, `calledAt`, `seatedAt`, and
   `completedAt`.
+- `chairId`, `chairName`, and `occupiedByEntryId` follow the same empty-string
+  convention when absent.
 - Map empty strings to `null` at the feature API boundary if the UI model
   prefers nullable values.
 - Convert date strings to `Date` only in frontend models, not in raw DTO types.
+- `manualOrder` is omitted when automatic queue ordering applies.
+- `WaitingRoomChairDto.isAvailable` is computed for the current waiting-room
+  state. Inactive chairs are never available.
 
 ## 4. Appointment endpoints
 
@@ -542,20 +585,192 @@ interface UpdateQueueNotesBody {
 This route replaces queue notes. Omit `queueNotes` or send `""` only when the UI
 intentionally clears the note.
 
-## 6. Expected errors
+## 6. Waiting-room endpoints
+
+The waiting-room API is a board-oriented facade over appointment-service queue
+state. It is separate from the compatibility `/queue` API so the UI can seat
+patients, manage chairs, persist manual order, and consume one state document
+without moving business rules into the Gateway.
+
+All waiting-room paths below are relative to
+`/api/bff/clinics/{clinicId}/waiting-room` in frontend code. Direct Gateway
+paths use the same suffix under `/api/v1`.
+
+| Method  | Path                        | Purpose                                      | Success response                |
+| ------- | --------------------------- | -------------------------------------------- | ------------------------------- |
+| `GET`   | `/`                         | Read board entries, chairs, and order mode   | `200 WaitingRoomStateResponse`  |
+| `PATCH` | `/entries/{entryId}/status` | Move an entry through the waiting-room flow  | `200 QueueEntryDto`             |
+| `PATCH` | `/entries/{entryId}/notes`  | Replace queue notes                          | `200 QueueEntryDto`             |
+| `PATCH` | `/entries/{entryId}/chair`  | Change the assigned chair for a seated entry | `200 QueueEntryDto`             |
+| `PATCH` | `/reorder`                  | Persist manual order or restore auto order   | `200 QueueEntriesListResponse`  |
+| `GET`   | `/chairs`                   | List waiting-room chairs                     | `200 WaitingRoomChairsListResponse` |
+| `POST`  | `/chairs`                   | Create a waiting-room chair                  | `201 WaitingRoomChairDto`       |
+| `PATCH` | `/chairs/{chairId}`         | Rename, recode, activate, or deactivate chair | `200 WaitingRoomChairDto`       |
+
+### Read waiting-room state
+
+Route:
+
+```txt
+GET /api/bff/clinics/{clinicId}/waiting-room
+```
+
+The response contains the current queue entries, all clinic chairs with
+computed availability, ordering metadata, and a `generatedAt` timestamp. Entries
+created through `POST /queue` are included in this state.
+
+Ordering is backend-authoritative:
+
+1. Status flow: `ARRIVED`, `WAITING`, `IN_CHAIR`, `DONE`
+2. If manual order exists for a status, `manualOrder` ascending
+3. Priority: `EMERGENCY`, `URGENT`, `NORMAL`
+4. Arrival time ascending
+5. Created time ascending fallback
+
+`ordering.mode` is `MANUAL` when at least one visible status column has a
+persisted `manualOrder`; otherwise it is `AUTO`. `manualStatuses` lists the
+status columns currently using manual order.
+
+### Update waiting-room status
+
+Route:
+
+```txt
+PATCH /api/bff/clinics/{clinicId}/waiting-room/entries/{entryId}/status
+```
+
+Body:
+
+```ts
+interface UpdateWaitingRoomStatusBody {
+  status: QueueStatus;
+  chairId?: string; // UUID, required when seating without an assigned chair
+  correctionReason?: string;
+  targetOrderedEntryIds?: string[]; // UUIDs for destination column order
+}
+```
+
+The allowed flow is `ARRIVED -> WAITING -> IN_CHAIR -> DONE`. Moving backward
+requires `correctionReason`; otherwise the backend returns HTTP `400`. Moving
+to `IN_CHAIR` requires an active and available chair unless the entry already
+has a valid chair assignment. When `targetOrderedEntryIds` is supplied, the
+status update and destination-column manual ordering are persisted as one
+waiting-room command.
+
+The legacy queue route `PATCH /queue/{queueEntryId}/status` remains available,
+but seating through that route can fail with HTTP `400` because it has no
+`chairId` field. New waiting-room UI should use this route.
+
+### Update waiting-room notes
+
+Route:
+
+```txt
+PATCH /api/bff/clinics/{clinicId}/waiting-room/entries/{entryId}/notes
+```
+
+Body:
+
+```ts
+interface UpdateWaitingRoomNotesBody {
+  queueNotes?: string;
+}
+```
+
+This route delegates to the same backend note command as the compatibility
+queue API after the Gateway verifies the queue entry belongs to the requested
+clinic.
+
+### Assign waiting-room chair
+
+Route:
+
+```txt
+PATCH /api/bff/clinics/{clinicId}/waiting-room/entries/{entryId}/chair
+```
+
+Body:
+
+```ts
+interface AssignWaitingRoomChairBody {
+  chairId: string; // required UUID
+}
+```
+
+Chair assignment is available only for entries already in `IN_CHAIR`. The
+backend rejects inactive chairs with HTTP `400` and occupied chairs with HTTP
+`409`. The queue entry stores `chairName` as a snapshot so historical cards
+remain readable if the chair is renamed later.
+
+### Reorder waiting-room entries
+
+Route:
+
+```txt
+PATCH /api/bff/clinics/{clinicId}/waiting-room/reorder
+```
+
+Body:
+
+```ts
+interface ReorderWaitingRoomBody {
+  mode: 'AUTO' | 'MANUAL';
+  status?: QueueStatus;
+  orderedEntryIds?: string[]; // UUIDs
+}
+```
+
+`mode: 'MANUAL'` requires `status` and a non-empty `orderedEntryIds` list. The
+IDs must exactly match the entries currently in that clinic and status column.
+
+`mode: 'AUTO'` clears persisted manual order for the supplied `status`. When
+`status` is omitted, it clears all waiting-room status columns for the clinic
+and restores priority/check-in-time ordering.
+
+### Manage waiting-room chairs
+
+Routes:
+
+```txt
+GET   /api/bff/clinics/{clinicId}/waiting-room/chairs
+POST  /api/bff/clinics/{clinicId}/waiting-room/chairs
+PATCH /api/bff/clinics/{clinicId}/waiting-room/chairs/{chairId}
+```
+
+Bodies:
+
+```ts
+interface CreateWaitingRoomChairBody {
+  name: string; // required, max 100
+  code?: string; // max 50
+  isActive?: boolean;
+}
+
+interface UpdateWaitingRoomChairBody {
+  name?: string; // max 100
+  code?: string; // max 50
+  isActive?: boolean;
+}
+```
+
+Chair `code` is optional display metadata. If omitted, the backend stores an
+empty string. Deactivated chairs remain listed for staff visibility but cannot
+be assigned to a new `IN_CHAIR` move.
+
+## 7. Expected errors
 
 Frontend code should branch on HTTP status before reading a success shape.
 
-| Status | Meaning                                                                                                                                                  |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `400`  | Invalid UUID, invalid enum, invalid date, missing field, invalid timing, invalid clinic relationship, or queue status rollback without correction reason |
-| `401`  | No valid authenticated frontend session                                                                                                                  |
-| `403`  | Authenticated user is not allowed for this role or clinic scope                                                                                          |
-| `404`  | Appointment or queue entry was not found                                                                                                                 |
-| `409`  | Doctor slot conflict, invalid appointment timing, or appointment already checked in                                                                      |
-| `500`  | Unexpected appointment request failure                                                                                                                   |
-| `502`  | BFF could not reach the API Gateway                                                                                                                      |
-| `503`  | API Gateway could not reach the appointment service                                                                                                      |
+| Status | Meaning                                                                                                                                                                      |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | Invalid UUID, invalid enum, invalid date, missing field, invalid timing, invalid clinic relationship, queue status rollback without correction reason, or inactive chair use |
+| `401`  | No valid authenticated frontend session                                                                                                                                      |
+| `403`  | Authenticated user is not allowed for this role or clinic scope                                                                                                              |
+| `404`  | Appointment, queue entry, or chair was not found                                                                                                                             |
+| `409`  | Doctor slot conflict, invalid appointment timing, appointment already checked in, or selected chair already occupied                                                         |
+| `500`  | Unexpected appointment or waiting-room request failure                                                                                                                       |
+| `502`  | BFF could not reach the API Gateway                                                                                                                                          |
+| `503`  | API Gateway could not reach the appointment service                                                                                                                          |
 
 Typical Gateway validation error:
 
@@ -579,7 +794,7 @@ interface ApiError {
 }
 ```
 
-## 7. Queue realtime events
+## 8. Queue realtime events
 
 The appointment service writes queue changes to its service-owned outbox table.
 When `NATS_URL` is configured, the appointment-service outbox relay publishes
@@ -632,31 +847,41 @@ updated `entry` and assigned `chair`. `queue.chair.updated` carries `chair`.
 
 The Gateway also sends periodic heartbeat messages with data `":heartbeat"`.
 
-## 8. Frontend integration rules
+## 9. Frontend integration rules
 
 1. Keep appointment-specific API functions, DTOs, mappers, schemas, hooks, and
    UI under `apps/frontend/src/features/appointments`.
-2. Call only `/api/bff/clinics/{clinicId}/...` from client-side code.
-3. Keep route strings centralized in the appointment feature API layer.
-4. Keep backend DTOs at the API boundary and map them into frontend models.
-5. Convert empty optional response strings to `null` if that is easier for UI
+2. Keep waiting-room-specific API functions, DTOs, mappers, hooks, and UI under
+   `apps/frontend/src/features/waiting-room`.
+3. Call only `/api/bff/clinics/{clinicId}/...` from client-side code.
+4. Keep route strings centralized in the owning feature API layer.
+5. Use the waiting-room state route for the board instead of combining queue
+   and chair routes in UI components.
+6. Use `/events/queue?clinicId={clinicId}` for live queue updates and merge
+   supported events into the waiting-room cache.
+7. Launch treatment from seated entries by navigating to `/visits/new` with
+   `patientId`, `appointmentId`, `queueEntryId`, `chairId`, and `doctorId`.
+   The treatment bounded context remains responsible for consuming and
+   validating that handoff.
+8. Keep backend DTOs at the API boundary and map them into frontend models.
+9. Convert empty optional response strings to `null` if that is easier for UI
    code.
-6. Convert date strings to `Date` values in frontend models, and send ISO
+10. Convert date strings to `Date` values in frontend models, and send ISO
    strings back to the API.
-7. Use the staff API to select doctors. Send the doctor's staff `userId` as
+11. Use the staff API to select doctors. Send the doctor's staff `userId` as
    `doctorId`.
-8. Use the patient API to select patients. Send the selected patient's `id` as
+12. Use the patient API to select patients. Send the selected patient's `id` as
    `patientId`.
-9. Use `GET /appointments/conflicts` for proactive calendar warnings, but still
+13. Use `GET /appointments/conflicts` for proactive calendar warnings, but still
    handle `409` from create/update because the backend is authoritative.
-10. Invalidate appointment list/detail queries after create, update,
+14. Invalidate appointment list/detail queries after create, update,
     cancellation, or timing changes.
-11. Invalidate queue list/detail queries after check-in, queue status changes,
-    or note changes.
-12. Do not expose direct appointment-service, gRPC, or Docker service URLs in
+15. Invalidate queue and waiting-room state queries after check-in, status
+    changes, note changes, chair changes, or reorder commands.
+16. Do not expose direct appointment-service, gRPC, or Docker service URLs in
     frontend code.
 
-## 9. Local verification reference
+## 10. Local verification reference
 
 The appointment service was verified through the API Gateway after migration:
 
@@ -666,11 +891,24 @@ The appointment service was verified through the API Gateway after migration:
 - `GET /api/v1/clinics/{clinicId}/appointments` listed the appointment.
 - `POST /api/v1/clinics/{clinicId}/queue` checked in the appointment.
 - `GET /api/v1/clinics/{clinicId}/queue` listed the queue entry.
+- Waiting-room automated verification passed on 2026-08-05:
+  `pnpm nx test contracts-appointment --runInBand --silent`,
+  `pnpm nx test appointment-service --runInBand --silent`,
+  `pnpm nx test api-gateway --runInBand --silent`,
+  `pnpm nx test frontend --runInBand --silent`,
+  `pnpm nx build appointment-service`,
+  `pnpm nx build api-gateway`,
+  `pnpm nx lint frontend`, and
+  `pnpm nx build frontend --skip-nx-cache`.
+- Browser integration verification passed against
+  `http://localhost:3000/waiting-room` with mocked authenticated session, BFF
+  responses, and SSE for initial queue render, check-in event merge, notes
+  save, chair seating, treatment launch, and horizontal overflow.
 
 The Docker images for `appointment-service` and `api-gateway` were also built
 successfully during the migration verification.
 
-## 10. Known integration gaps
+## 11. Known integration gaps
 
 - There is no generated OpenAPI/Swagger contract. This Markdown file documents
   the implemented HTTP contract; the TypeScript DTOs and shared contracts remain
@@ -679,3 +917,8 @@ successfully during the migration verification.
   The frontend should choose these values from patient/staff APIs instead of
   letting users type unrelated names.
 - Queue listing is currently an unpaginated clinic-wide list.
+- Waiting-room SSE depends on `NATS_URL`. When NATS is not configured, HTTP
+  routes still work and the Gateway logs that SSE queue events are disabled.
+- `/visits/new` is a typed navigation handoff only. A future treatment feature
+  should consume the query parameters and create or resume the clinical visit
+  inside the treatment bounded context.

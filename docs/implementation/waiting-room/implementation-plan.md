@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 15 complete; Task 16 ready
+Status: Complete
 Created: 2026-08-04
 
 ## Goal
@@ -41,7 +41,7 @@ the next task.
 - [x] Task 13: Add patient details panel, notes, correction, and treatment launch
 - [x] Task 14: Add role-aware UX, responsive polish, and loading/error states
 - [x] Task 15: Add focused tests and final integration verification
-- [ ] Task 16: Update API documentation and completion notes
+- [x] Task 16: Update API documentation and completion notes
 
 ## Architectural Direction
 
@@ -1654,6 +1654,19 @@ Acceptance criteria:
 
 - Future maintainers can understand the delivered waiting-room behavior without
   reading implementation code first.
+
+Task 16 result:
+
+- Completed on 2026-08-05.
+- Updated `docs/api/appointment-service.md` with the delivered waiting-room HTTP
+  routes, role access, response/request DTOs, chair rules, ordering behavior,
+  queue SSE subjects, frontend integration rules, verification reference, and
+  known integration gaps.
+- Added `docs/implementation/waiting-room/completion-notes.md` with the final
+  feature summary, endpoint changes, persistence migrations, installed package,
+  event surface, verification results, and follow-up work.
+- Verification passed:
+  `pnpm nx test contracts-appointment --runInBand --silent`.
 
 ## Recommended Task Execution Format
 
