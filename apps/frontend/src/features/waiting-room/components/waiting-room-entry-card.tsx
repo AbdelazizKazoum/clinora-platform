@@ -1,7 +1,6 @@
 'use client';
 
 import Icon from '@/components/wrappers/Icon';
-import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import clsx from 'clsx';
 import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 
@@ -69,8 +68,8 @@ interface WaitingRoomEntryCardProps {
   canMoveUp: boolean;
   canManageQueue: boolean;
   canReorderEntries: boolean;
-  dragHandleProps?: DraggableProvidedDragHandleProps;
   entry: WaitingRoomEntry;
+  isDragEnabled: boolean;
   isDragging?: boolean;
   isInteractionDisabled: boolean;
   isRecentlyUpdated: boolean;
@@ -87,8 +86,8 @@ const WaitingRoomEntryCard = ({
   canMoveUp,
   canManageQueue,
   canReorderEntries,
-  dragHandleProps,
   entry,
+  isDragEnabled,
   isDragging = false,
   isInteractionDisabled,
   isRecentlyUpdated,
@@ -344,14 +343,13 @@ const WaitingRoomEntryCard = ({
             {timeFormatter.format(timing.date)}
           </span>
           <span
-            {...dragHandleProps}
             className={clsx(
               'd-flex align-items-center gap-1 flex-shrink-0',
-              dragHandleProps && styles.dragHandle,
+              isDragEnabled && styles.dragIndicator,
             )}
             title={
-              dragHandleProps
-                ? `Move ${entry.patientName}`
+              isDragEnabled
+                ? `Drag card to move ${entry.patientName}`
                 : entry.manualOrder === null
                   ? 'Automatically ordered by priority and arrival time'
                   : `Manual queue position ${entry.manualOrder}`

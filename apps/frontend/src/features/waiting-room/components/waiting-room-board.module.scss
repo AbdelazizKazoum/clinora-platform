@@ -1,12 +1,27 @@
+.boardBody {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.boardContent {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .boardColumn {
+  display: flex;
+  flex-direction: column;
   flex: 1 0 19rem;
+  min-height: 0;
   min-width: 19rem !important;
   max-width: 24rem;
 }
 
 .columnScroll {
-  height: clamp(25rem, calc(100vh - 30rem), 42rem) !important;
-  min-height: 25rem;
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
 }
 
 .emptyColumn {
@@ -26,6 +41,11 @@
 
 .dragHandle:active {
   cursor: grabbing;
+}
+
+.dragIndicator {
+  cursor: inherit;
+  user-select: none;
 }
 
 .patientAvatar {
@@ -227,10 +247,6 @@
   .boardColumn {
     flex-basis: 17.5rem;
     min-width: 17.5rem !important;
-  }
-
-  .columnScroll {
-    height: 32rem !important;
   }
 
   .patientDetailsGrid {

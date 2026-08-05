@@ -93,9 +93,12 @@ const WaitingRoomBoard = ({
   };
 
   return (
-    <CardBody className="p-0">
+    <CardBody className={`p-0 ${styles.boardBody}`}>
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="kanban-content" aria-label="Waiting room board">
+        <div
+          className={`kanban-content ${styles.boardContent}`}
+          aria-label="Waiting room board"
+        >
           {boardColumnConfigs.map((column) => {
             const columnEntries = groupedEntries[column.status];
             const isManuallyOrdered = manualStatuses.includes(column.status);
@@ -159,8 +162,11 @@ const WaitingRoomBoard = ({
                             {(draggableProvided, draggableSnapshot) => (
                               <li
                                 {...draggableProvided.draggableProps}
+                                {...(draggableProvided.dragHandleProps ?? {})}
                                 className={clsx(
                                   'kanban-item',
+                                  draggableProvided.dragHandleProps &&
+                                    styles.dragHandle,
                                   draggableSnapshot.isDragging &&
                                     'sortable-fallback',
                                 )}
@@ -171,11 +177,10 @@ const WaitingRoomBoard = ({
                                   canMoveUp={index > 0}
                                   canManageQueue={canManageQueue}
                                   canReorderEntries={canReorderEntries}
-                                  dragHandleProps={
-                                    draggableProvided.dragHandleProps ??
-                                    undefined
-                                  }
                                   entry={entry}
+                                  isDragEnabled={Boolean(
+                                    draggableProvided.dragHandleProps,
+                                  )}
                                   isDragging={draggableSnapshot.isDragging}
                                   isInteractionDisabled={isInteractionDisabled}
                                   isRecentlyUpdated={recentlyUpdatedEntryIdSet.has(
