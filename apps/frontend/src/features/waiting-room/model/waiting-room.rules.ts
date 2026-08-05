@@ -30,6 +30,12 @@ export const requiresQueueStatusCorrectionReason = (
 export const isChairAssignable = (chair: WaitingRoomChair): boolean =>
   chair.isActive && chair.isAvailable;
 
+export const isChairSelectableForEntry = (
+  chair: WaitingRoomChair,
+  entryId: string,
+): boolean =>
+  chair.isActive && (chair.isAvailable || chair.occupiedByEntryId === entryId);
+
 export const getChairDisplayName = (chair: WaitingRoomChair): string =>
   chair.code ? `${chair.name} (${chair.code})` : chair.name;
 

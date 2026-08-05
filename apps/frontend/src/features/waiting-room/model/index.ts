@@ -53,6 +53,7 @@ export {
   getQueueStatusIndex,
   isBackwardQueueStatusMove,
   isChairAssignable,
+  isChairSelectableForEntry,
   requiresQueueStatusCorrectionReason,
   waitingRoomStatusFlow,
   waitingRoomVisibleStatuses,

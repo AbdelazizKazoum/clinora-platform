@@ -33,6 +33,41 @@
   width: 2.5rem;
 }
 
+.chairOption {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  cursor: pointer;
+  padding: 0.875rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.chairOption:hover {
+  border-color: rgba(var(--bs-primary-rgb), 0.55);
+}
+
+.chairOptionSelected {
+  border-color: var(--bs-primary);
+  background: rgba(var(--bs-primary-rgb), 0.06);
+  box-shadow: 0 0 0 1px var(--bs-primary);
+}
+
+.chairOptionDisabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.chairOptionDisabled:hover {
+  border-color: var(--bs-border-color);
+}
+
+.chairManagementTable td,
+.chairManagementTable th {
+  vertical-align: middle;
+}
+
 .priorityEmergency {
   border-inline-start: 3px solid var(--bs-danger) !important;
 }

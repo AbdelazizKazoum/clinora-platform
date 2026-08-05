@@ -12,12 +12,19 @@ import { useSession } from 'next-auth/react';
 import { useNotificationStore } from '@/store';
 
 import {
+  useAssignWaitingRoomChair,
+  useCreateWaitingRoomChair,
   useReorderWaitingRoomEntries,
+  useUpdateWaitingRoomChair,
   useUpdateWaitingRoomStatus,
   useWaitingRoomEvents,
   useWaitingRoomState,
 } from '../hooks';
-import type { WaitingRoomEntry, WaitingRoomState } from '../model';
+import type {
+  WaitingRoomChair,
+  WaitingRoomEntry,
+  WaitingRoomState,
+} from '../model';
 import WaitingRoomPage from './waiting-room-page';
 
 jest.mock('@/components/PageBreadcrumb', () => ({
@@ -82,7 +89,10 @@ jest.mock('next-auth/react', () => ({
 }));
 
 jest.mock('../hooks', () => ({
+  useAssignWaitingRoomChair: jest.fn(),
+  useCreateWaitingRoomChair: jest.fn(),
   useReorderWaitingRoomEntries: jest.fn(),
+  useUpdateWaitingRoomChair: jest.fn(),
   useUpdateWaitingRoomStatus: jest.fn(),
   useWaitingRoomEvents: jest.fn(),
   useWaitingRoomState: jest.fn(),
@@ -96,6 +106,9 @@ const clinicId = '10000000-0000-4000-8000-000000000001';
 const refetch = jest.fn();
 const reorderWaitingRoomEntries = jest.fn();
 const updateWaitingRoomStatus = jest.fn();
+const assignWaitingRoomChair = jest.fn();
+const createWaitingRoomChair = jest.fn();
+const updateWaitingRoomChair = jest.fn();
 const showNotification = jest.fn();
 
 const session: Session = {
@@ -135,9 +148,27 @@ const createEntry = (
   ...overrides,
 });
 
-const createState = (entries: WaitingRoomEntry[]): WaitingRoomState => ({
+const createChair = (
+  overrides: Partial<WaitingRoomChair> = {},
+): WaitingRoomChair => ({
+  id: 'chair-1',
+  clinicId,
+  name: 'Operatory 1',
+  code: 'OP-1',
+  isActive: true,
+  isAvailable: true,
+  occupiedByEntryId: null,
+  createdAt: new Date('2026-08-01T08:00:00.000Z'),
+  updatedAt: new Date('2026-08-01T08:00:00.000Z'),
+  ...overrides,
+});
+
+const createState = (
+  entries: WaitingRoomEntry[],
+  chairs: WaitingRoomChair[] = [],
+): WaitingRoomState => ({
   entries,
-  chairs: [],
+  chairs,
   ordering: { mode: 'AUTO', manualStatuses: [] },
   generatedAt: new Date('2026-08-05T08:10:00.000Z'),
 });
@@ -148,6 +179,7 @@ const arrangePage = (
     error?: Error;
     isError?: boolean;
     isLoading?: boolean;
+    role?: Session['user']['role'];
     sessionStatus?: 'authenticated' | 'loading';
   } = {},
 ) => {
@@ -158,10 +190,14 @@ const arrangePage = (
     error = new Error('Waiting room unavailable'),
     isError = false,
     isLoading = false,
+    role = 'secretary',
     sessionStatus = 'authenticated',
   } = options;
   jest.mocked(useSession).mockReturnValue({
-    data: sessionStatus === 'authenticated' ? session : null,
+    data:
+      sessionStatus === 'authenticated'
+        ? { ...session, user: { ...session.user, role } }
+        : null,
     status: sessionStatus,
     update: jest.fn(),
   });
@@ -185,6 +221,24 @@ const arrangePage = (
     reset: jest.fn(),
     updateWaitingRoomStatus,
   });
+  jest.mocked(useAssignWaitingRoomChair).mockReturnValue({
+    assignWaitingRoomChair,
+    error: null,
+    isPending: false,
+    reset: jest.fn(),
+  });
+  jest.mocked(useCreateWaitingRoomChair).mockReturnValue({
+    createWaitingRoomChair,
+    error: null,
+    isPending: false,
+    reset: jest.fn(),
+  });
+  jest.mocked(useUpdateWaitingRoomChair).mockReturnValue({
+    error: null,
+    isPending: false,
+    reset: jest.fn(),
+    updateWaitingRoomChair,
+  });
   jest
     .mocked(useNotificationStore)
     .mockImplementation((selector) => selector({ showNotification } as never));
@@ -204,6 +258,11 @@ describe(WaitingRoomPage.name, () => {
     refetch.mockResolvedValue({ isError: false });
     reorderWaitingRoomEntries.mockResolvedValue([]);
     updateWaitingRoomStatus.mockResolvedValue(createEntry());
+    assignWaitingRoomChair.mockResolvedValue(
+      createEntry({ chairId: 'chair-2', chairName: 'Operatory 2' }),
+    );
+    createWaitingRoomChair.mockResolvedValue(createChair());
+    updateWaitingRoomChair.mockResolvedValue(createChair());
   });
 
   it('renders a loading board without empty-state copy', () => {
@@ -302,7 +361,7 @@ describe(WaitingRoomPage.name, () => {
     });
   });
 
-  it('blocks seating without a chair before submitting a status move', () => {
+  it('requires an available chair selection before submitting a seat move', () => {
     arrangePage();
     render(<WaitingRoomPage />);
 
@@ -314,9 +373,127 @@ describe(WaitingRoomPage.name, () => {
     });
 
     expect(updateWaitingRoomStatus).not.toHaveBeenCalled();
-    expect(showNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Chair required', variant: 'warning' }),
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(
+      screen.getByText(/no active chair is currently available/i),
+    ).toBeTruthy();
+  });
+
+  it('seats a patient with the explicitly selected available chair', async () => {
+    arrangePage({
+      data: createState([createEntry()], [createChair()]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'IN_CHAIR', index: 0 },
+      draggableId: 'entry-1',
+      source: { droppableId: 'WAITING', index: 0 },
+    });
+
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Select Operatory 1 (OP-1)' }),
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Seat patient' }));
+
+    await waitFor(() => {
+      expect(updateWaitingRoomStatus).toHaveBeenCalledWith({
+        chairId: 'chair-1',
+        clinicId,
+        correctionReason: undefined,
+        entryId: 'entry-1',
+        status: 'IN_CHAIR',
+        targetOrderedEntryIds: ['entry-1'],
+      });
+    });
+  });
+
+  it('keeps chair availability errors visible and allows a retry', async () => {
+    updateWaitingRoomStatus
+      .mockRejectedValueOnce(new Error('Selected chair is already occupied'))
+      .mockResolvedValueOnce(
+        createEntry({
+          chairId: 'chair-1',
+          chairName: 'Operatory 1',
+          status: 'IN_CHAIR',
+        }),
+      );
+    arrangePage({
+      data: createState([createEntry()], [createChair()]),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'IN_CHAIR', index: 0 },
+      draggableId: 'entry-1',
+      source: { droppableId: 'WAITING', index: 0 },
+    });
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Select Operatory 1 (OP-1)' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Seat patient' }));
+
+    expect(
+      await screen.findByText('Selected chair is already occupied'),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Seat patient' }));
+
+    await waitFor(() => {
+      expect(updateWaitingRoomStatus).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('changes the chair for an already seated patient', async () => {
+    arrangePage({
+      data: createState(
+        [
+          createEntry({
+            chairId: 'chair-1',
+            chairName: 'Operatory 1',
+            status: 'IN_CHAIR',
+          }),
+        ],
+        [
+          createChair({ isAvailable: false, occupiedByEntryId: 'entry-1' }),
+          createChair({
+            id: 'chair-2',
+            name: 'Operatory 2',
+            code: 'OP-2',
+          }),
+        ],
+      ),
+    });
+    render(<WaitingRoomPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Change chair' }));
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Select Operatory 2 (OP-2)' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Update chair' }));
+
+    await waitFor(() => {
+      expect(assignWaitingRoomChair).toHaveBeenCalledWith({
+        chairId: 'chair-2',
+        clinicId,
+        entryId: 'entry-1',
+      });
+    });
+  });
+
+  it('exposes chair management only to authorized staff', () => {
+    arrangePage({ role: 'doctor' });
+    const { unmount } = render(<WaitingRoomPage />);
+    expect(screen.queryByRole('button', { name: 'Manage Chairs' })).toBeNull();
+
+    unmount();
+    arrangePage({ role: 'secretary' });
+    render(<WaitingRoomPage />);
+    expect(screen.getByRole('button', { name: 'Manage Chairs' })).toBeTruthy();
   });
 
   it('persists forward movement with complete destination ordering', async () => {

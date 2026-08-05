@@ -1,6 +1,6 @@
 # Waiting Room Implementation Plan
 
-Status: Task 11 complete; Task 12 ready
+Status: Task 12 complete; Task 13 ready
 Created: 2026-08-04
 
 ## Goal
@@ -37,7 +37,7 @@ the next task.
 - [x] Task 9: Add waiting room queries, commands, hooks, and stream handling
 - [x] Task 10: Build Ubold-style realtime board shell
 - [x] Task 11: Add Kanban-style status movement and manual reordering
-- [ ] Task 12: Add chair assignment and chair management UI
+- [x] Task 12: Add chair assignment and chair management UI
 - [ ] Task 13: Add patient details panel, notes, correction, and treatment launch
 - [ ] Task 14: Add role-aware UX, responsive polish, and loading/error states
 - [ ] Task 15: Add focused tests and final integration verification
@@ -1458,6 +1458,36 @@ Acceptance criteria:
 
 - Users cannot seat a patient without selecting an available chair.
 - Chair availability errors from the backend are clear and recoverable.
+
+Task 12 result:
+
+- Completed on 2026-08-05.
+- Replaced the Task 11 chair-required warning with an Ubold-style chair picker
+  that intercepts movement into `IN_CHAIR` and requires an explicit active,
+  available chair selection before the status command is submitted.
+- Kept occupied chairs hidden by default, added an optional occupied-chair view
+  with patient context, and kept occupied/inactive choices disabled.
+- Allowed the chair already occupied by the selected seated entry to remain a
+  valid current selection while offering available chairs for reassignment.
+- Added `Change chair` to seated patient-card actions and displayed the assigned
+  chair as a compact badge on `IN_CHAIR` cards.
+- Added authorized chair management for admins and secretaries with availability
+  summaries, create, rename/update, activate, and deactivate actions.
+- Prevented occupied chairs from being deactivated through the UI and explained
+  how staff can recover by moving or completing the seated patient first.
+- Kept backend conflict messages inside the chair picker/management modal so a
+  stale availability selection can be refreshed and retried without losing the
+  workflow.
+- Reused the existing waiting-room API, TanStack Query mutations, cache
+  invalidation, and SSE-backed state; no new backend boundary was introduced.
+- Added focused model, modal, and page integration tests for availability
+  filtering, explicit selection, occupied visibility, conflict retry, seated
+  reassignment, chair CRUD UI, safe deactivation, and role visibility.
+- Verification passed:
+  `pnpm nx test frontend --runInBand --testPathPatterns=waiting-room --skip-nx-cache`
+  (53 tests),
+  `pnpm nx lint frontend --skip-nx-cache`,
+  `pnpm nx build frontend --skip-nx-cache`.
 
 ### Task 13: Add Patient Details Panel, Notes, Correction, And Treatment Launch
 

@@ -11,13 +11,20 @@ import WaitingRoomBoard, {
   WaitingRoomBoardEmptyState,
   WaitingRoomBoardSkeleton,
 } from '../components/waiting-room-board';
+import WaitingRoomChairAssignmentModal from '../components/waiting-room-chair-assignment-modal';
+import WaitingRoomChairManagementModal, {
+  type WaitingRoomChairFormValues,
+} from '../components/waiting-room-chair-management-modal';
 import WaitingRoomCorrectionModal from '../components/waiting-room-correction-modal';
 import WaitingRoomSummaryCards, {
   WaitingRoomSummarySkeleton,
 } from '../components/waiting-room-summary-cards';
 import WaitingRoomToolbar from '../components/waiting-room-toolbar';
 import {
+  useAssignWaitingRoomChair,
+  useCreateWaitingRoomChair,
   useReorderWaitingRoomEntries,
+  useUpdateWaitingRoomChair,
   useUpdateWaitingRoomStatus,
   useWaitingRoomEvents,
   useWaitingRoomState,
@@ -32,6 +39,7 @@ import {
   waitingRoomStatusFlow,
   type WaitingRoomBoardMove,
   type WaitingRoomBoardMoveInput,
+  type WaitingRoomChair,
   type WaitingRoomEntry,
   type WaitingRoomPriorityFilter,
 } from '../model';
@@ -40,6 +48,15 @@ const getMoveErrorMessage = (error: unknown): string =>
   error instanceof Error
     ? error.message
     : 'Unable to save the waiting-room movement.';
+
+const getChairErrorMessage = (error: unknown): string =>
+  error instanceof Error
+    ? error.message
+    : 'Unable to save the chair change. Refresh availability and try again.';
+
+type PendingChairSelection =
+  | { entry: WaitingRoomEntry; kind: 'assign' }
+  | { entry: WaitingRoomEntry; kind: 'seat'; move: WaitingRoomBoardMove };
 
 const WaitingRoomPage = () => {
   const { data: session, status: sessionStatus } = useSession();
@@ -54,12 +71,25 @@ const WaitingRoomPage = () => {
   const [isPersistingBoard, setIsPersistingBoard] = useState(false);
   const [pendingCorrectionMove, setPendingCorrectionMove] =
     useState<WaitingRoomBoardMove | null>(null);
+  const [pendingCorrectionChairId, setPendingCorrectionChairId] = useState<
+    string | null
+  >(null);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
+  const [pendingChairSelection, setPendingChairSelection] =
+    useState<PendingChairSelection | null>(null);
+  const [chairError, setChairError] = useState<string | null>(null);
+  const [isChairManagementOpen, setIsChairManagementOpen] = useState(false);
+  const [chairManagementError, setChairManagementError] = useState<
+    string | null
+  >(null);
   const showNotification = useNotificationStore(
     (state) => state.showNotification,
   );
   const reorderMutation = useReorderWaitingRoomEntries();
   const statusMutation = useUpdateWaitingRoomStatus();
+  const assignChairMutation = useAssignWaitingRoomChair();
+  const createChairMutation = useCreateWaitingRoomChair();
+  const updateChairMutation = useUpdateWaitingRoomChair();
   const waitingRoomStateQuery = useWaitingRoomState(
     sessionStatus === 'authenticated' ? clinicId : undefined,
   );
@@ -69,7 +99,10 @@ const WaitingRoomPage = () => {
   );
 
   const entries = waitingRoomStateQuery.data?.entries ?? [];
+  const chairs = waitingRoomStateQuery.data?.chairs ?? [];
   const boardEntries = optimisticEntries ?? entries;
+  const canManageChairs =
+    session?.user.role === 'admin' || session?.user.role === 'secretary';
   const doctors = useMemo(
     () => getWaitingRoomDoctorOptions(boardEntries),
     [boardEntries],
@@ -125,6 +158,7 @@ const WaitingRoomPage = () => {
   const persistBoardMove = async (
     move: WaitingRoomBoardMove,
     correctionReason?: string,
+    selectedChairId?: string,
   ): Promise<void> => {
     if (!clinicId) return;
 
@@ -143,7 +177,7 @@ const WaitingRoomPage = () => {
         await statusMutation.updateWaitingRoomStatus({
           chairId:
             move.destinationStatus === 'IN_CHAIR'
-              ? move.entry.chairId
+              ? (selectedChairId ?? move.entry.chairId)
               : undefined,
           clinicId,
           correctionReason,
@@ -168,13 +202,13 @@ const WaitingRoomPage = () => {
 
     if (
       move.sourceStatus !== 'IN_CHAIR' &&
-      move.destinationStatus === 'IN_CHAIR' &&
-      !move.entry.chairId
+      move.destinationStatus === 'IN_CHAIR'
     ) {
-      showNotification({
-        message: `Assign an available chair to ${move.entry.patientName} before seating the patient.`,
-        title: 'Chair required',
-        variant: 'warning',
+      setChairError(null);
+      setPendingChairSelection({
+        entry: move.entry,
+        kind: 'seat',
+        move,
       });
       return;
     }
@@ -186,6 +220,7 @@ const WaitingRoomPage = () => {
       )
     ) {
       setCorrectionError(null);
+      setPendingCorrectionChairId(null);
       setPendingCorrectionMove(move);
       return;
     }
@@ -218,15 +253,124 @@ const WaitingRoomPage = () => {
     setCorrectionError(null);
 
     try {
-      await persistBoardMove(pendingCorrectionMove, reason);
+      await persistBoardMove(
+        pendingCorrectionMove,
+        reason,
+        pendingCorrectionChairId ?? undefined,
+      );
       showNotification({
         message: `${pendingCorrectionMove.entry.patientName} moved back to ${queueStatusLabels[pendingCorrectionMove.destinationStatus]}.`,
         title: 'Queue status corrected',
         variant: 'success',
       });
       setPendingCorrectionMove(null);
+      setPendingCorrectionChairId(null);
     } catch (error) {
       setCorrectionError(getMoveErrorMessage(error));
+    }
+  };
+
+  const handleChairSubmit = async (chairId: string): Promise<void> => {
+    if (!clinicId || !pendingChairSelection) return;
+
+    setChairError(null);
+
+    if (pendingChairSelection.kind === 'seat') {
+      const { move } = pendingChairSelection;
+      if (
+        requiresQueueStatusCorrectionReason(
+          move.sourceStatus,
+          move.destinationStatus,
+        )
+      ) {
+        setPendingChairSelection(null);
+        setPendingCorrectionChairId(chairId);
+        setCorrectionError(null);
+        setPendingCorrectionMove(move);
+        return;
+      }
+
+      try {
+        await persistBoardMove(move, undefined, chairId);
+        showNotification({
+          message: `${move.entry.patientName} is seated in ${chairs.find((chair) => chair.id === chairId)?.name ?? 'the selected chair'}.`,
+          title: 'Patient seated',
+          variant: 'success',
+        });
+        setPendingChairSelection(null);
+      } catch (error) {
+        setChairError(getChairErrorMessage(error));
+        void waitingRoomStateQuery.refetch();
+      }
+      return;
+    }
+
+    try {
+      await assignChairMutation.assignWaitingRoomChair({
+        chairId,
+        clinicId,
+        entryId: pendingChairSelection.entry.id,
+      });
+      await waitingRoomStateQuery.refetch();
+      showNotification({
+        message: `${pendingChairSelection.entry.patientName}'s chair assignment was updated.`,
+        title: 'Chair updated',
+        variant: 'success',
+      });
+      setPendingChairSelection(null);
+    } catch (error) {
+      setChairError(getChairErrorMessage(error));
+      void waitingRoomStateQuery.refetch();
+    }
+  };
+
+  const handleCreateChair = async (
+    values: WaitingRoomChairFormValues,
+  ): Promise<void> => {
+    if (!clinicId) return;
+
+    setChairManagementError(null);
+    try {
+      const chair = await createChairMutation.createWaitingRoomChair({
+        clinicId,
+        code: values.code || null,
+        isActive: true,
+        name: values.name,
+      });
+      showNotification({
+        message: `${chair.name} is ready for patient assignment.`,
+        title: 'Chair created',
+        variant: 'success',
+      });
+    } catch (error) {
+      setChairManagementError(getChairErrorMessage(error));
+      throw error;
+    }
+  };
+
+  const handleUpdateChair = async (
+    chair: WaitingRoomChair,
+    values: WaitingRoomChairFormValues,
+  ): Promise<void> => {
+    if (!clinicId) return;
+
+    setChairManagementError(null);
+    try {
+      const updatedChair = await updateChairMutation.updateWaitingRoomChair({
+        chairId: chair.id,
+        clinicId,
+        code: values.code || null,
+        isActive: values.isActive,
+        name: values.name,
+      });
+      showNotification({
+        message: `${updatedChair.name} was ${updatedChair.isActive ? 'updated' : 'deactivated'}.`,
+        title: 'Chair saved',
+        variant: 'success',
+      });
+    } catch (error) {
+      setChairManagementError(getChairErrorMessage(error));
+      throw error;
     }
   };
 
@@ -313,6 +457,7 @@ const WaitingRoomPage = () => {
           <div className="outlook-box kanban-app mb-3">
             <Card className="h-100 mb-0 flex-grow-1 overflow-hidden">
               <WaitingRoomToolbar
+                canManageChairs={canManageChairs}
                 doctorId={doctorId}
                 doctors={doctors}
                 hasActiveFilters={hasActiveFilters}
@@ -326,6 +471,10 @@ const WaitingRoomPage = () => {
                 onClearFilters={clearFilters}
                 onDoctorIdChange={setDoctorId}
                 onManualOrder={handleManualOrder}
+                onManageChairs={() => {
+                  setChairManagementError(null);
+                  setIsChairManagementOpen(true);
+                }}
                 onPriorityChange={setPriority}
                 onRefresh={() => {
                   void waitingRoomStateQuery.refetch();
@@ -350,11 +499,56 @@ const WaitingRoomPage = () => {
                   entries={filteredEntries}
                   isDragEnabled={isDragEnabled}
                   manualStatuses={displayedManualStatuses}
+                  onAssignChair={(entry) => {
+                    setChairError(null);
+                    setPendingChairSelection({ entry, kind: 'assign' });
+                  }}
                   onMove={handleBoardMove}
                 />
               )}
             </Card>
           </div>
+
+          {pendingChairSelection && (
+            <WaitingRoomChairAssignmentModal
+              chairs={chairs}
+              entries={boardEntries}
+              entry={pendingChairSelection.entry}
+              error={chairError}
+              isSubmitting={isPersistingBoard || assignChairMutation.isPending}
+              onHide={() => {
+                setChairError(null);
+                setPendingChairSelection(null);
+              }}
+              onManageChairs={
+                canManageChairs
+                  ? () => {
+                      setChairManagementError(null);
+                      setIsChairManagementOpen(true);
+                    }
+                  : undefined
+              }
+              onSubmit={handleChairSubmit}
+              show={!isChairManagementOpen}
+            />
+          )}
+
+          {isChairManagementOpen && (
+            <WaitingRoomChairManagementModal
+              chairs={chairs}
+              error={chairManagementError}
+              isSubmitting={
+                createChairMutation.isPending || updateChairMutation.isPending
+              }
+              onCreate={handleCreateChair}
+              onHide={() => {
+                setChairManagementError(null);
+                setIsChairManagementOpen(false);
+              }}
+              onUpdate={handleUpdateChair}
+              show
+            />
+          )}
 
           {pendingCorrectionMove && (
             <WaitingRoomCorrectionModal
@@ -364,6 +558,7 @@ const WaitingRoomPage = () => {
               isSubmitting={isPersistingBoard}
               onHide={() => {
                 setCorrectionError(null);
+                setPendingCorrectionChairId(null);
                 setPendingCorrectionMove(null);
               }}
               onSubmit={handleCorrectionSubmit}

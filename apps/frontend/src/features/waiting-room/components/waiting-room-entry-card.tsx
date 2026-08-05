@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
 
 import {
+  getEntryChairLabel,
   getWaitingRoomPatientInitials,
   queuePriorityBadgeClassNames,
   queuePriorityLabels,
@@ -63,14 +64,17 @@ interface WaitingRoomEntryCardProps {
   dragHandleProps?: DraggableProvidedDragHandleProps;
   entry: WaitingRoomEntry;
   isDragging?: boolean;
+  onAssignChair?: (entry: WaitingRoomEntry) => void;
 }
 
 const WaitingRoomEntryCard = ({
   dragHandleProps,
   entry,
   isDragging = false,
+  onAssignChair,
 }: WaitingRoomEntryCardProps) => {
   const timing = getEntryTiming(entry);
+  const chairLabel = getEntryChairLabel(entry);
 
   return (
     <Card
@@ -109,7 +113,7 @@ const WaitingRoomEntryCard = ({
 
           <Dropdown align="end" className="flex-shrink-0">
             <Dropdown.Toggle
-              aria-label={`Contact ${entry.patientName}`}
+              aria-label={`Actions for ${entry.patientName}`}
               as={Button}
               className="btn-icon btn-sm drop-arrow-none card-drop border-0 text-muted"
               variant="ghost-light"
@@ -117,6 +121,19 @@ const WaitingRoomEntryCard = ({
               <Icon icon="ellipsis-vertical" className="fs-lg" />
             </Dropdown.Toggle>
             <Dropdown.Menu>
+              {entry.status === 'IN_CHAIR' && onAssignChair && (
+                <>
+                  <Dropdown.Item
+                    as="button"
+                    onClick={() => onAssignChair(entry)}
+                    type="button"
+                  >
+                    <Icon icon="armchair" className="me-2" />
+                    Change chair
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                </>
+              )}
               {entry.patientPhone ? (
                 <>
                   <Dropdown.Item href={`tel:${entry.patientPhone}`}>
@@ -144,10 +161,12 @@ const WaitingRoomEntryCard = ({
             <span className="text-truncate">{entry.doctorName}</span>
           </div>
 
-          {entry.chairName && (
+          {entry.status === 'IN_CHAIR' && chairLabel && (
             <div className="d-flex align-items-center gap-2 min-w-0">
-              <Icon icon="armchair" className="text-primary flex-shrink-0" />
-              <span className="text-truncate fw-medium">{entry.chairName}</span>
+              <span className="badge badge-soft-primary text-primary d-inline-flex align-items-center gap-1 text-truncate">
+                <Icon icon="armchair" className="flex-shrink-0" />
+                {chairLabel}
+              </span>
             </div>
           )}
 

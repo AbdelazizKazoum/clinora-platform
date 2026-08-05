@@ -18,6 +18,7 @@ import {
 import styles from './waiting-room-board.module.scss';
 
 interface WaitingRoomToolbarProps {
+  canManageChairs: boolean;
   doctorId: string | 'ALL';
   doctors: WaitingRoomDoctorOption[];
   hasActiveFilters: boolean;
@@ -30,6 +31,7 @@ interface WaitingRoomToolbarProps {
   onDoctorIdChange: (doctorId: string | 'ALL') => void;
   onPriorityChange: (priority: WaitingRoomPriorityFilter) => void;
   onManualOrder: () => void;
+  onManageChairs: () => void;
   onRefresh: () => void;
   onSearchChange: (search: string) => void;
   priority: WaitingRoomPriorityFilter;
@@ -53,6 +55,7 @@ const getOrderingDescription = (
 };
 
 const WaitingRoomToolbar = ({
+  canManageChairs,
   doctorId,
   doctors,
   hasActiveFilters,
@@ -64,6 +67,7 @@ const WaitingRoomToolbar = ({
   onClearFilters,
   onDoctorIdChange,
   onManualOrder,
+  onManageChairs,
   onPriorityChange,
   onRefresh,
   onSearchChange,
@@ -145,6 +149,17 @@ const WaitingRoomToolbar = ({
           )}
           Refresh
         </Button>
+
+        {canManageChairs && (
+          <Button
+            onClick={onManageChairs}
+            type="button"
+            variant="outline-secondary"
+          >
+            <Icon icon="armchair" className="me-1" />
+            Manage Chairs
+          </Button>
+        )}
       </div>
 
       <div className="d-flex flex-wrap align-items-center gap-2">

@@ -38,6 +38,7 @@ interface WaitingRoomBoardProps {
   entries: WaitingRoomEntry[];
   isDragEnabled: boolean;
   manualStatuses: QueueStatus[];
+  onAssignChair: (entry: WaitingRoomEntry) => void;
   onMove: (move: WaitingRoomBoardMoveInput) => Promise<void> | void;
 }
 
@@ -48,6 +49,7 @@ const WaitingRoomBoard = ({
   entries,
   isDragEnabled,
   manualStatuses,
+  onAssignChair,
   onMove,
 }: WaitingRoomBoardProps) => {
   const groupedEntries = groupWaitingRoomEntriesByStatus(entries);
@@ -150,6 +152,7 @@ const WaitingRoomBoard = ({
                                   }
                                   entry={entry}
                                   isDragging={draggableSnapshot.isDragging}
+                                  onAssignChair={onAssignChair}
                                 />
                               </li>
                             )}

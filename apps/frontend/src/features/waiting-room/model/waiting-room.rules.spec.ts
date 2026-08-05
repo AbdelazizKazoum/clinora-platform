@@ -5,6 +5,7 @@ import {
   getEntryChairLabel,
   isBackwardQueueStatusMove,
   isChairAssignable,
+  isChairSelectableForEntry,
   queuePriorityBadgeClassNames,
   queueStatusBadgeClassNames,
   queueStatusLabels,
@@ -64,6 +65,18 @@ describe('waiting-room rules and display metadata', () => {
   it('centralizes chair and entry display helpers', () => {
     expect(isChairAssignable(chair())).toBe(true);
     expect(isChairAssignable(chair({ isAvailable: false }))).toBe(false);
+    expect(
+      isChairSelectableForEntry(
+        chair({ isAvailable: false, occupiedByEntryId: 'queue-1' }),
+        'queue-1',
+      ),
+    ).toBe(true);
+    expect(
+      isChairSelectableForEntry(
+        chair({ isAvailable: false, occupiedByEntryId: 'queue-2' }),
+        'queue-1',
+      ),
+    ).toBe(false);
     expect(getChairDisplayName(chair())).toBe('Operatory 1 (OP-1)');
     expect(getChairDisplayName(chair({ code: null }))).toBe('Operatory 1');
     expect(getEntryChairLabel(entry({ chairName: 'Operatory 1' }))).toBe(
