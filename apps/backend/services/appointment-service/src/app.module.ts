@@ -11,6 +11,7 @@ import { CreateAppointmentTables20260511000001 } from './appointment/infrastruct
 import { SeedInitialAppointments20260511000002 } from './appointment/infrastructure/persistence/migrations/20260511000002-SeedInitialAppointments';
 import { CreateWaitingRoomChairs20260804000001 } from './appointment/infrastructure/persistence/migrations/20260804000001-CreateWaitingRoomChairs';
 import { AddWaitingRoomQueueFields20260804000002 } from './appointment/infrastructure/persistence/migrations/20260804000002-AddWaitingRoomQueueFields';
+import { SeedWaitingRoomChairs20260806000003 } from './appointment/infrastructure/persistence/migrations/20260806000003-SeedWaitingRoomChairs';
 import { validateAppointmentEnvironment } from './configuration/appointment-environment';
 import { HealthModule } from './health/health.module';
 
@@ -40,6 +41,7 @@ import { HealthModule } from './health/health.module';
           SeedInitialAppointments20260511000002,
           CreateWaitingRoomChairs20260804000001,
           AddWaitingRoomQueueFields20260804000002,
+          SeedWaitingRoomChairs20260806000003,
         ],
         migrationsRun: config.getOrThrow<boolean>('DB_MIGRATIONS_RUN'),
         synchronize: false,
