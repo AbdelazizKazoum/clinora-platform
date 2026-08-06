@@ -57,24 +57,24 @@
     --#{$prefix}link-hover-color: var(--#{$prefix}primary-text-emphasis);
 
     // Chart Colors
-    --#{$prefix}chart-primary: #6658dd; // Main Color
-    --#{$prefix}chart-primary-rgb: #{to-rgb(#6658dd)};
-    --#{$prefix}chart-secondary: #4a81d4; // Secondary Color
-    --#{$prefix}chart-secondary-rgb: #{to-rgb(#4a81d4)};
-    --#{$prefix}chart-alpha: #1abc9c; // Success Color
-    --#{$prefix}chart-alpha-rgb: #{to-rgb(#1abc9c)};
-    --#{$prefix}chart-beta: #f1556c; // Danger Color
-    --#{$prefix}chart-beta-rgb: #{to-rgb(#f1556c)};
-    --#{$prefix}chart-gamma: #f7b84b; // Warning Color
-    --#{$prefix}chart-gamma-rgb: #{to-rgb(#f7b84b)};
-    --#{$prefix}chart-delta: #43bfe5; // Info Color
-    --#{$prefix}chart-delta-rgb: #{to-rgb(#43bfe5)};
-    --#{$prefix}chart-zeta: #fd7e14; // custom Color
-    --#{$prefix}chart-zeta-rgb: #{to-rgb(#fd7e14)};
+    --#{$prefix}chart-primary: #4a81d4; // Main Color
+    --#{$prefix}chart-primary-rgb: #{to-rgb(#4a81d4)};
+    --#{$prefix}chart-secondary: #627da8; // Secondary Color
+    --#{$prefix}chart-secondary-rgb: #{to-rgb(#627da8)};
+    --#{$prefix}chart-alpha: #2ea893; // Success Color
+    --#{$prefix}chart-alpha-rgb: #{to-rgb(#2ea893)};
+    --#{$prefix}chart-beta: #d96f82; // Danger Color
+    --#{$prefix}chart-beta-rgb: #{to-rgb(#d96f82)};
+    --#{$prefix}chart-gamma: #e5c56f; // Warning Color
+    --#{$prefix}chart-gamma-rgb: #{to-rgb(#e5c56f)};
+    --#{$prefix}chart-delta: #9fdef0; // Info Color
+    --#{$prefix}chart-delta-rgb: #{to-rgb(#9fdef0)};
+    --#{$prefix}chart-zeta: #8b8fd8; // custom Color
+    --#{$prefix}chart-zeta-rgb: #{to-rgb(#8b8fd8)};
     --#{$prefix}chart-gray: #edeff3; // Gray Color
     --#{$prefix}chart-gray-rgb: #{to-rgb(#edeff3)};
-    --#{$prefix}chart-dark: #6b5eae; // Primary Dark Color
-    --#{$prefix}chart-dark-rgb: #{to-rgb(#6b5eae)};
+    --#{$prefix}chart-dark: #396699; // Primary Dark Color
+    --#{$prefix}chart-dark-rgb: #{to-rgb(#396699)};
     --#{$prefix}chart-border-color: #ecf4fc; // Border Color
     --#{$prefix}chart-title-color: #bbcae1; // Title Color
 }

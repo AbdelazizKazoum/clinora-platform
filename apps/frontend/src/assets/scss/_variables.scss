@@ -52,15 +52,15 @@ $grays: (
 
 // scss-docs-start color-variables
 $blue: #4a81d4;
-$indigo: #6b5eae;
-$purple: #6658dd;
-$pink: #f672a7;
-$red: #f1556c;
-$orange: #fd7e14;
-$yellow: #f7b84b;
-$green: #0acf97;
-$teal: #1abc9c;
-$cyan: #43bfe5;
+$indigo: #627da8;
+$purple: #8b8fd8;
+$pink: #e59bb4;
+$red: #d96f82;
+$orange: #eca46a;
+$yellow: #e5c56f;
+$green: #63b895;
+$teal: #2ea893;
+$cyan: #6ecfe0;
 // scss-docs-end color-variables
 
 // scss-docs-start colors-map
@@ -312,8 +312,8 @@ $cyans: (
 // fusv-enable
 
 // scss-docs-start theme-color-variables
-$primary: $purple;
-$secondary: $blue;
+$primary: $blue;
+$secondary: $indigo;
 $success: $teal;
 $info: $cyan;
 $warning: $yellow;
