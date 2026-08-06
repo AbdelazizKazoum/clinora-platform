@@ -165,6 +165,7 @@ const WaitingRoomBoard = ({
                                 {...(draggableProvided.dragHandleProps ?? {})}
                                 className={clsx(
                                   'kanban-item',
+                                  styles.entryListItem,
                                   draggableProvided.dragHandleProps &&
                                     styles.dragHandle,
                                   draggableSnapshot.isDragging &&

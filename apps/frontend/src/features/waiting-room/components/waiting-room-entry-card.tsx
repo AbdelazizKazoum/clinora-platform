@@ -2,7 +2,9 @@
 
 import Icon from '@/components/wrappers/Icon';
 import clsx from 'clsx';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Button, Card, CardBody, Dropdown } from 'react-bootstrap';
+import { createPortal } from 'react-dom';
 
 import {
   canLaunchTreatmentFromWaitingRoom,
@@ -28,6 +30,16 @@ const priorityCardClassNames = {
   NORMAL: styles.priorityNormal,
   URGENT: styles.priorityUrgent,
 } as const;
+
+const WaitingRoomActionsPortal = ({ children }: { children: ReactNode }) => {
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalRoot(document.body);
+  }, []);
+
+  return portalRoot ? createPortal(children, portalRoot) : null;
+};
 
 const getElapsedTimeLabel = (date: Date): string => {
   const elapsedMinutes = Math.max(
@@ -109,13 +121,16 @@ const WaitingRoomEntryCard = ({
     <Card
       className={clsx(
         'border-0 shadow-sm mb-2',
+        styles.entryCard,
         priorityCardClassNames[entry.priority],
         isDragging && 'shadow-lg',
         isRecentlyUpdated && styles.recentlyUpdated,
       )}
     >
       <CardBody className="p-3">
-        <div className="d-flex align-items-start gap-2 mb-3">
+        <div
+          className={`d-flex align-items-start gap-2 mb-3 ${styles.entryHeader}`}
+        >
           <span
             className={clsx(
               'avatar-title rounded-circle bg-primary-subtle text-primary fw-semibold flex-shrink-0',
@@ -134,6 +149,7 @@ const WaitingRoomEntryCard = ({
                   aria-label={`View details for ${entry.patientName}`}
                   className={`border-0 p-0 fw-semibold text-body text-decoration-none ${styles.entryNameButton}`}
                   onClick={() => onSelect(entry)}
+                  title={entry.patientName}
                   variant="link"
                 >
                   {entry.patientName}
@@ -145,7 +161,10 @@ const WaitingRoomEntryCard = ({
                 {queuePriorityLabels[entry.priority]}
               </span>
             </div>
-            <span className="text-muted fs-xs text-truncate d-block">
+            <span
+              className={`text-muted fs-xs ${styles.truncateText}`}
+              title={entry.appointmentType ?? 'Dental appointment'}
+            >
               {entry.appointmentType ?? 'Dental appointment'}
             </span>
             {isRecentlyUpdated && (
@@ -159,160 +178,181 @@ const WaitingRoomEntryCard = ({
             )}
           </div>
 
-          <Dropdown align="end" className="flex-shrink-0">
+          <Dropdown className="ms-auto flex-shrink-0">
             <Dropdown.Toggle
               aria-label={`Actions for ${entry.patientName}`}
               as={Button}
-              className="btn-icon btn-sm drop-arrow-none card-drop border-0 text-muted"
+              className="btn btn-icon btn-sm drop-arrow-none btn-ghost-light text-muted content-none"
+              type="button"
               variant="ghost-light"
             >
-              <Icon icon="ellipsis-vertical" className="fs-lg" />
+              <Icon icon="ellipsis-vertical" className="fs-xl" />
             </Dropdown.Toggle>
-            <Dropdown.Menu className={styles.entryActionMenu}>
-              <Dropdown.Item
-                as="button"
-                onClick={() => onSelect(entry)}
-                type="button"
-              >
-                <Icon icon="panel-right-open" className="me-2" />
-                View details
-              </Dropdown.Item>
-              {canStartTreatment && (
+            <WaitingRoomActionsPortal>
+              <Dropdown.Menu align="end" className={styles.entryActionMenu}>
                 <Dropdown.Item
                   as="button"
-                  disabled={isInteractionDisabled}
-                  onClick={() => onStartTreatment(entry)}
+                  onClick={() => onSelect(entry)}
                   type="button"
                 >
-                  <Icon icon="play" className="me-2" />
-                  Start Treatment
+                  <Icon icon="panel-right-open" className="me-2" />
+                  View details
                 </Dropdown.Item>
-              )}
-              {canManageQueue && (
-                <>
-                  <Dropdown.Divider />
+                {canStartTreatment && (
                   <Dropdown.Item
                     as="button"
                     disabled={isInteractionDisabled}
-                    onClick={() => onEditNotes(entry)}
+                    onClick={() => onStartTreatment(entry)}
                     type="button"
                   >
-                    <Icon icon="notebook-pen" className="me-2" />
-                    Edit notes
+                    <Icon icon="play" className="me-2" />
+                    Start Treatment
                   </Dropdown.Item>
-                  {entry.status === 'IN_CHAIR' && onAssignChair && (
+                )}
+                {canManageQueue && (
+                  <>
+                    <Dropdown.Divider />
                     <Dropdown.Item
                       as="button"
                       disabled={isInteractionDisabled}
-                      onClick={() => onAssignChair(entry)}
+                      onClick={() => onEditNotes(entry)}
                       type="button"
                     >
-                      <Icon icon="armchair" className="me-2" />
-                      Change chair
+                      <Icon icon="notebook-pen" className="me-2" />
+                      Edit notes
                     </Dropdown.Item>
-                  )}
-                  <Dropdown.Divider />
-                  <Dropdown.Header>Move patient</Dropdown.Header>
-                  {statusActions.map((status) => {
-                    const isCorrection = requiresQueueStatusCorrectionReason(
-                      entry.status,
-                      status,
-                    );
-                    const label = isCorrection
-                      ? `Correct to ${queueStatusLabels[status]}`
-                      : status === 'IN_CHAIR'
-                        ? 'Move to chair'
-                        : `Mark ${queueStatusLabels[status].toLowerCase()}`;
-
-                    return (
+                    {entry.status === 'IN_CHAIR' && onAssignChair && (
                       <Dropdown.Item
                         as="button"
                         disabled={isInteractionDisabled}
-                        key={status}
-                        onClick={() => onMoveStatus(entry, status)}
+                        onClick={() => onAssignChair(entry)}
                         type="button"
                       >
-                        <Icon
-                          icon={isCorrection ? 'history' : 'arrow-right'}
-                          className="me-2"
-                        />
-                        {label}
+                        <Icon icon="armchair" className="me-2" />
+                        Change chair
                       </Dropdown.Item>
-                    );
-                  })}
-                  {canReorderEntries && (
-                    <>
-                      <Dropdown.Divider />
-                      <Dropdown.Header>Queue position</Dropdown.Header>
-                      <Dropdown.Item
-                        aria-label={`Move ${entry.patientName} up`}
-                        as="button"
-                        disabled={isInteractionDisabled || !canMoveUp}
-                        onClick={() => onReorder(entry, 'up')}
-                        type="button"
-                      >
-                        <Icon icon="arrow-up" className="me-2" />
-                        Move up
-                      </Dropdown.Item>
-                      <Dropdown.Item
-                        aria-label={`Move ${entry.patientName} down`}
-                        as="button"
-                        disabled={isInteractionDisabled || !canMoveDown}
-                        onClick={() => onReorder(entry, 'down')}
-                        type="button"
-                      >
-                        <Icon icon="arrow-down" className="me-2" />
-                        Move down
-                      </Dropdown.Item>
-                    </>
-                  )}
-                </>
-              )}
-              <Dropdown.Divider />
-              {entry.patientPhone ? (
-                <>
-                  <Dropdown.Item href={`tel:${entry.patientPhone}`}>
-                    <Icon icon="phone" className="me-2" />
-                    Call patient
+                    )}
+                    <Dropdown.Divider />
+                    <Dropdown.Header>Move patient</Dropdown.Header>
+                    {statusActions.map((status) => {
+                      const isCorrection = requiresQueueStatusCorrectionReason(
+                        entry.status,
+                        status,
+                      );
+                      const label = isCorrection
+                        ? `Correct to ${queueStatusLabels[status]}`
+                        : status === 'IN_CHAIR'
+                          ? 'Move to chair'
+                          : `Mark ${queueStatusLabels[status].toLowerCase()}`;
+
+                      return (
+                        <Dropdown.Item
+                          as="button"
+                          disabled={isInteractionDisabled}
+                          key={status}
+                          onClick={() => onMoveStatus(entry, status)}
+                          type="button"
+                        >
+                          <Icon
+                            icon={isCorrection ? 'history' : 'arrow-right'}
+                            className="me-2"
+                          />
+                          {label}
+                        </Dropdown.Item>
+                      );
+                    })}
+                    {canReorderEntries && (
+                      <>
+                        <Dropdown.Divider />
+                        <Dropdown.Header>Queue position</Dropdown.Header>
+                        <Dropdown.Item
+                          aria-label={`Move ${entry.patientName} up`}
+                          as="button"
+                          disabled={isInteractionDisabled || !canMoveUp}
+                          onClick={() => onReorder(entry, 'up')}
+                          type="button"
+                        >
+                          <Icon icon="arrow-up" className="me-2" />
+                          Move up
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                          aria-label={`Move ${entry.patientName} down`}
+                          as="button"
+                          disabled={isInteractionDisabled || !canMoveDown}
+                          onClick={() => onReorder(entry, 'down')}
+                          type="button"
+                        >
+                          <Icon icon="arrow-down" className="me-2" />
+                          Move down
+                        </Dropdown.Item>
+                      </>
+                    )}
+                  </>
+                )}
+                <Dropdown.Divider />
+                {entry.patientPhone ? (
+                  <>
+                    <Dropdown.Item href={`tel:${entry.patientPhone}`}>
+                      <Icon icon="phone" className="me-2" />
+                      Call patient
+                    </Dropdown.Item>
+                    <Dropdown.Item href={`sms:${entry.patientPhone}`}>
+                      <Icon icon="message-circle" className="me-2" />
+                      Send text
+                    </Dropdown.Item>
+                  </>
+                ) : (
+                  <Dropdown.Item disabled>
+                    <Icon icon="phone-off" className="me-2" />
+                    No phone on file
                   </Dropdown.Item>
-                  <Dropdown.Item href={`sms:${entry.patientPhone}`}>
-                    <Icon icon="message-circle" className="me-2" />
-                    Send text
-                  </Dropdown.Item>
-                </>
-              ) : (
-                <Dropdown.Item disabled>
-                  <Icon icon="phone-off" className="me-2" />
-                  No phone on file
-                </Dropdown.Item>
-              )}
-            </Dropdown.Menu>
+                )}
+              </Dropdown.Menu>
+            </WaitingRoomActionsPortal>
           </Dropdown>
         </div>
 
-        <div className="d-grid gap-2 fs-sm">
-          <div className="d-flex align-items-center gap-2 min-w-0">
+        <div className={`d-grid gap-2 fs-sm ${styles.entryDetails}`}>
+          <div
+            className={`d-flex align-items-center gap-2 ${styles.entryDetailRow}`}
+          >
             <Icon icon="stethoscope" className="text-muted flex-shrink-0" />
-            <span className="text-truncate">{entry.doctorName}</span>
+            <span
+              className={`${styles.truncateText} ${styles.flexTruncateText}`}
+              title={entry.doctorName}
+            >
+              {entry.doctorName}
+            </span>
           </div>
 
           {entry.status === 'IN_CHAIR' && chairLabel && (
-            <div className="d-flex align-items-center gap-2 min-w-0">
-              <span className="badge badge-soft-primary text-primary d-inline-flex align-items-center gap-1 text-truncate">
+            <div
+              className={`d-flex align-items-center gap-2 ${styles.entryDetailRow}`}
+            >
+              <span
+                className={`badge badge-soft-primary text-primary d-inline-flex align-items-center gap-1 ${styles.entryBadge}`}
+                title={chairLabel}
+              >
                 <Icon icon="armchair" className="flex-shrink-0" />
-                {chairLabel}
+                <span
+                  className={`${styles.truncateText} ${styles.flexTruncateText}`}
+                >
+                  {chairLabel}
+                </span>
               </span>
             </div>
           )}
 
           {entry.queueNotes && (
-            <div className="d-flex align-items-start gap-2 min-w-0">
+            <div
+              className={`d-flex align-items-start gap-2 ${styles.entryDetailRow}`}
+            >
               <Icon
                 icon="notebook-pen"
                 className="text-warning flex-shrink-0 mt-1"
               />
               <span
-                className="text-muted text-truncate"
+                className={`text-muted ${styles.truncateText} ${styles.flexTruncateText}`}
                 title={entry.queueNotes}
               >
                 {entry.queueNotes}
@@ -335,12 +375,20 @@ const WaitingRoomEntryCard = ({
 
         <hr className="border-dashed my-3" />
 
-        <div className="d-flex align-items-center justify-content-between gap-2 text-muted fs-xs">
-          <span className="d-flex align-items-center gap-1">
-            <Icon icon="clock-3" />
-            {timing.label} {getElapsedTimeLabel(timing.date)}
-            <span aria-hidden="true">&middot;</span>
-            {timeFormatter.format(timing.date)}
+        <div
+          className={`d-flex align-items-center justify-content-between gap-2 text-muted fs-xs ${styles.entryFooter}`}
+        >
+          <span
+            className={`d-flex align-items-center gap-1 ${styles.entryTiming}`}
+          >
+            <Icon icon="clock-3" className="flex-shrink-0" />
+            <span
+              className={`${styles.truncateText} ${styles.flexTruncateText}`}
+            >
+              {timing.label} {getElapsedTimeLabel(timing.date)}
+              <span aria-hidden="true"> &middot; </span>
+              {timeFormatter.format(timing.date)}
+            </span>
           </span>
           <span
             className={clsx(

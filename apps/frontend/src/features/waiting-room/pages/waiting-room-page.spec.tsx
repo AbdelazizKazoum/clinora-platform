@@ -364,6 +364,28 @@ describe(WaitingRoomPage.name, () => {
     ).toBeTruthy();
   });
 
+  it('portals card actions outside the card and kanban column', () => {
+    arrangePage();
+
+    render(<WaitingRoomPage />);
+
+    const actionsButton = screen.getByRole('button', {
+      name: 'Actions for Sara Amrani',
+    });
+    const card = actionsButton.closest('.card');
+
+    fireEvent.click(actionsButton);
+
+    const menu = screen
+      .getByRole('button', { name: 'View details' })
+      .closest('.dropdown-menu');
+
+    expect(card).not.toBeNull();
+    expect(menu).not.toBeNull();
+    expect(menu?.parentElement).toBe(document.body);
+    expect(card?.contains(menu)).toBe(false);
+  });
+
   it('distinguishes the initial empty state from a filtered-empty board', () => {
     arrangePage();
 

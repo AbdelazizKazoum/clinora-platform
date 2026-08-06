@@ -53,19 +53,43 @@
   width: 2.5rem;
 }
 
+.entryCard {
+  background-color: var(--theme-secondary-bg, #fff) !important;
+  max-width: 100%;
+  opacity: 1 !important;
+  overflow: hidden;
+  width: 100%;
+}
+
+.entryListItem {
+  min-width: 0;
+}
+
+.entryCard :global(.card-body) {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .entryActionMenu {
-  max-height: min(30rem, calc(100vh - 2rem));
-  min-width: 13rem;
-  overflow-y: auto;
+  position: absolute !important;
+  z-index: 1080;
+}
+
+.entryHeader,
+.entryFooter,
+.entryTiming {
+  min-width: 0;
 }
 
 .entryIdentity {
   min-width: 0;
+  overflow: hidden;
 }
 
 .entryNameHeading {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .entryNameButton {
@@ -74,6 +98,42 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
+}
+
+.truncateText {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flexTruncateText {
+  flex: 1 1 0;
+  width: 0;
+}
+
+.entryDetails,
+.entryDetailRow {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.entryDetailRow {
+  overflow: hidden;
+}
+
+.entryBadge {
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.entryTiming {
+  flex: 1 1 auto;
 }
 
 .toolbarHeading {
@@ -165,7 +225,8 @@
 }
 
 .recentlyUpdated {
-  animation: waiting-room-highlight 2.8s ease-out;
+  background-color: var(--theme-secondary-bg, #fff) !important;
+  opacity: 1 !important;
   box-shadow: 0 0 0 2px rgba(var(--bs-success-rgb), 0.35) !important;
 }
 
@@ -194,16 +255,6 @@
   }
 }
 
-@keyframes waiting-room-highlight {
-  from {
-    background-color: rgba(var(--bs-success-rgb), 0.16);
-  }
-
-  to {
-    background-color: var(--bs-card-bg);
-  }
-}
-
 @keyframes waiting-room-fade-in {
   from {
     opacity: 0;
@@ -223,8 +274,7 @@
 @media (prefers-reduced-motion: reduce) {
   .connectingIcon,
   .liveDot,
-  .liveUpdateBadge,
-  .recentlyUpdated {
+  .liveUpdateBadge {
     animation: none;
   }
 }
@@ -255,14 +305,6 @@
 }
 
 @media (max-width: 575.98px) {
-  .entryActionMenu {
-    inset: auto 1rem 1rem !important;
-    max-height: calc(100dvh - 5rem);
-    min-width: 0;
-    position: fixed !important;
-    transform: none !important;
-  }
-
   .boardColumn {
     flex-basis: max(17.5rem, calc(100vw - 4rem));
     max-width: calc(100vw - 3rem);
