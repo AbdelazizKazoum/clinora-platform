@@ -4,6 +4,9 @@ WORKDIR /workspace
 
 RUN corepack enable
 
+ENV NX_DAEMON=false
+ENV NODE_OPTIONS=--max-old-space-size=512
+
 COPY . .
 
 RUN pnpm install --frozen-lockfile
