@@ -37,16 +37,13 @@ const boardColumnConfigs: BoardColumnConfig[] = [
 
 interface WaitingRoomBoardProps {
   canManageQueue: boolean;
-  canReorderEntries: boolean;
   entries: WaitingRoomEntry[];
   isDragEnabled: boolean;
   isInteractionDisabled: boolean;
   manualStatuses: QueueStatus[];
   onAssignChair?: (entry: WaitingRoomEntry) => void;
   onEditNotes: (entry: WaitingRoomEntry) => void;
-  onMoveStatus: (entry: WaitingRoomEntry, status: QueueStatus) => void;
   onMove: (move: WaitingRoomBoardMoveInput) => Promise<void> | void;
-  onReorder: (entry: WaitingRoomEntry, direction: 'down' | 'up') => void;
   onSelectEntry: (entry: WaitingRoomEntry) => void;
   onStartTreatment: (entry: WaitingRoomEntry) => void;
   recentlyUpdatedEntryIds: readonly string[];
@@ -57,16 +54,13 @@ const isQueueStatus = (value: string): value is QueueStatus =>
 
 const WaitingRoomBoard = ({
   canManageQueue,
-  canReorderEntries,
   entries,
   isDragEnabled,
   isInteractionDisabled,
   manualStatuses,
   onAssignChair,
   onEditNotes,
-  onMoveStatus,
   onMove,
-  onReorder,
   onSelectEntry,
   onStartTreatment,
   recentlyUpdatedEntryIds,
@@ -174,10 +168,7 @@ const WaitingRoomBoard = ({
                                 ref={draggableProvided.innerRef}
                               >
                                 <WaitingRoomEntryCard
-                                  canMoveDown={index < columnEntries.length - 1}
-                                  canMoveUp={index > 0}
                                   canManageQueue={canManageQueue}
-                                  canReorderEntries={canReorderEntries}
                                   entry={entry}
                                   isDragEnabled={Boolean(
                                     draggableProvided.dragHandleProps,
@@ -189,8 +180,6 @@ const WaitingRoomBoard = ({
                                   )}
                                   onAssignChair={onAssignChair}
                                   onEditNotes={onEditNotes}
-                                  onMoveStatus={onMoveStatus}
-                                  onReorder={onReorder}
                                   onSelect={onSelectEntry}
                                   onStartTreatment={onStartTreatment}
                                 />

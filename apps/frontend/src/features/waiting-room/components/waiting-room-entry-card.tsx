@@ -12,10 +12,6 @@ import {
   getWaitingRoomPatientInitials,
   queuePriorityBadgeClassNames,
   queuePriorityLabels,
-  queueStatusLabels,
-  requiresQueueStatusCorrectionReason,
-  waitingRoomStatusFlow,
-  type QueueStatus,
   type WaitingRoomEntry,
 } from '../model';
 import styles from './waiting-room-board.module.scss';
@@ -76,10 +72,7 @@ const getEntryTiming = (
 };
 
 interface WaitingRoomEntryCardProps {
-  canMoveDown: boolean;
-  canMoveUp: boolean;
   canManageQueue: boolean;
-  canReorderEntries: boolean;
   entry: WaitingRoomEntry;
   isDragEnabled: boolean;
   isDragging?: boolean;
@@ -87,17 +80,12 @@ interface WaitingRoomEntryCardProps {
   isRecentlyUpdated: boolean;
   onAssignChair?: (entry: WaitingRoomEntry) => void;
   onEditNotes: (entry: WaitingRoomEntry) => void;
-  onMoveStatus: (entry: WaitingRoomEntry, status: QueueStatus) => void;
-  onReorder: (entry: WaitingRoomEntry, direction: 'down' | 'up') => void;
   onSelect: (entry: WaitingRoomEntry) => void;
   onStartTreatment: (entry: WaitingRoomEntry) => void;
 }
 
 const WaitingRoomEntryCard = ({
-  canMoveDown,
-  canMoveUp,
   canManageQueue,
-  canReorderEntries,
   entry,
   isDragEnabled,
   isDragging = false,
@@ -105,17 +93,12 @@ const WaitingRoomEntryCard = ({
   isRecentlyUpdated,
   onAssignChair,
   onEditNotes,
-  onMoveStatus,
-  onReorder,
   onSelect,
   onStartTreatment,
 }: WaitingRoomEntryCardProps) => {
   const timing = getEntryTiming(entry);
   const chairLabel = getEntryChairLabel(entry);
   const canStartTreatment = canLaunchTreatmentFromWaitingRoom(entry);
-  const statusActions = waitingRoomStatusFlow.filter(
-    (status) => status !== entry.status,
-  );
 
   return (
     <Card
@@ -227,65 +210,10 @@ const WaitingRoomEntryCard = ({
                         disabled={isInteractionDisabled}
                         onClick={() => onAssignChair(entry)}
                         type="button"
-                      >
-                        <Icon icon="armchair" className="me-2" />
-                        Change chair
-                      </Dropdown.Item>
-                    )}
-                    <Dropdown.Divider />
-                    <Dropdown.Header>Move patient</Dropdown.Header>
-                    {statusActions.map((status) => {
-                      const isCorrection = requiresQueueStatusCorrectionReason(
-                        entry.status,
-                        status,
-                      );
-                      const label = isCorrection
-                        ? `Correct to ${queueStatusLabels[status]}`
-                        : status === 'IN_CHAIR'
-                          ? 'Move to chair'
-                          : `Mark ${queueStatusLabels[status].toLowerCase()}`;
-
-                      return (
-                        <Dropdown.Item
-                          as="button"
-                          disabled={isInteractionDisabled}
-                          key={status}
-                          onClick={() => onMoveStatus(entry, status)}
-                          type="button"
-                        >
-                          <Icon
-                            icon={isCorrection ? 'history' : 'arrow-right'}
-                            className="me-2"
-                          />
-                          {label}
-                        </Dropdown.Item>
-                      );
-                    })}
-                    {canReorderEntries && (
-                      <>
-                        <Dropdown.Divider />
-                        <Dropdown.Header>Queue position</Dropdown.Header>
-                        <Dropdown.Item
-                          aria-label={`Move ${entry.patientName} up`}
-                          as="button"
-                          disabled={isInteractionDisabled || !canMoveUp}
-                          onClick={() => onReorder(entry, 'up')}
-                          type="button"
-                        >
-                          <Icon icon="arrow-up" className="me-2" />
-                          Move up
-                        </Dropdown.Item>
-                        <Dropdown.Item
-                          aria-label={`Move ${entry.patientName} down`}
-                          as="button"
-                          disabled={isInteractionDisabled || !canMoveDown}
-                          onClick={() => onReorder(entry, 'down')}
-                          type="button"
-                        >
-                          <Icon icon="arrow-down" className="me-2" />
-                          Move down
-                        </Dropdown.Item>
-                      </>
+                    >
+                      <Icon icon="armchair" className="me-2" />
+                      Change chair
+                    </Dropdown.Item>
                     )}
                   </>
                 )}

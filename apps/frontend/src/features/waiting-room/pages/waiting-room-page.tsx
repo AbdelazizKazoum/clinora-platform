@@ -39,7 +39,6 @@ import {
 import {
   buildWaitingRoomTreatmentPath,
   filterWaitingRoomEntries,
-  groupWaitingRoomEntriesByStatus,
   getWaitingRoomDoctorOptions,
   getWaitingRoomSummary,
   projectWaitingRoomBoardMove,
@@ -50,7 +49,6 @@ import {
   type WaitingRoomBoardMoveInput,
   type WaitingRoomChair,
   type WaitingRoomEntry,
-  type QueueStatus,
   type WaitingRoomPriorityFilter,
 } from '../model';
 
@@ -171,8 +169,6 @@ const WaitingRoomPage = () => {
   const isOrderingPending =
     isPersistingBoard || reorderMutation.isPending || statusMutation.isPending;
   const isInteractionDisabled = isOrderingPending || !liveState.isOnline;
-  const canReorderEntries =
-    canManageQueue && isManualOrderingEnabled && !hasActiveFilters;
   const isDragEnabled =
     canManageQueue &&
     isManualOrderingEnabled &&
@@ -472,54 +468,6 @@ const WaitingRoomPage = () => {
     });
   };
 
-  const handleStatusMoveRequest = (
-    entry: WaitingRoomEntry,
-    destinationStatus: QueueStatus,
-  ): void => {
-    const sourceEntries = boardEntries.filter(
-      (candidate) => candidate.status === entry.status,
-    );
-    const destinationEntries = boardEntries.filter(
-      (candidate) => candidate.status === destinationStatus,
-    );
-
-    void handleBoardMove({
-      destinationIndex: destinationEntries.length,
-      destinationStatus,
-      entryId: entry.id,
-      sourceIndex: sourceEntries.findIndex(
-        (candidate) => candidate.id === entry.id,
-      ),
-      sourceStatus: entry.status,
-    });
-  };
-
-  const handleAccessibleReorder = (
-    entry: WaitingRoomEntry,
-    direction: 'down' | 'up',
-  ): void => {
-    const statusEntries =
-      groupWaitingRoomEntriesByStatus(boardEntries)[entry.status];
-    const sourceIndex = statusEntries.findIndex(
-      (candidate) => candidate.id === entry.id,
-    );
-    if (sourceIndex === -1) return;
-
-    const destinationIndex =
-      direction === 'up' ? sourceIndex - 1 : sourceIndex + 1;
-    if (destinationIndex < 0 || destinationIndex >= statusEntries.length) {
-      return;
-    }
-
-    void handleBoardMove({
-      destinationIndex,
-      destinationStatus: entry.status,
-      entryId: entry.id,
-      sourceIndex,
-      sourceStatus: entry.status,
-    });
-  };
-
   const handleNotesSubmit = async (
     queueNotes: string | null,
   ): Promise<void> => {
@@ -695,7 +643,6 @@ const WaitingRoomPage = () => {
               ) : (
                 <WaitingRoomBoard
                   canManageQueue={canManageQueue}
-                  canReorderEntries={canReorderEntries}
                   entries={filteredEntries}
                   isDragEnabled={isDragEnabled}
                   isInteractionDisabled={isInteractionDisabled}
@@ -713,8 +660,6 @@ const WaitingRoomPage = () => {
                     setNotesEntryId(entry.id);
                   }}
                   onMove={handleBoardMove}
-                  onMoveStatus={handleStatusMoveRequest}
-                  onReorder={handleAccessibleReorder}
                   onSelectEntry={(entry) => setSelectedEntryId(entry.id)}
                   onStartTreatment={handleStartTreatment}
                   recentlyUpdatedEntryIds={liveState.recentlyUpdatedEntryIds}
