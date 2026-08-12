@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useEffect, useId } from 'react';
 
 import {
   validateOdontogramData,
@@ -9,6 +9,7 @@ import {
   type OdontogramSelection,
   type ToothNumberingSystem,
 } from '../model/odontogram';
+import { validateOdontogramSelection } from '../model/odontogram-selection';
 import type { LoadToothSvgTemplateOptions } from '../rendering/svg-template-loader';
 import { OdontogramArch } from './odontogram-arch';
 import styles from './odontogram.module.scss';
@@ -33,6 +34,7 @@ export interface OdontogramProps {
 export function Odontogram({
   data,
   selection,
+  onSelectionChange,
   numberingSystem = 'fdi',
   view = 'side',
   interactionMode = 'view',
@@ -45,6 +47,20 @@ export function Odontogram({
   const reactId = useId();
   const chartInstanceId = `odontogram-${sanitizeDomIdPart(reactId)}`;
   const validationResult = validateOdontogramData(data);
+  const selectionValidationResult = validateOdontogramSelection(selection);
+  const renderedSelection = selectionValidationResult.valid
+    ? selection
+    : EMPTY_SELECTION;
+
+  useEffect(() => {
+    if (!selectionValidationResult.valid) {
+      console.error(
+        `Invalid odontogram selection: ${
+          selectionValidationResult.reason ?? 'unknown reason'
+        }`,
+      );
+    }
+  }, [selectionValidationResult.reason, selectionValidationResult.valid]);
 
   if (!validationResult.valid) {
     return (
@@ -69,6 +85,7 @@ export function Odontogram({
     >
       <div
         aria-label={ariaLabel}
+        aria-multiselectable={interactionMode === 'select' ? true : undefined}
         className={styles.chartViewport}
         role="listbox"
       >
@@ -79,13 +96,21 @@ export function Odontogram({
           fetcher={fetcher}
           interactionMode={interactionMode}
           numberingSystem={numberingSystem}
-          selection={selection}
+          onSelectionChange={
+            selectionValidationResult.valid ? onSelectionChange : undefined
+          }
+          selection={renderedSelection}
           view={view}
         />
       </div>
     </div>
   );
 }
+
+const EMPTY_SELECTION: OdontogramSelection = {
+  activeToothPosition: null,
+  selectedToothPositions: [],
+};
 
 function formatIssueSummary(issues: readonly OdontogramDataIssue[]): string {
   if (issues.length === 0) {

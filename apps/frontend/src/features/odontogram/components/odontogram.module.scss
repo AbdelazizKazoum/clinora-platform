@@ -54,6 +54,19 @@
   box-shadow: 0 0 0 0.125rem rgba(var(--bs-primary-rgb), 0.16);
 }
 
+.toothOption[aria-selected='true'] {
+  background-color: rgba(var(--bs-primary-rgb), 0.08);
+  border-color: rgba(var(--bs-primary-rgb), 0.32);
+}
+
+.toothOption[aria-current='true'] {
+  box-shadow: inset 0 0 0 0.125rem rgba(var(--bs-primary-rgb), 0.3);
+}
+
+.toothOption[data-odontogram-hovered='true'] {
+  background-color: rgba(var(--bs-secondary-rgb), 0.08);
+}
+
 .toothCell {
   align-items: center;
   display: flex;

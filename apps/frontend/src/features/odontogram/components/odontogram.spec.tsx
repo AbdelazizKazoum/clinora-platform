@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import {
   TOOTH_POSITIONS,
@@ -259,6 +259,311 @@ describe('Odontogram', () => {
     );
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(mockedLoadToothSvgTemplate).not.toHaveBeenCalled();
+  });
+
+  it('emits normal click activation in select mode without mutating controlled styling', async () => {
+    const onSelectionChange = jest.fn();
+    const { container } = render(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={EMPTY_SELECTION}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+
+    expect(
+      screen.getByRole('listbox').getAttribute('aria-multiselectable'),
+    ).toBe('true');
+
+    const tooth18 = screen.getByRole('option', { name: 'Tooth 18' });
+    fireEvent.click(tooth18);
+
+    expect(onSelectionChange).toHaveBeenCalledWith({
+      activeToothPosition: 18,
+      selectedToothPositions: [18],
+    });
+    expect(tooth18.getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('uses controlled prop updates as the selected and active visual source', async () => {
+    const { container, rerender } = render(
+      <Odontogram data={createChart()} selection={EMPTY_SELECTION} />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+    expect(
+      screen
+        .getByRole('option', { name: 'Tooth 18' })
+        .getAttribute('aria-selected'),
+    ).toBe('false');
+
+    rerender(
+      <Odontogram
+        data={createChart()}
+        selection={{
+          activeToothPosition: 18,
+          selectedToothPositions: [18],
+        }}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole('option', { name: 'Tooth 18' })
+        .getAttribute('aria-selected'),
+    ).toBe('true');
+    expect(
+      screen
+        .getByRole('option', { name: 'Tooth 18' })
+        .getAttribute('aria-current'),
+    ).toBe('true');
+  });
+
+  it('emits modifier-click multi-selection and active fallback values', async () => {
+    const onSelectionChange = jest.fn();
+    const { container, rerender } = render(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={{
+          activeToothPosition: 18,
+          selectedToothPositions: [18],
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tooth 11' }), {
+      ctrlKey: true,
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith({
+      activeToothPosition: 11,
+      selectedToothPositions: [18, 11],
+    });
+
+    rerender(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={{
+          activeToothPosition: 18,
+          selectedToothPositions: [18, 11],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tooth 18' }), {
+      metaKey: true,
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith({
+      activeToothPosition: 11,
+      selectedToothPositions: [11],
+    });
+  });
+
+  it('supports Enter, Space, arrow, and Escape keyboard selection', async () => {
+    const onSelectionChange = jest.fn();
+    const { container, rerender } = render(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={EMPTY_SELECTION}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Tooth 18' }), {
+      key: 'Enter',
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith({
+      activeToothPosition: 18,
+      selectedToothPositions: [18],
+    });
+
+    rerender(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={{
+          activeToothPosition: 18,
+          selectedToothPositions: [18],
+        }}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Tooth 18' }), {
+      key: 'ArrowRight',
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith({
+      activeToothPosition: 17,
+      selectedToothPositions: [17],
+    });
+
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Tooth 18' }), {
+      key: 'Escape',
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith(EMPTY_SELECTION);
+
+    rerender(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={EMPTY_SELECTION}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Tooth 18' }), {
+      ctrlKey: true,
+      key: ' ',
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith({
+      activeToothPosition: 18,
+      selectedToothPositions: [18],
+    });
+  });
+
+  it('does not emit selection changes in view mode', async () => {
+    const onSelectionChange = jest.fn();
+    const { container } = render(
+      <Odontogram
+        data={createChart()}
+        interactionMode="view"
+        onSelectionChange={onSelectionChange}
+        selection={EMPTY_SELECTION}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tooth 18' }));
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Tooth 18' }), {
+      key: 'Enter',
+    });
+
+    expect(onSelectionChange).not.toHaveBeenCalled();
+  });
+
+  it('keeps hover styling local and emits no selection callback', async () => {
+    const onSelectionChange = jest.fn();
+    const { container } = render(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={EMPTY_SELECTION}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+
+    const tooth18 = screen.getByRole('option', { name: 'Tooth 18' });
+    fireEvent.pointerEnter(tooth18);
+    expect(tooth18.getAttribute('data-odontogram-hovered')).toBe('true');
+    expect(onSelectionChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerLeave(tooth18);
+    expect(tooth18.hasAttribute('data-odontogram-hovered')).toBe(false);
+  });
+
+  it('renders no selected state and emits no repair callback for invalid controlled selections', async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const onSelectionChange = jest.fn();
+    const { container } = render(
+      <Odontogram
+        data={createChart()}
+        interactionMode="select"
+        onSelectionChange={onSelectionChange}
+        selection={{
+          activeToothPosition: 18,
+          selectedToothPositions: [],
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(32);
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Invalid odontogram selection: An empty selection must not have an active tooth',
+    );
+    expect(
+      screen
+        .getByRole('option', { name: 'Tooth 18' })
+        .getAttribute('aria-selected'),
+    ).toBe('false');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Tooth 18' }));
+    expect(onSelectionChange).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('keeps two chart instances selection callbacks independent', async () => {
+    const firstSelectionChange = jest.fn();
+    const secondSelectionChange = jest.fn();
+    const { container } = render(
+      <div>
+        <Odontogram
+          ariaLabel="First odontogram"
+          data={createChart()}
+          interactionMode="select"
+          onSelectionChange={firstSelectionChange}
+          selection={EMPTY_SELECTION}
+        />
+        <Odontogram
+          ariaLabel="Second odontogram"
+          data={createChart()}
+          interactionMode="select"
+          onSelectionChange={secondSelectionChange}
+          selection={EMPTY_SELECTION}
+        />
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('svg')).toHaveLength(64);
+    });
+
+    const firstListbox = screen.getByRole('listbox', {
+      name: 'First odontogram',
+    });
+    const firstTooth = Array.from(
+      firstListbox.querySelectorAll('[role="option"]'),
+    )[0];
+    if (firstTooth === undefined) {
+      throw new Error('Expected first chart tooth option');
+    }
+
+    fireEvent.click(firstTooth);
+
+    expect(firstSelectionChange).toHaveBeenCalledWith({
+      activeToothPosition: 18,
+      selectedToothPositions: [18],
+    });
+    expect(secondSelectionChange).not.toHaveBeenCalled();
   });
 });
 

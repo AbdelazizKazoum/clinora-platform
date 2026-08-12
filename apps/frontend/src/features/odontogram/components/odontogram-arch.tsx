@@ -5,7 +5,12 @@ import type {
   ToothNumberingSystem,
   ToothPosition,
 } from '../model/odontogram';
-import type { ReactNode } from 'react';
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  activateToothSelection,
+  navigateToothSelection,
+  type ToothSelectionNavigationKey,
+} from '../model/odontogram-selection';
 import type { LoadToothSvgTemplateOptions } from '../rendering/svg-template-loader';
 import {
   LOWER_ARCH_POSITIONS,
@@ -24,6 +29,7 @@ export interface OdontogramArchProps {
   readonly selection: OdontogramSelection;
   readonly view: OdontogramView;
   readonly interactionMode: OdontogramInteractionMode;
+  readonly onSelectionChange?: (next: OdontogramSelection) => void;
   readonly basePath?: string;
   readonly assetPrefix?: string;
   readonly fetcher?: LoadToothSvgTemplateOptions['fetcher'];
@@ -61,11 +67,43 @@ export function OdontogramArch({
   selection,
   view,
   interactionMode,
+  onSelectionChange,
   basePath,
   assetPrefix,
   fetcher,
 }: OdontogramArchProps) {
   const selectedPositions = new Set(selection.selectedToothPositions);
+  const [hoveredPosition, setHoveredPosition] = useState<ToothPosition | null>(
+    null,
+  );
+  const optionRefs = useRef(new Map<ToothPosition, HTMLDivElement>());
+
+  const emitSelectionChange = (nextSelection: OdontogramSelection) => {
+    if (interactionMode !== 'select') {
+      return;
+    }
+
+    onSelectionChange?.(nextSelection);
+    focusActiveToothOption(
+      optionRefs.current,
+      nextSelection.activeToothPosition,
+    );
+  };
+
+  const handleActivate = (
+    position: ToothPosition,
+    mode: 'replace' | 'toggle',
+  ) => {
+    emitSelectionChange(activateToothSelection(selection, position, mode));
+  };
+
+  const handleNavigate = (
+    event: KeyboardEvent<HTMLDivElement>,
+    key: ToothSelectionNavigationKey,
+  ) => {
+    event.preventDefault();
+    emitSelectionChange(navigateToothSelection(selection, key));
+  };
 
   return (
     <div className={styles.archStack} data-odontogram-view={view}>
@@ -80,14 +118,28 @@ export function OdontogramArch({
             const optionId = `${chartInstanceId}-tooth-${position}`;
             const isSelected = selectedPositions.has(position);
             const isActive = selection.activeToothPosition === position;
+            const isHovered = hoveredPosition === position;
             const option = (
               <ToothOption
                 active={isActive}
                 ariaLabel={`Tooth ${label}`}
+                hovered={isHovered}
                 id={optionId}
                 interactionMode={interactionMode}
                 key={position}
+                onActivate={handleActivate}
+                onNavigate={handleNavigate}
+                onPointerEnter={setHoveredPosition}
+                onPointerLeave={() => setHoveredPosition(null)}
                 position={position}
+                registerOptionRef={(element) => {
+                  if (element === null) {
+                    optionRefs.current.delete(position);
+                    return;
+                  }
+
+                  optionRefs.current.set(position, element);
+                }}
                 selected={isSelected}
               >
                 {archConfig.labelFirst ? (
@@ -158,9 +210,21 @@ interface ToothOptionProps {
   readonly active: boolean;
   readonly ariaLabel: string;
   readonly children: ReactNode;
+  readonly hovered: boolean;
   readonly id: string;
   readonly interactionMode: OdontogramInteractionMode;
+  readonly onActivate: (
+    position: ToothPosition,
+    mode: 'replace' | 'toggle',
+  ) => void;
+  readonly onNavigate: (
+    event: KeyboardEvent<HTMLDivElement>,
+    key: ToothSelectionNavigationKey,
+  ) => void;
+  readonly onPointerEnter: (position: ToothPosition) => void;
+  readonly onPointerLeave: () => void;
   readonly position: ToothPosition;
+  readonly registerOptionRef: (element: HTMLDivElement | null) => void;
   readonly selected: boolean;
 }
 
@@ -168,9 +232,15 @@ function ToothOption({
   active,
   ariaLabel,
   children,
+  hovered,
   id,
   interactionMode,
+  onActivate,
+  onNavigate,
+  onPointerEnter,
+  onPointerLeave,
   position,
+  registerOptionRef,
   selected,
 }: ToothOptionProps) {
   return (
@@ -179,16 +249,61 @@ function ToothOption({
       aria-label={ariaLabel}
       aria-selected={selected}
       className={styles.toothOption}
+      data-odontogram-hovered={hovered ? 'true' : undefined}
       data-odontogram-interaction-mode={interactionMode}
       data-odontogram-position={position}
       data-odontogram-tooth-option=""
       id={id}
+      onClick={(event) => {
+        onActivate(
+          position,
+          event.ctrlKey || event.metaKey ? 'toggle' : 'replace',
+        );
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onActivate(
+            position,
+            event.ctrlKey || event.metaKey ? 'toggle' : 'replace',
+          );
+          return;
+        }
+
+        if (isNavigationKey(event.key)) {
+          onNavigate(event, event.key);
+        }
+      }}
+      onPointerEnter={() => onPointerEnter(position)}
+      onPointerLeave={onPointerLeave}
+      ref={registerOptionRef}
       role="option"
       tabIndex={0}
     >
       {children}
     </div>
   );
+}
+
+function isNavigationKey(key: string): key is ToothSelectionNavigationKey {
+  return (
+    key === 'ArrowLeft' ||
+    key === 'ArrowRight' ||
+    key === 'ArrowUp' ||
+    key === 'ArrowDown' ||
+    key === 'Escape'
+  );
+}
+
+function focusActiveToothOption(
+  optionRefs: ReadonlyMap<ToothPosition, HTMLDivElement>,
+  position: ToothPosition | null,
+): void {
+  if (position === null) {
+    return;
+  }
+
+  optionRefs.get(position)?.focus();
 }
 
 function ToothLabel({
