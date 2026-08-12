@@ -2,11 +2,114 @@ import type { OdontogramTooth } from '../model/odontogram';
 import {
   FILLING_SURFACE_LAYER_ID_BY_MATERIAL,
   TOOTH_SURFACE_LAYER_RESET_IDS,
+  TOOTH_WHOLE_LAYER_RESET_IDS,
   deriveToothSurfaceVisualLayers,
+  deriveToothVisualLayers,
+  deriveWholeToothVisualLayers,
   isSurfaceSupportedByToothView,
 } from './tooth-layer-registry';
 
 describe('tooth layer registry', () => {
+  it('maps natural, missing, and implant bases deterministically', () => {
+    expect(
+      deriveWholeToothVisualLayers(tooth(16, [], 'natural'), 'side'),
+    ).toEqual({
+      layers: [
+        { id: 'base', kind: 'base' },
+        { id: 'tooth-base', kind: 'base' },
+        { id: 'tooth-base-beauty', kind: 'base' },
+        { id: 'tooth-healthy-pulp', kind: 'base' },
+      ],
+      unsupportedVisuals: [],
+    });
+    expect(
+      deriveWholeToothVisualLayers(tooth(16, [], 'missing'), 'side'),
+    ).toEqual({
+      layers: [{ id: 'base', kind: 'base' }],
+      unsupportedVisuals: [],
+    });
+    expect(
+      deriveWholeToothVisualLayers(tooth(16, [], 'implant'), 'side'),
+    ).toEqual({
+      layers: [
+        { id: 'base', kind: 'base' },
+        { id: 'implant', kind: 'base' },
+        { id: 'implant-base', kind: 'base' },
+      ],
+      unsupportedVisuals: [],
+    });
+  });
+
+  it('maps planned extraction and side-view root canal to named layers', () => {
+    expect(
+      deriveWholeToothVisualLayers(
+        tooth(16, [
+          { appearance: 'planned', kind: 'extraction' },
+          {
+            appearance: 'existing',
+            kind: 'endodontic',
+            state: 'root-canal',
+          },
+        ]),
+        'side',
+      ).layers,
+    ).toEqual([
+      { id: 'base', kind: 'base' },
+      { id: 'tooth-base', kind: 'base' },
+      { id: 'tooth-base-beauty', kind: 'base' },
+      { id: 'tooth-healthy-pulp', kind: 'base' },
+      {
+        appearance: 'planned',
+        id: 'extraction-plan',
+        kind: 'extraction',
+      },
+      {
+        appearance: 'existing',
+        id: 'endo-filling',
+        kind: 'endodontic',
+      },
+    ]);
+  });
+
+  it('reports root canal as unsupported in occlusal roots', () => {
+    expect(
+      deriveWholeToothVisualLayers(
+        tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'endodontic',
+            state: 'root-canal',
+          },
+        ]),
+        'occlusal',
+      ).unsupportedVisuals,
+    ).toEqual([
+      { condition: 'root-canal', reason: 'unsupported-template-view' },
+    ]);
+  });
+
+  it('combines whole-tooth and surface visual layers', () => {
+    expect(
+      deriveToothVisualLayers(
+        tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'filling',
+            material: 'amalgam',
+            surface: 'occlusal',
+          },
+        ]),
+        'side',
+      ).layers.map((layer) => layer.id),
+    ).toEqual([
+      'base',
+      'tooth-base',
+      'tooth-base-beauty',
+      'tooth-healthy-pulp',
+      'filling-amalgam-occlusal',
+    ]);
+  });
+
   it('maps primary caries to caries surface layers with supplied appearance and severity', () => {
     expect(
       deriveToothSurfaceVisualLayers(
@@ -118,14 +221,29 @@ describe('tooth layer registry', () => {
       TOOTH_SURFACE_LAYER_RESET_IDS.length,
     );
   });
+
+  it('includes the complete known reset set for whole-tooth layers', () => {
+    expect(TOOTH_WHOLE_LAYER_RESET_IDS).toEqual([
+      'base',
+      'tooth-base',
+      'tooth-base-beauty',
+      'tooth-healthy-pulp',
+      'tooth-inflam-pulp',
+      'implant',
+      'implant-base',
+      'extraction-plan',
+      'endo-filling',
+    ]);
+  });
 });
 
 function tooth(
   position: OdontogramTooth['position'],
   conditions: OdontogramTooth['conditions'],
+  base: OdontogramTooth['base'] = 'natural',
 ): OdontogramTooth {
   return {
-    base: 'natural',
+    base,
     conditions,
     position,
   };

@@ -168,7 +168,7 @@ export function OdontogramArch({
                     chartInstanceId={chartInstanceId}
                     fetcher={fetcher}
                     position={position}
-                    showUnsupportedSurfaceFallback={
+                    showUnsupportedVisualFallback={
                       view === 'side' || !hasOcclusalToothView(position)
                     }
                     suppressImageRole

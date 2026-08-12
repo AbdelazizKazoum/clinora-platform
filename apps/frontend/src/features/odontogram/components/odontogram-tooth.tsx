@@ -32,7 +32,7 @@ export interface OdontogramToothProps {
   readonly assetPrefix?: string;
   readonly fetcher?: LoadToothSvgTemplateOptions['fetcher'];
   readonly tooth?: OdontogramToothModel;
-  readonly showUnsupportedSurfaceFallback?: boolean;
+  readonly showUnsupportedVisualFallback?: boolean;
   readonly className?: string;
   readonly ariaLabel?: string;
   readonly ariaHidden?: boolean;
@@ -51,7 +51,7 @@ export function OdontogramTooth({
   assetPrefix,
   fetcher,
   tooth,
-  showUnsupportedSurfaceFallback = true,
+  showUnsupportedVisualFallback = true,
   className,
   ariaLabel,
   ariaHidden = false,
@@ -65,7 +65,7 @@ export function OdontogramTooth({
   const [status, setStatus] = useState<ToothRenderStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [unsupportedVisuals, setUnsupportedVisuals] = useState<
-    ApplyToothVisualsResult['unsupportedSurfaces']
+    ApplyToothVisualsResult['unsupportedVisuals']
   >([]);
   const templateId = resolveToothTemplateId(position, view);
   const layout = getToothLayout(position);
@@ -162,7 +162,7 @@ export function OdontogramTooth({
       view,
     });
 
-    setUnsupportedVisuals(result.unsupportedSurfaces);
+    setUnsupportedVisuals(result.unsupportedVisuals);
   }, [status, tooth, view]);
 
   return (
@@ -197,18 +197,17 @@ export function OdontogramTooth({
           No occlusal view
         </span>
       ) : null}
-      {showUnsupportedSurfaceFallback
+      {showUnsupportedVisualFallback
         ? unsupportedVisuals.map((unsupportedVisual) => (
             <span
               className={`${styles.toothFallback} ${styles.surfaceVisualFallback}`}
-              data-odontogram-unsupported-surface={unsupportedVisual.surface}
-              key={unsupportedVisual.surface}
+              data-odontogram-unsupported-visual={formatUnsupportedVisualKey(
+                unsupportedVisual,
+              )}
+              key={formatUnsupportedVisualKey(unsupportedVisual)}
               role="status"
             >
-              {formatUnsupportedSurfaceMessage(
-                position,
-                unsupportedVisual.surface,
-              )}
+              {formatUnsupportedVisualMessage(position, unsupportedVisual)}
             </span>
           ))
         : null}
@@ -298,9 +297,21 @@ function readViewBox(svg: SVGSVGElement): {
   return { minX, minY, width, height };
 }
 
-function formatUnsupportedSurfaceMessage(
+function formatUnsupportedVisualMessage(
   position: ToothPosition,
-  surface: string,
+  unsupportedVisual: ApplyToothVisualsResult['unsupportedVisuals'][number],
 ): string {
-  return `Tooth ${position} ${surface} surface is not shown in this view`;
+  if ('surface' in unsupportedVisual) {
+    return `Tooth ${position} ${unsupportedVisual.surface} surface is not shown in this view`;
+  }
+
+  return `Tooth ${position} root-canal is not shown in this view`;
+}
+
+function formatUnsupportedVisualKey(
+  unsupportedVisual: ApplyToothVisualsResult['unsupportedVisuals'][number],
+): string {
+  return 'surface' in unsupportedVisual
+    ? `surface-${unsupportedVisual.surface}`
+    : `condition-${unsupportedVisual.condition}`;
 }

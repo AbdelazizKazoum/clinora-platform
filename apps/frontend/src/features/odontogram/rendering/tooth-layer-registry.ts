@@ -3,6 +3,7 @@ import type {
   OdontogramAppearance,
   OdontogramCondition,
   OdontogramTooth,
+  ToothBase,
   ToothPosition,
   ToothSurface,
 } from '../model/odontogram';
@@ -10,6 +11,8 @@ import type { ToothSvgTemplateView } from './svg-template-loader';
 import { hasOcclusalToothView } from './tooth-layout';
 
 export type ToothSurfaceLayerKind = 'caries' | 'subcaries' | 'filling';
+export type ToothWholeLayerKind = 'base' | 'endodontic' | 'extraction';
+export type ToothVisualLayer = ToothSurfaceVisualLayer | ToothWholeVisualLayer;
 
 export interface ToothSurfaceVisualLayer {
   readonly id: string;
@@ -19,14 +22,34 @@ export interface ToothSurfaceVisualLayer {
   readonly severity?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
+export interface ToothWholeVisualLayer {
+  readonly id: string;
+  readonly kind: ToothWholeLayerKind;
+  readonly appearance?: OdontogramAppearance;
+}
+
 export interface UnsupportedToothSurfaceVisual {
   readonly surface: ToothSurface;
   readonly reason: 'unsupported-template-surface';
 }
 
+export interface UnsupportedToothConditionVisual {
+  readonly condition: 'root-canal';
+  readonly reason: 'unsupported-template-view';
+}
+
+export type UnsupportedToothVisual =
+  | UnsupportedToothSurfaceVisual
+  | UnsupportedToothConditionVisual;
+
 export interface ToothSurfaceVisualLayerResult {
   readonly layers: readonly ToothSurfaceVisualLayer[];
   readonly unsupportedSurfaces: readonly UnsupportedToothSurfaceVisual[];
+}
+
+export interface ToothVisualLayerResult {
+  readonly layers: readonly ToothVisualLayer[];
+  readonly unsupportedVisuals: readonly UnsupportedToothVisual[];
 }
 
 const TOOTH_SURFACES: readonly ToothSurface[] = [
@@ -52,6 +75,18 @@ export const TOOTH_SURFACE_LAYER_RESET_IDS = Object.freeze([
   ),
 ] as const);
 
+export const TOOTH_WHOLE_LAYER_RESET_IDS = Object.freeze([
+  'base',
+  'tooth-base',
+  'tooth-base-beauty',
+  'tooth-healthy-pulp',
+  'tooth-inflam-pulp',
+  'implant',
+  'implant-base',
+  'extraction-plan',
+  'endo-filling',
+] as const);
+
 export const FILLING_SURFACE_LAYER_ID_BY_MATERIAL = Object.freeze(
   Object.fromEntries(
     FILLING_MATERIALS.map((material) => [
@@ -70,6 +105,64 @@ export const FILLING_SURFACE_LAYER_ID_BY_MATERIAL = Object.freeze(
     Readonly<Record<ToothSurface, `filling-${FillingMaterial}-${ToothSurface}`>>
   >,
 );
+
+export function deriveToothVisualLayers(
+  tooth: OdontogramTooth,
+  view: ToothSvgTemplateView,
+): ToothVisualLayerResult {
+  const wholeToothResult = deriveWholeToothVisualLayers(tooth, view);
+  const surfaceResult = deriveToothSurfaceVisualLayers(tooth, view);
+
+  return {
+    layers: [...wholeToothResult.layers, ...surfaceResult.layers],
+    unsupportedVisuals: [
+      ...wholeToothResult.unsupportedVisuals,
+      ...surfaceResult.unsupportedSurfaces,
+    ],
+  };
+}
+
+export function deriveWholeToothVisualLayers(
+  tooth: OdontogramTooth,
+  view: ToothSvgTemplateView,
+): ToothVisualLayerResult {
+  const layers: ToothWholeVisualLayer[] = [
+    { id: 'base', kind: 'base' },
+    ...getToothBaseLayerIds(tooth.base).map((id) => ({
+      id,
+      kind: 'base' as const,
+    })),
+  ];
+  const unsupportedVisuals: UnsupportedToothVisual[] = [];
+
+  for (const condition of tooth.conditions) {
+    if (condition.kind === 'extraction') {
+      layers.push({
+        appearance: condition.appearance,
+        id: 'extraction-plan',
+        kind: 'extraction',
+      });
+      continue;
+    }
+
+    if (condition.kind === 'endodontic') {
+      if (view === 'side') {
+        layers.push({
+          appearance: condition.appearance,
+          id: 'endo-filling',
+          kind: 'endodontic',
+        });
+      } else {
+        unsupportedVisuals.push({
+          condition: 'root-canal',
+          reason: 'unsupported-template-view',
+        });
+      }
+    }
+  }
+
+  return { layers, unsupportedVisuals };
+}
 
 export function deriveToothSurfaceVisualLayers(
   tooth: OdontogramTooth,
@@ -158,4 +251,16 @@ function collectSurfaceConditions<K extends 'caries' | 'filling'>(
   }
 
   return conditionsBySurface;
+}
+
+function getToothBaseLayerIds(base: ToothBase): readonly string[] {
+  if (base === 'natural') {
+    return ['tooth-base', 'tooth-base-beauty', 'tooth-healthy-pulp'];
+  }
+
+  if (base === 'implant') {
+    return ['implant', 'implant-base'];
+  }
+
+  return [];
 }

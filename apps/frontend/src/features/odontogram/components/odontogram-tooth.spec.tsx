@@ -218,6 +218,114 @@ describe('OdontogramTooth', () => {
     ).toBe('planned');
   });
 
+  it('renders existing missing base without natural or implant anatomy', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [], 'missing')}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getLayer(container, 'base')?.getAttribute('data-active')).toBe(
+        '1',
+      );
+      expect(
+        getLayer(container, 'tooth-base')?.getAttribute('data-active'),
+      ).toBe('0');
+      expect(getLayer(container, 'implant')?.getAttribute('data-active')).toBe(
+        '0',
+      );
+    });
+  });
+
+  it('renders existing implant base without marking it as planned', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [], 'implant')}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getLayer(container, 'implant')?.getAttribute('data-active')).toBe(
+        '1',
+      );
+      expect(
+        getLayer(container, 'implant-base')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+
+    expect(
+      getLayer(container, 'implant')?.getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBeNull();
+    expect(getLayer(container, 'tooth-base')?.getAttribute('data-active')).toBe(
+      '0',
+    );
+  });
+
+  it('renders planned extraction and root-canal on side roots', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          { appearance: 'planned', kind: 'extraction' },
+          {
+            appearance: 'existing',
+            kind: 'endodontic',
+            state: 'root-canal',
+          },
+        ])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'extraction-plan')?.getAttribute('data-active'),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'endo-filling')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+
+    expect(
+      getLayer(container, 'extraction-plan')?.getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+    expect(
+      getLayer(container, 'endo-filling')?.getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('existing');
+  });
+
+  it('reports root-canal as unavailable in occlusal-only tooth rendering', async () => {
+    render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'endodontic',
+            state: 'root-canal',
+          },
+        ])}
+        view="occlusal"
+      />,
+    );
+
+    expect(
+      await screen.findByText('Tooth 16 root-canal is not shown in this view'),
+    ).toBeTruthy();
+  });
+
   it('removes stale caries and filling layers when tooth conditions change', async () => {
     const { container, rerender } = render(
       <OdontogramTooth
@@ -256,6 +364,62 @@ describe('OdontogramTooth', () => {
           'data-active',
         ),
       ).toBe('0');
+    });
+  });
+
+  it('removes stale whole-tooth layers when base and conditions change', async () => {
+    const { container, rerender } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(
+          16,
+          [
+            { appearance: 'planned', kind: 'extraction' },
+            {
+              appearance: 'existing',
+              kind: 'endodontic',
+              state: 'root-canal',
+            },
+          ],
+          'implant',
+        )}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getLayer(container, 'implant')?.getAttribute('data-active')).toBe(
+        '1',
+      );
+      expect(
+        getLayer(container, 'extraction-plan')?.getAttribute('data-active'),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'endo-filling')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+
+    rerender(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getLayer(container, 'implant')?.getAttribute('data-active')).toBe(
+        '0',
+      );
+      expect(
+        getLayer(container, 'extraction-plan')?.getAttribute('data-active'),
+      ).toBe('0');
+      expect(
+        getLayer(container, 'endo-filling')?.getAttribute('data-active'),
+      ).toBe('0');
+      expect(
+        getLayer(container, 'tooth-base')?.getAttribute('data-active'),
+      ).toBe('1');
     });
   });
 
@@ -401,7 +565,15 @@ function createLoadedTemplate(
       <defs>
         <linearGradient id="paint-${templateId}"><stop offset="0" stop-color="#fff" /></linearGradient>
       </defs>
+      <g id="base" data-active="1" />
       <path id="tooth-base" data-active="1" style="fill: url(#paint-${templateId});" d="M0 0h1v1H0z" />
+      <path id="tooth-base-beauty" data-active="1" d="M0 0h1v1H0z" />
+      <path id="tooth-healthy-pulp" data-active="1" d="M0 0h1v1H0z" />
+      <path id="tooth-inflam-pulp" data-active="0" d="M0 0h1v1H0z" />
+      <g id="implant" data-active="0" />
+      <path id="implant-base" data-active="0" d="M0 0h1v1H0z" />
+      <path id="extraction-plan" data-active="0" d="M0 0h1v1H0z" />
+      <path id="endo-filling" data-active="0" d="M0 0h1v1H0z" />
       <path id="caries-occlusal" data-active="0" d="M1 1h1v1H1z" />
       <path id="caries-mesial" data-active="0" d="M1 1h1v1H1z" />
       <path id="caries-lingual" data-active="0" d="M1 1h1v1H1z" />
@@ -439,9 +611,10 @@ function getLayer(
 function tooth(
   position: OdontogramToothModel['position'],
   conditions: OdontogramToothModel['conditions'],
+  base: OdontogramToothModel['base'] = 'natural',
 ): OdontogramToothModel {
   return {
-    base: 'natural',
+    base,
     conditions,
     position,
   };

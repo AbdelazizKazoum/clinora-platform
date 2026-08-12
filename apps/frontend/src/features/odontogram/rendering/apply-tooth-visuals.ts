@@ -2,9 +2,11 @@ import type { OdontogramTooth } from '../model/odontogram';
 import type { ToothSvgTemplateView } from './svg-template-loader';
 import {
   TOOTH_SURFACE_LAYER_RESET_IDS,
-  deriveToothSurfaceVisualLayers,
+  TOOTH_WHOLE_LAYER_RESET_IDS,
+  deriveToothVisualLayers,
   type ToothSurfaceVisualLayer,
-  type UnsupportedToothSurfaceVisual,
+  type ToothVisualLayer,
+  type UnsupportedToothVisual,
 } from './tooth-layer-registry';
 
 export interface ApplyToothVisualsOptions {
@@ -16,7 +18,7 @@ export interface ApplyToothVisualsOptions {
 
 export interface ApplyToothVisualsResult {
   readonly activeLayerIds: readonly string[];
-  readonly unsupportedSurfaces: readonly UnsupportedToothSurfaceVisual[];
+  readonly unsupportedVisuals: readonly UnsupportedToothVisual[];
 }
 
 export function applyToothVisuals({
@@ -25,17 +27,33 @@ export function applyToothVisuals({
   view,
   layerIdByOriginalId,
 }: ApplyToothVisualsOptions): ApplyToothVisualsResult {
+  resetWholeToothLayers(svg, layerIdByOriginalId);
   resetSurfaceLayers(svg, layerIdByOriginalId);
 
-  const result = deriveToothSurfaceVisualLayers(tooth, view);
+  const result = deriveToothVisualLayers(tooth, view);
   for (const layer of result.layers) {
-    activateSurfaceLayer(svg, layerIdByOriginalId, layer);
+    activateVisualLayer(svg, layerIdByOriginalId, layer);
   }
 
   return {
     activeLayerIds: result.layers.map((layer) => layer.id),
-    unsupportedSurfaces: result.unsupportedSurfaces,
+    unsupportedVisuals: result.unsupportedVisuals,
   };
+}
+
+function resetWholeToothLayers(
+  svg: SVGSVGElement,
+  layerIdByOriginalId: ReadonlyMap<string, string>,
+): void {
+  for (const layerId of TOOTH_WHOLE_LAYER_RESET_IDS) {
+    const layerElement = findLayerElement(svg, layerIdByOriginalId, layerId);
+    if (layerElement === null) {
+      continue;
+    }
+
+    layerElement.setAttribute('data-active', '0');
+    layerElement.removeAttribute('data-odontogram-appearance');
+  }
 }
 
 function resetSurfaceLayers(
@@ -56,10 +74,10 @@ function resetSurfaceLayers(
   }
 }
 
-function activateSurfaceLayer(
+function activateVisualLayer(
   svg: SVGSVGElement,
   layerIdByOriginalId: ReadonlyMap<string, string>,
-  layer: ToothSurfaceVisualLayer,
+  layer: ToothVisualLayer,
 ): void {
   const layerElement = findLayerElement(svg, layerIdByOriginalId, layer.id);
   if (layerElement === null) {
@@ -67,7 +85,13 @@ function activateSurfaceLayer(
   }
 
   layerElement.setAttribute('data-active', '1');
-  layerElement.setAttribute('data-odontogram-appearance', layer.appearance);
+  if (layer.appearance !== undefined) {
+    layerElement.setAttribute('data-odontogram-appearance', layer.appearance);
+  }
+
+  if (!isSurfaceVisualLayer(layer)) {
+    return;
+  }
 
   if (layer.kind === 'caries') {
     const severity = layer.severity ?? 2;
@@ -88,6 +112,16 @@ function activateSurfaceLayer(
     );
     layerElement.style.opacity = getRecurrentCariesOpacity(severity);
   }
+}
+
+function isSurfaceVisualLayer(
+  layer: ToothVisualLayer,
+): layer is ToothSurfaceVisualLayer {
+  return (
+    layer.kind === 'caries' ||
+    layer.kind === 'subcaries' ||
+    layer.kind === 'filling'
+  );
 }
 
 function findLayerElement(

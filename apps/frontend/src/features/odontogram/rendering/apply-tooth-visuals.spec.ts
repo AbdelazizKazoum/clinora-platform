@@ -3,6 +3,139 @@ import { namespaceSvgIds } from './svg-id-namespace';
 import { applyToothVisuals } from './apply-tooth-visuals';
 
 describe('applyToothVisuals', () => {
+  it('activates natural base layers and clears implant or extraction leftovers', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+    getLayer(template.svg, 'implant').setAttribute('data-active', '1');
+    getLayer(template.svg, 'extraction-plan').setAttribute('data-active', '1');
+
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, []),
+      view: 'side',
+    });
+
+    expect(result.activeLayerIds).toEqual([
+      'base',
+      'tooth-base',
+      'tooth-base-beauty',
+      'tooth-healthy-pulp',
+    ]);
+    expect(
+      getLayer(template.svg, 'tooth-base').getAttribute('data-active'),
+    ).toBe('1');
+    expect(getLayer(template.svg, 'implant').getAttribute('data-active')).toBe(
+      '0',
+    );
+    expect(
+      getLayer(template.svg, 'extraction-plan').getAttribute('data-active'),
+    ).toBe('0');
+  });
+
+  it('activates implant base without treating it as a planned implant', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [], 'implant'),
+      view: 'side',
+    });
+
+    expect(result.activeLayerIds).toEqual(['base', 'implant', 'implant-base']);
+    expect(getLayer(template.svg, 'implant').getAttribute('data-active')).toBe(
+      '1',
+    );
+    expect(
+      getLayer(template.svg, 'implant').getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBeNull();
+    expect(
+      getLayer(template.svg, 'tooth-base').getAttribute('data-active'),
+    ).toBe('0');
+  });
+
+  it('renders missing base by suppressing natural and implant anatomy', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [], 'missing'),
+      view: 'side',
+    });
+
+    expect(result.activeLayerIds).toEqual(['base']);
+    expect(getLayer(template.svg, 'base').getAttribute('data-active')).toBe(
+      '1',
+    );
+    expect(
+      getLayer(template.svg, 'tooth-base').getAttribute('data-active'),
+    ).toBe('0');
+    expect(getLayer(template.svg, 'implant').getAttribute('data-active')).toBe(
+      '0',
+    );
+  });
+
+  it('activates planned extraction and root-canal side-view layers with appearance', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+
+    applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [
+        { appearance: 'planned', kind: 'extraction' },
+        {
+          appearance: 'existing',
+          kind: 'endodontic',
+          state: 'root-canal',
+        },
+      ]),
+      view: 'side',
+    });
+
+    expect(
+      getLayer(template.svg, 'extraction-plan').getAttribute('data-active'),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'extraction-plan').getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+    expect(
+      getLayer(template.svg, 'endo-filling').getAttribute('data-active'),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'endo-filling').getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('existing');
+  });
+
+  it('reports root-canal as unsupported on occlusal roots without activating an endodontic layer', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'occlusal');
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [
+        {
+          appearance: 'existing',
+          kind: 'endodontic',
+          state: 'root-canal',
+        },
+      ]),
+      view: 'occlusal',
+    });
+
+    expect(result.unsupportedVisuals).toEqual([
+      { condition: 'root-canal', reason: 'unsupported-template-view' },
+    ]);
+    expect(
+      getLayer(template.svg, 'endo-filling').getAttribute('data-active'),
+    ).toBe('0');
+  });
+
   it('activates primary caries with severity styling and scoped planned appearance', () => {
     const template = createNamespacedFixture('chart-a', 16, 'side');
     const result = applyToothVisuals({
@@ -22,7 +155,13 @@ describe('applyToothVisuals', () => {
     const cariesLayer = getLayer(template.svg, 'caries-occlusal');
     const subcariesLayer = getLayer(template.svg, 'subcaries-occlusal');
 
-    expect(result.activeLayerIds).toEqual(['caries-occlusal']);
+    expect(result.activeLayerIds).toEqual([
+      'base',
+      'tooth-base',
+      'tooth-base-beauty',
+      'tooth-healthy-pulp',
+      'caries-occlusal',
+    ]);
     expect(cariesLayer.getAttribute('data-active')).toBe('1');
     expect(cariesLayer.getAttribute('data-odontogram-appearance')).toBe(
       'planned',
@@ -123,10 +262,12 @@ describe('applyToothVisuals', () => {
       view: 'side',
     });
 
-    expect(result.unsupportedSurfaces).toEqual([
+    expect(result.unsupportedVisuals).toEqual([
       { reason: 'unsupported-template-surface', surface: 'lingual' },
     ]);
-    expect(template.svg.querySelector('[data-active="1"]')).toBeNull();
+    expect(
+      getLayer(template.svg, 'caries-lingual').getAttribute('data-active'),
+    ).toBe('0');
   });
 });
 
@@ -145,8 +286,18 @@ function createNamespacedFixture(
 function createSvgFixture(): SVGSVGElement {
   return new DOMParser().parseFromString(
     `<svg xmlns="http://www.w3.org/2000/svg" id="template">
+      <g id="base" data-active="0" />
+      <path id="tooth-base" data-active="1" />
+      <path id="tooth-base-beauty" data-active="1" />
+      <path id="tooth-healthy-pulp" data-active="1" />
+      <path id="tooth-inflam-pulp" data-active="1" />
+      <g id="implant" data-active="0" />
+      <path id="implant-base" data-active="0" />
+      <path id="extraction-plan" data-active="0" />
+      <path id="endo-filling" data-active="0" />
       <path id="caries-occlusal" data-active="0" />
       <path id="caries-mesial" data-active="0" />
+      <path id="caries-lingual" data-active="0" />
       <path id="subcaries-occlusal" data-active="0" style="opacity: .4" />
       <path id="subcaries-mesial" data-active="0" />
       <path id="filling-amalgam-distal" data-active="0" />
@@ -170,9 +321,10 @@ function getLayer(svg: SVGSVGElement, originalLayerId: string): SVGElement {
 function tooth(
   position: OdontogramTooth['position'],
   conditions: OdontogramTooth['conditions'],
+  base: OdontogramTooth['base'] = 'natural',
 ): OdontogramTooth {
   return {
-    base: 'natural',
+    base,
     conditions,
     position,
   };
