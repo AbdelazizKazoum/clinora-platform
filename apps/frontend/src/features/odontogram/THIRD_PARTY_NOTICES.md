@@ -23,6 +23,7 @@ The package snapshot version and tooth SVG artwork version have distinct version
 - `apps/frontend/src/features/odontogram/rendering/tooth-layout.ts` adapts the permanent tooth ordering, side-template assignment, mirror flag, and rotation metadata from `src/odontogram.ts`.
 - `apps/frontend/src/features/odontogram/utils/tooth-numbering.ts` adapts the permanent FDI, Universal, and Palmer numbering formulas from `src/utils/numbering.ts`.
 - `apps/frontend/src/features/odontogram/rendering/svg-template-loader.ts` adapts the trusted-template normalization concepts from `src/odontogram.ts`, including the switchable-layer `data-active` defaults and inline `display:none` conversion. It does not copy the legacy singleton renderer, DOM event wiring, Vite `?raw` imports, or application state.
+- `apps/frontend/src/features/odontogram/components/odontogram-tooth.tsx` adapts the legacy per-template mirror and rotation behavior from `src/odontogram.ts` into an instance-scoped React component. It does not copy legacy chart state, global selectors, control-panel wiring, or clinical condition activation.
 
 ### ODONTO-03 Copied SVG Assets
 
