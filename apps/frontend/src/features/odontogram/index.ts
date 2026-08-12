@@ -1,4 +1,5 @@
 export { Odontogram } from './components/odontogram';
+export { ToothSurfaceSelector } from './components/tooth-surface-selector';
 export { TOOTH_POSITIONS, validateOdontogramData } from './model/odontogram';
 export {
   activateToothSelection,
@@ -6,11 +7,16 @@ export {
   sortToothPositions,
   validateOdontogramSelection,
 } from './model/odontogram-selection';
+export {
+  getToothSurfaceLabel,
+  getToothSurfaceNotation,
+} from './utils/surface-notation';
 export type {
   OdontogramInteractionMode,
   OdontogramProps,
   OdontogramView,
 } from './components/odontogram';
+export type { ToothSurfaceSelectorProps } from './components/tooth-surface-selector';
 export type {
   FillingMaterial,
   OdontogramAppearance,
@@ -32,3 +38,4 @@ export type {
   ToothSelectionActivationMode,
   ToothSelectionNavigationKey,
 } from './model/odontogram-selection';
+export type { ToothSurfaceNotation } from './utils/surface-notation';
