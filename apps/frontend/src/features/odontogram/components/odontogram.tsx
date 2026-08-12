@@ -1,0 +1,113 @@
+'use client';
+
+import { useId } from 'react';
+
+import {
+  validateOdontogramData,
+  type OdontogramData,
+  type OdontogramDataIssue,
+  type OdontogramSelection,
+  type ToothNumberingSystem,
+} from '../model/odontogram';
+import type { LoadToothSvgTemplateOptions } from '../rendering/svg-template-loader';
+import { OdontogramArch } from './odontogram-arch';
+import styles from './odontogram.module.scss';
+
+export type OdontogramView = 'side' | 'side-and-occlusal';
+export type OdontogramInteractionMode = 'view' | 'select';
+
+export interface OdontogramProps {
+  readonly data: OdontogramData;
+  readonly selection: OdontogramSelection;
+  readonly onSelectionChange?: (next: OdontogramSelection) => void;
+  readonly numberingSystem?: ToothNumberingSystem;
+  readonly view?: OdontogramView;
+  readonly interactionMode?: OdontogramInteractionMode;
+  readonly ariaLabel?: string;
+  readonly className?: string;
+  readonly basePath?: string;
+  readonly assetPrefix?: string;
+  readonly fetcher?: LoadToothSvgTemplateOptions['fetcher'];
+}
+
+export function Odontogram({
+  data,
+  selection,
+  numberingSystem = 'fdi',
+  view = 'side',
+  interactionMode = 'view',
+  ariaLabel = 'Odontogram',
+  className,
+  basePath,
+  assetPrefix,
+  fetcher,
+}: OdontogramProps) {
+  const reactId = useId();
+  const chartInstanceId = `odontogram-${sanitizeDomIdPart(reactId)}`;
+  const validationResult = validateOdontogramData(data);
+
+  if (!validationResult.valid) {
+    return (
+      <div
+        aria-label={ariaLabel}
+        className={[styles.odontogramRoot, className].filter(Boolean).join(' ')}
+      >
+        <div className={styles.chartError} role="alert">
+          Odontogram data is incomplete or invalid.{' '}
+          {formatIssueSummary(validationResult.issues)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      aria-label={ariaLabel}
+      className={[styles.odontogramRoot, className].filter(Boolean).join(' ')}
+      data-odontogram-root=""
+      data-odontogram-view={view}
+    >
+      <div
+        aria-label={ariaLabel}
+        className={styles.chartViewport}
+        role="listbox"
+      >
+        <OdontogramArch
+          assetPrefix={assetPrefix}
+          basePath={basePath}
+          chartInstanceId={chartInstanceId}
+          fetcher={fetcher}
+          interactionMode={interactionMode}
+          numberingSystem={numberingSystem}
+          selection={selection}
+          view={view}
+        />
+      </div>
+    </div>
+  );
+}
+
+function formatIssueSummary(issues: readonly OdontogramDataIssue[]): string {
+  if (issues.length === 0) {
+    return 'No valid chart can be rendered.';
+  }
+
+  const firstIssue = issues[0];
+  if (firstIssue.code === 'missing-position') {
+    return `Missing tooth ${firstIssue.position}.`;
+  }
+
+  if (firstIssue.code === 'duplicate-position') {
+    return `Duplicate tooth ${firstIssue.position}.`;
+  }
+
+  if (firstIssue.code === 'invalid-condition') {
+    return `Invalid tooth ${firstIssue.position}: ${firstIssue.reason}.`;
+  }
+
+  return `Invalid field ${firstIssue.path}.`;
+}
+
+function sanitizeDomIdPart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]+/gu, '-');
+}

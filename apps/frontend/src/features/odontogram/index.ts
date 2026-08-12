@@ -1,4 +1,10 @@
+export { Odontogram } from './components/odontogram';
 export { TOOTH_POSITIONS, validateOdontogramData } from './model/odontogram';
+export type {
+  OdontogramInteractionMode,
+  OdontogramProps,
+  OdontogramView,
+} from './components/odontogram';
 export type {
   FillingMaterial,
   OdontogramAppearance,

@@ -26,6 +26,8 @@ export interface OdontogramToothProps {
   readonly fetcher?: LoadToothSvgTemplateOptions['fetcher'];
   readonly className?: string;
   readonly ariaLabel?: string;
+  readonly ariaHidden?: boolean;
+  readonly suppressImageRole?: boolean;
 }
 
 type ToothRenderStatus = 'loading' | 'ready' | 'error' | 'unavailable';
@@ -41,6 +43,8 @@ export function OdontogramTooth({
   fetcher,
   className,
   ariaLabel,
+  ariaHidden = false,
+  suppressImageRole = false,
 }: OdontogramToothProps) {
   const reactId = useId();
   const svgHostRef = useRef<HTMLDivElement>(null);
@@ -127,11 +131,16 @@ export function OdontogramTooth({
 
   return (
     <div
-      aria-label={ariaLabel ?? `Tooth ${position} ${view} view`}
+      aria-hidden={ariaHidden ? true : undefined}
+      aria-label={
+        ariaHidden || suppressImageRole
+          ? undefined
+          : (ariaLabel ?? `Tooth ${position} ${view} view`)
+      }
       className={[styles.toothTile, className].filter(Boolean).join(' ')}
       data-odontogram-tooth-position={position}
       data-odontogram-tooth-view={view}
-      role="img"
+      role={ariaHidden || suppressImageRole ? undefined : 'img'}
     >
       <div className={styles.toothSvgHost} ref={svgHostRef} />
       {status === 'loading' ? (

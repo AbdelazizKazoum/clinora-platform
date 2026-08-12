@@ -11,6 +11,108 @@
   position: relative;
 }
 
+.odontogramRoot {
+  direction: ltr;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chartViewport {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem;
+}
+
+.archStack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: min(56rem, 100%);
+}
+
+.archGrid {
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: repeat(16, minmax(2.75rem, 1fr));
+}
+
+.toothOption {
+  align-items: stretch;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  display: grid;
+  grid-template-rows: auto minmax(4.75rem, 1fr);
+  justify-items: center;
+  min-width: 0;
+  outline: 0;
+  padding: 0.125rem;
+}
+
+.toothOption:focus-visible {
+  border-color: rgba(var(--bs-primary-rgb), 0.45);
+  box-shadow: 0 0 0 0.125rem rgba(var(--bs-primary-rgb), 0.16);
+}
+
+.toothCell {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.sideCell {
+  min-height: 4.75rem;
+}
+
+.occlusalCell {
+  min-height: 3.25rem;
+}
+
+.upperOcclusalCell {
+  grid-row: 3;
+}
+
+.lowerOcclusalCell {
+  grid-row: 1;
+}
+
+.upperSideCell,
+.lowerSideCell {
+  grid-row: 2;
+}
+
+.upperLabelCell {
+  grid-row: 1;
+}
+
+.lowerLabelCell {
+  grid-row: 3;
+}
+
+.toothLabel {
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.125rem 0;
+  text-align: center;
+}
+
+.occlusalPlaceholder {
+  display: block;
+  min-height: 3.25rem;
+  width: 100%;
+}
+
+.chartError {
+  border: 1px solid rgba(var(--bs-danger-rgb), 0.35);
+  border-radius: 0.25rem;
+  color: var(--bs-danger);
+  font-size: 0.875rem;
+  padding: 0.75rem;
+}
+
 .toothSvgHost {
   align-items: center;
   display: inline-flex;
