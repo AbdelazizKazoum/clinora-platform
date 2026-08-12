@@ -147,6 +147,14 @@
   display: none;
 }
 
+.toothSvgHost [data-odontogram-appearance='planned'] {
+  stroke-dasharray: 3 2;
+}
+
+.toothSvgHost .caries-deep {
+  filter: saturate(1.2);
+}
+
 .toothFallback {
   align-items: center;
   border: 1px dashed var(--bs-border-color);
@@ -164,6 +172,15 @@
 .toothError {
   border-color: rgba(var(--bs-danger-rgb), 0.45);
   color: var(--bs-danger);
+}
+
+.surfaceVisualFallback {
+  background-color: rgba(var(--bs-warning-rgb), 0.12);
+  border-color: rgba(var(--bs-warning-rgb), 0.45);
+  color: var(--bs-warning-text-emphasis);
+  min-height: auto;
+  min-width: 3rem;
+  padding: 0.25rem;
 }
 
 .surfaceSelector {

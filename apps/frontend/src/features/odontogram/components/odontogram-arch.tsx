@@ -1,7 +1,9 @@
 'use client';
 
 import type {
+  OdontogramData,
   OdontogramSelection,
+  OdontogramTooth as OdontogramToothModel,
   ToothNumberingSystem,
   ToothPosition,
 } from '../model/odontogram';
@@ -25,6 +27,7 @@ import type { OdontogramInteractionMode, OdontogramView } from './odontogram';
 
 export interface OdontogramArchProps {
   readonly chartInstanceId: string;
+  readonly data: OdontogramData;
   readonly numberingSystem: ToothNumberingSystem;
   readonly selection: OdontogramSelection;
   readonly view: OdontogramView;
@@ -63,6 +66,7 @@ const ARCH_CONFIGS = [
 
 export function OdontogramArch({
   chartInstanceId,
+  data,
   numberingSystem,
   selection,
   view,
@@ -72,6 +76,9 @@ export function OdontogramArch({
   assetPrefix,
   fetcher,
 }: OdontogramArchProps) {
+  const toothByPosition = new Map(
+    data.teeth.map((tooth) => [tooth.position, tooth]),
+  );
   const selectedPositions = new Set(selection.selectedToothPositions);
   const [hoveredPosition, setHoveredPosition] = useState<ToothPosition | null>(
     null,
@@ -119,6 +126,7 @@ export function OdontogramArch({
             const isSelected = selectedPositions.has(position);
             const isActive = selection.activeToothPosition === position;
             const isHovered = hoveredPosition === position;
+            const tooth = getRequiredTooth(toothByPosition, position);
             const option = (
               <ToothOption
                 active={isActive}
@@ -160,7 +168,11 @@ export function OdontogramArch({
                     chartInstanceId={chartInstanceId}
                     fetcher={fetcher}
                     position={position}
+                    showUnsupportedSurfaceFallback={
+                      view === 'side' || !hasOcclusalToothView(position)
+                    }
                     suppressImageRole
+                    tooth={tooth}
                     view="side"
                   />
                 </div>
@@ -178,6 +190,7 @@ export function OdontogramArch({
                         fetcher={fetcher}
                         position={position}
                         suppressImageRole
+                        tooth={tooth}
                         view="occlusal"
                       />
                     ) : (
@@ -304,6 +317,18 @@ function focusActiveToothOption(
   }
 
   optionRefs.get(position)?.focus();
+}
+
+function getRequiredTooth(
+  toothByPosition: ReadonlyMap<ToothPosition, OdontogramToothModel>,
+  position: ToothPosition,
+): OdontogramToothModel {
+  const tooth = toothByPosition.get(position);
+  if (tooth === undefined) {
+    throw new Error(`Validated odontogram data is missing tooth ${position}`);
+  }
+
+  return tooth;
 }
 
 function ToothLabel({

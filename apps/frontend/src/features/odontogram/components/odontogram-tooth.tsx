@@ -6,7 +6,14 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 
-import type { ToothPosition } from '../model/odontogram';
+import type {
+  OdontogramTooth as OdontogramToothModel,
+  ToothPosition,
+} from '../model/odontogram';
+import {
+  applyToothVisuals,
+  type ApplyToothVisualsResult,
+} from '../rendering/apply-tooth-visuals';
 import { namespaceSvgIds } from '../rendering/svg-id-namespace';
 import {
   loadToothSvgTemplate,
@@ -24,6 +31,8 @@ export interface OdontogramToothProps {
   readonly basePath?: string;
   readonly assetPrefix?: string;
   readonly fetcher?: LoadToothSvgTemplateOptions['fetcher'];
+  readonly tooth?: OdontogramToothModel;
+  readonly showUnsupportedSurfaceFallback?: boolean;
   readonly className?: string;
   readonly ariaLabel?: string;
   readonly ariaHidden?: boolean;
@@ -41,6 +50,8 @@ export function OdontogramTooth({
   basePath,
   assetPrefix,
   fetcher,
+  tooth,
+  showUnsupportedSurfaceFallback = true,
   className,
   ariaLabel,
   ariaHidden = false,
@@ -53,6 +64,9 @@ export function OdontogramTooth({
   );
   const [status, setStatus] = useState<ToothRenderStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [unsupportedVisuals, setUnsupportedVisuals] = useState<
+    ApplyToothVisualsResult['unsupportedSurfaces']
+  >([]);
   const templateId = resolveToothTemplateId(position, view);
   const layout = getToothLayout(position);
   const namespacePrefix = chartInstanceId ?? reactId;
@@ -68,6 +82,7 @@ export function OdontogramTooth({
     svgHost.replaceChildren();
     semanticLayerIdByOriginalIdRef.current = new Map();
     setErrorMessage(null);
+    setUnsupportedVisuals([]);
 
     if (templateId === null) {
       setStatus('unavailable');
@@ -129,6 +144,27 @@ export function OdontogramTooth({
     view,
   ]);
 
+  useEffect(() => {
+    if (status !== 'ready') {
+      return;
+    }
+
+    const svg = svgHostRef.current?.querySelector('svg');
+    if (svg === undefined || svg === null || tooth === undefined) {
+      setUnsupportedVisuals([]);
+      return;
+    }
+
+    const result = applyToothVisuals({
+      layerIdByOriginalId: semanticLayerIdByOriginalIdRef.current,
+      svg: svg as unknown as SVGSVGElement,
+      tooth,
+      view,
+    });
+
+    setUnsupportedVisuals(result.unsupportedSurfaces);
+  }, [status, tooth, view]);
+
   return (
     <div
       aria-hidden={ariaHidden ? true : undefined}
@@ -161,6 +197,21 @@ export function OdontogramTooth({
           No occlusal view
         </span>
       ) : null}
+      {showUnsupportedSurfaceFallback
+        ? unsupportedVisuals.map((unsupportedVisual) => (
+            <span
+              className={`${styles.toothFallback} ${styles.surfaceVisualFallback}`}
+              data-odontogram-unsupported-surface={unsupportedVisual.surface}
+              key={unsupportedVisual.surface}
+              role="status"
+            >
+              {formatUnsupportedSurfaceMessage(
+                position,
+                unsupportedVisual.surface,
+              )}
+            </span>
+          ))
+        : null}
     </div>
   );
 }
@@ -245,4 +296,11 @@ function readViewBox(svg: SVGSVGElement): {
   }
 
   return { minX, minY, width, height };
+}
+
+function formatUnsupportedSurfaceMessage(
+  position: ToothPosition,
+  surface: string,
+): string {
+  return `Tooth ${position} ${surface} surface is not shown in this view`;
 }

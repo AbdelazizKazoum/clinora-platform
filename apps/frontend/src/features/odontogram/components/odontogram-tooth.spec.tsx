@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 
+import type { OdontogramTooth as OdontogramToothModel } from '../model/odontogram';
 import {
   TOOTH_SVG_TEMPLATE_MANIFEST,
   loadToothSvgTemplate,
@@ -173,6 +174,203 @@ describe('OdontogramTooth', () => {
 
     expect(container.querySelector('svg')).toBeNull();
   });
+
+  it('applies caries and filling visual layers to its own scoped SVG root', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'filling',
+            material: 'composite',
+            surface: 'mesial',
+          },
+          {
+            appearance: 'planned',
+            kind: 'caries',
+            severity: 6,
+            surface: 'mesial',
+          },
+        ])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'filling-composite-mesial')?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'subcaries-mesial')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+
+    expect(
+      getLayer(container, 'caries-mesial')?.getAttribute('data-active'),
+    ).toBe('0');
+    expect(
+      getLayer(container, 'subcaries-mesial')?.getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+  });
+
+  it('removes stale caries and filling layers when tooth conditions change', async () => {
+    const { container, rerender } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'filling',
+            material: 'amalgam',
+            surface: 'distal',
+          },
+        ])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'filling-amalgam-distal')?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+    });
+
+    rerender(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'filling-amalgam-distal')?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('0');
+    });
+  });
+
+  it('renders posterior lingual conditions on the occlusal root', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'caries',
+            surface: 'lingual',
+          },
+        ])}
+        view="occlusal"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'caries-lingual')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+  });
+
+  it('renders an accessible fallback when anterior lingual data has no visible layer', async () => {
+    render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={11}
+        tooth={tooth(11, [
+          {
+            appearance: 'existing',
+            kind: 'caries',
+            surface: 'lingual',
+          },
+        ])}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        'Tooth 11 lingual surface is not shown in this view',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('keeps unrelated tooth roots active when one tooth changes', async () => {
+    const { container, rerender } = render(
+      <div>
+        <OdontogramTooth
+          chartInstanceId="chart-a"
+          position={16}
+          tooth={tooth(16, [
+            {
+              appearance: 'existing',
+              kind: 'caries',
+              surface: 'occlusal',
+            },
+          ])}
+        />
+        <OdontogramTooth
+          chartInstanceId="chart-a"
+          position={26}
+          tooth={tooth(26, [
+            {
+              appearance: 'existing',
+              kind: 'filling',
+              material: 'temporary',
+              surface: 'occlusal',
+            },
+          ])}
+        />
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'filling-temporary-occlusal', 1)?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+    });
+
+    rerender(
+      <div>
+        <OdontogramTooth
+          chartInstanceId="chart-a"
+          position={16}
+          tooth={tooth(16, [])}
+        />
+        <OdontogramTooth
+          chartInstanceId="chart-a"
+          position={26}
+          tooth={tooth(26, [
+            {
+              appearance: 'existing',
+              kind: 'filling',
+              material: 'temporary',
+              surface: 'occlusal',
+            },
+          ])}
+        />
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'filling-temporary-occlusal', 1)?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+    });
+  });
 });
 
 describe('resolveToothTemplateId', () => {
@@ -205,6 +403,12 @@ function createLoadedTemplate(
       </defs>
       <path id="tooth-base" data-active="1" style="fill: url(#paint-${templateId});" d="M0 0h1v1H0z" />
       <path id="caries-occlusal" data-active="0" d="M1 1h1v1H1z" />
+      <path id="caries-mesial" data-active="0" d="M1 1h1v1H1z" />
+      <path id="caries-lingual" data-active="0" d="M1 1h1v1H1z" />
+      <path id="subcaries-mesial" data-active="0" d="M1 1h1v1H1z" />
+      <path id="filling-amalgam-distal" data-active="0" d="M1 1h1v1H1z" />
+      <path id="filling-composite-mesial" data-active="0" d="M1 1h1v1H1z" />
+      <path id="filling-temporary-occlusal" data-active="0" d="M1 1h1v1H1z" />
     </svg>`,
     'image/svg+xml',
   ).documentElement as unknown as SVGSVGElement;
@@ -217,6 +421,29 @@ function createLoadedTemplate(
     id: templateId,
     manifest: TOOTH_SVG_TEMPLATE_MANIFEST[templateId],
     svg,
+  };
+}
+
+function getLayer(
+  container: HTMLElement,
+  originalLayerId: string,
+  index = 0,
+): SVGElement | null {
+  return (
+    (container.querySelectorAll(`[data-odontogram-layer="${originalLayerId}"]`)[
+      index
+    ] as SVGElement | undefined) ?? null
+  );
+}
+
+function tooth(
+  position: OdontogramToothModel['position'],
+  conditions: OdontogramToothModel['conditions'],
+): OdontogramToothModel {
+  return {
+    base: 'natural',
+    conditions,
+    position,
   };
 }
 

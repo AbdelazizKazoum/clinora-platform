@@ -93,6 +93,7 @@ export function Odontogram({
           assetPrefix={assetPrefix}
           basePath={basePath}
           chartInstanceId={chartInstanceId}
+          data={validationResult.data}
           fetcher={fetcher}
           interactionMode={interactionMode}
           numberingSystem={numberingSystem}
