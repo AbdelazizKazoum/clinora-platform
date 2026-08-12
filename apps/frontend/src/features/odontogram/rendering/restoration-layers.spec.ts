@@ -1,6 +1,7 @@
 import {
   RESTORATION_LAYER_MATRIX,
   RESTORATION_LAYER_RESET_IDS,
+  composeBridgeUnitLayers,
   composeRestorationLayers,
 } from './restoration-layers';
 
@@ -65,6 +66,19 @@ describe('restoration layers', () => {
     ).toEqual({ layerIds: ['gradia-onlay'] });
   });
 
+  it('maps bridge units to crown body plus saddle connector layers', () => {
+    expect(composeBridgeUnitLayers('zircon')).toEqual([
+      'zircon-crown',
+      'zircon-bridge-connector',
+    ]);
+    expect(composeBridgeUnitLayers('telescope')).toEqual([
+      'telescope-crown',
+      'telescope-crown-inside',
+      'telescope-crown-outside',
+      'telescope-bridge-connector',
+    ]);
+  });
+
   it('keeps the approved material matrix explicit', () => {
     expect(RESTORATION_LAYER_MATRIX.crown.materials).toEqual([
       'emax',
@@ -87,6 +101,7 @@ describe('restoration layers', () => {
 
   it('includes every fixed restoration layer and implant connector in the reset set', () => {
     expect(RESTORATION_LAYER_RESET_IDS).toContain('implant-connector');
+    expect(RESTORATION_LAYER_RESET_IDS).toContain('zircon-bridge-connector');
     expect(RESTORATION_LAYER_RESET_IDS).toContain('metal-ceramic-crown');
     expect(RESTORATION_LAYER_RESET_IDS).toContain('telescope-crown-inside');
     expect(RESTORATION_LAYER_RESET_IDS).toContain('temporary-onlay');

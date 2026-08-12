@@ -93,6 +93,12 @@ export function composeRestorationLayers({
   };
 }
 
+export function composeBridgeUnitLayers(
+  material: RestorationMaterial,
+): readonly string[] {
+  return [...crownLayerIds(material), `${material}-bridge-connector`];
+}
+
 function crownLayerIds(material: RestorationMaterial): readonly string[] {
   return material === 'telescope'
     ? ['telescope-crown', 'telescope-crown-inside', 'telescope-crown-outside']
@@ -101,6 +107,12 @@ function crownLayerIds(material: RestorationMaterial): readonly string[] {
 
 function collectRestorationLayerIds(): readonly string[] {
   const layerIds = new Set<string>(['implant-connector']);
+
+  for (const material of FULL_RESTORATION_MATERIALS) {
+    for (const layerId of composeBridgeUnitLayers(material)) {
+      layerIds.add(layerId);
+    }
+  }
 
   for (const restoration of Object.keys(
     RESTORATION_LAYER_MATRIX,

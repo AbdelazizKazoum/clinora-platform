@@ -29,6 +29,7 @@
   flex-direction: column;
   gap: 0.375rem;
   min-width: min(56rem, 100%);
+  position: relative;
 }
 
 .archGrid {
@@ -116,6 +117,22 @@
   display: block;
   min-height: 3.25rem;
   width: 100%;
+}
+
+.bridgeOverlay {
+  height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 2;
+}
+
+.bridgeOverlayBar {
+  opacity: 0.85;
+  stroke: rgba(var(--bs-dark-rgb), 0.28);
+  stroke-width: 1;
 }
 
 .chartError {

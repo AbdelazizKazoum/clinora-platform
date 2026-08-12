@@ -172,6 +172,97 @@ describe('tooth layer registry', () => {
     ]);
   });
 
+  it('renders bridge abutment units over natural and implant bases', () => {
+    expect(
+      deriveToothVisualLayers(
+        tooth(16, [
+          {
+            appearance: 'planned',
+            bridgeId: 'bridge-a',
+            kind: 'bridge',
+            material: 'zircon',
+            role: 'abutment',
+          },
+        ]),
+        'side',
+      ).layers,
+    ).toEqual([
+      { id: 'base', kind: 'base' },
+      { id: 'tooth-base', kind: 'base' },
+      { id: 'tooth-base-beauty', kind: 'base' },
+      { id: 'tooth-healthy-pulp', kind: 'base' },
+      {
+        appearance: 'planned',
+        id: 'zircon-crown',
+        kind: 'restoration',
+      },
+      {
+        appearance: 'planned',
+        id: 'zircon-bridge-connector',
+        kind: 'restoration',
+      },
+    ]);
+
+    expect(
+      deriveToothVisualLayers(
+        tooth(
+          16,
+          [
+            {
+              appearance: 'existing',
+              bridgeId: 'bridge-a',
+              kind: 'bridge',
+              material: 'zircon',
+              role: 'abutment',
+            },
+          ],
+          'implant',
+        ),
+        'side',
+      ).layers.map((layer) => layer.id),
+    ).toEqual([
+      'base',
+      'implant',
+      'implant-base',
+      'zircon-crown',
+      'zircon-bridge-connector',
+      'implant-connector',
+    ]);
+  });
+
+  it('renders bridge pontics as crown-shaped units without natural anatomy', () => {
+    expect(
+      deriveToothVisualLayers(
+        tooth(
+          15,
+          [
+            {
+              appearance: 'existing',
+              bridgeId: 'bridge-a',
+              kind: 'bridge',
+              material: 'gold',
+              role: 'pontic',
+            },
+          ],
+          'missing',
+        ),
+        'side',
+      ).layers,
+    ).toEqual([
+      { id: 'base', kind: 'base' },
+      {
+        appearance: 'existing',
+        id: 'gold-crown',
+        kind: 'restoration',
+      },
+      {
+        appearance: 'existing',
+        id: 'gold-bridge-connector',
+        kind: 'restoration',
+      },
+    ]);
+  });
+
   it('reports onlay as unsupported in side roots and renderable in occlusal roots', () => {
     const sideResult = deriveToothVisualLayers(
       tooth(16, [

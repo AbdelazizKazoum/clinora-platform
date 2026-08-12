@@ -9,6 +9,7 @@ import type {
   ToothSurface,
 } from '../model/odontogram';
 import {
+  composeBridgeUnitLayers,
   composeRestorationLayers,
   type RestorationLayerResult,
 } from './restoration-layers';
@@ -198,6 +199,25 @@ export function deriveWholeToothVisualLayers(
         condition.restoration,
         restorationResult,
       );
+      continue;
+    }
+
+    if (condition.kind === 'bridge') {
+      layers.push(
+        ...composeBridgeUnitLayers(condition.material).map((id) => ({
+          appearance: condition.appearance,
+          id,
+          kind: 'restoration' as const,
+        })),
+      );
+
+      if (tooth.base === 'implant' && condition.role === 'abutment') {
+        layers.push({
+          appearance: condition.appearance,
+          id: 'implant-connector',
+          kind: 'restoration',
+        });
+      }
     }
   }
 

@@ -372,6 +372,77 @@ describe('OdontogramTooth', () => {
     });
   });
 
+  it('renders bridge abutment unit layers through the tooth renderer', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'planned',
+            bridgeId: 'bridge-a',
+            kind: 'bridge',
+            material: 'zircon',
+            role: 'abutment',
+          },
+        ])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'zircon-crown')?.getAttribute('data-active'),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'zircon-bridge-connector')?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+    });
+
+    expect(
+      getLayer(container, 'zircon-bridge-connector')?.getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+  });
+
+  it('renders bridge pontics without natural tooth anatomy', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={15}
+        tooth={tooth(
+          15,
+          [
+            {
+              appearance: 'existing',
+              bridgeId: 'bridge-a',
+              kind: 'bridge',
+              material: 'zircon',
+              role: 'pontic',
+            },
+          ],
+          'missing',
+        )}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'zircon-crown')?.getAttribute('data-active'),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'zircon-bridge-connector')?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+    });
+    expect(getLayer(container, 'tooth-base')?.getAttribute('data-active')).toBe(
+      '0',
+    );
+  });
+
   it('renders side-only onlay as an accessible fallback', async () => {
     render(
       <OdontogramTooth
@@ -687,6 +758,7 @@ function createLoadedTemplate(
       <path id="extraction-plan" data-active="0" d="M0 0h1v1H0z" />
       <path id="endo-filling" data-active="0" d="M0 0h1v1H0z" />
       <path id="zircon-crown" data-active="0" d="M0 0h1v1H0z" />
+      <path id="zircon-bridge-connector" data-active="0" d="M0 0h1v1H0z" />
       <path id="gold-onlay" data-active="0" d="M0 0h1v1H0z" />
       <g id="telescope-crown" data-active="0" />
       <path id="telescope-crown-inside" data-active="0" d="M0 0h1v1H0z" />

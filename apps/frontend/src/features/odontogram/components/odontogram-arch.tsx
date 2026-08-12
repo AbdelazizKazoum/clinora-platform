@@ -22,6 +22,7 @@ import {
 } from '../rendering/tooth-layout';
 import { formatToothNumber } from '../utils/tooth-numbering';
 import styles from './odontogram.module.scss';
+import { BridgeOverlay } from './bridge-overlay';
 import { OdontogramTooth } from './odontogram-tooth';
 import type { OdontogramInteractionMode, OdontogramView } from './odontogram';
 
@@ -83,6 +84,7 @@ export function OdontogramArch({
   const [hoveredPosition, setHoveredPosition] = useState<ToothPosition | null>(
     null,
   );
+  const chartContainerRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef(new Map<ToothPosition, HTMLDivElement>());
 
   const emitSelectionChange = (nextSelection: OdontogramSelection) => {
@@ -113,7 +115,11 @@ export function OdontogramArch({
   };
 
   return (
-    <div className={styles.archStack} data-odontogram-view={view}>
+    <div
+      className={styles.archStack}
+      data-odontogram-view={view}
+      ref={chartContainerRef}
+    >
       {ARCH_CONFIGS.map((archConfig) => (
         <div
           className={styles.archGrid}
@@ -215,6 +221,11 @@ export function OdontogramArch({
           })}
         </div>
       ))}
+      <BridgeOverlay
+        containerRef={chartContainerRef}
+        data={data}
+        layoutKey={view}
+      />
     </div>
   );
 }

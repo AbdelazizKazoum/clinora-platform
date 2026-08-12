@@ -45,3 +45,9 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
 ### ODONTO-10 Adapted Files
 
 - `apps/frontend/src/features/odontogram/rendering/restoration-layers.ts` adapts the fixed-restoration material matrix and layer-composition rules from `src/registry/restorations.ts`. Clinora narrowed the adaptation to the approved visual renderer contract for crown, inlay, onlay, and veneer layers, including telescope crown child-layer activation. Legacy UI options, bridge rendering, removable prosthesis choices, FHIR, and clinical workflow logic were not migrated in this task.
+
+### ODONTO-11 Adapted Files
+
+- `apps/frontend/src/features/odontogram/rendering/bridge-layout.ts` adapts the bridge span and saddle-bar geometry concepts from `src/bridgeOverlay.ts`. Clinora adds explicit `bridgeId` grouping before adjacency detection so neighboring independent bridges do not merge, and keeps the logic pure for deterministic tests.
+- `apps/frontend/src/features/odontogram/components/bridge-overlay.tsx` adapts the bridge overlay rendering into an instance-scoped React component using a caller-provided chart container ref and scoped anchor queries. Legacy fixed IDs, document-level selectors, body/global overlay behavior, and singleton chart state were not migrated.
+- `apps/frontend/src/features/odontogram/rendering/restoration-layers.ts` now also adapts the bridge unit crown-plus-connector layer composition needed by bridge abutments and pontics, while leaving bridge workflow/business eligibility to the Clinora Treatment domain.

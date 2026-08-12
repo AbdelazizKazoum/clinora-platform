@@ -186,6 +186,92 @@ describe('applyToothVisuals', () => {
     ).toBe('1');
   });
 
+  it('activates bridge unit layers and clears stale bridge connectors', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+
+    applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [
+        {
+          appearance: 'planned',
+          bridgeId: 'bridge-a',
+          kind: 'bridge',
+          material: 'zircon',
+          role: 'abutment',
+        },
+      ]),
+      view: 'side',
+    });
+
+    expect(
+      getLayer(template.svg, 'zircon-crown').getAttribute('data-active'),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'zircon-bridge-connector').getAttribute(
+        'data-active',
+      ),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'zircon-bridge-connector').getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+
+    applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, []),
+      view: 'side',
+    });
+
+    expect(
+      getLayer(template.svg, 'zircon-bridge-connector').getAttribute(
+        'data-active',
+      ),
+    ).toBe('0');
+  });
+
+  it('renders a bridge pontic without reintroducing natural anatomy', () => {
+    const template = createNamespacedFixture('chart-a', 15, 'side');
+
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(
+        15,
+        [
+          {
+            appearance: 'existing',
+            bridgeId: 'bridge-a',
+            kind: 'bridge',
+            material: 'zircon',
+            role: 'pontic',
+          },
+        ],
+        'missing',
+      ),
+      view: 'side',
+    });
+
+    expect(result.activeLayerIds).toEqual([
+      'base',
+      'zircon-crown',
+      'zircon-bridge-connector',
+    ]);
+    expect(
+      getLayer(template.svg, 'tooth-base').getAttribute('data-active'),
+    ).toBe('0');
+    expect(
+      getLayer(template.svg, 'zircon-crown').getAttribute('data-active'),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'zircon-bridge-connector').getAttribute(
+        'data-active',
+      ),
+    ).toBe('1');
+  });
+
   it('reports side-view onlay as unsupported instead of silently hiding it', () => {
     const template = createNamespacedFixture('chart-a', 16, 'side');
     const result = applyToothVisuals({
@@ -425,6 +511,7 @@ function createSvgFixture(): SVGSVGElement {
       <path id="extraction-plan" data-active="0" />
       <path id="endo-filling" data-active="0" />
       <path id="zircon-crown" data-active="0" />
+      <path id="zircon-bridge-connector" data-active="0" />
       <path id="temporary-onlay" data-active="0" />
       <g id="telescope-crown" data-active="0" />
       <path id="telescope-crown-inside" data-active="0" />

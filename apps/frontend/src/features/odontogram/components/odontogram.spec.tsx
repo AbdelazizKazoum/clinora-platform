@@ -40,7 +40,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     expect(screen.getByRole('listbox', { name: 'Odontogram' })).toBeTruthy();
@@ -62,7 +62,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     expect(screen.getAllByRole('option')).toHaveLength(32);
@@ -79,7 +79,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     expect(
@@ -102,7 +102,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(52);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(52);
     });
 
     expect(
@@ -125,7 +125,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
     expect(optionLabels()).toEqual([
       'Tooth 18',
@@ -187,7 +187,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(64);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(64);
     });
 
     const ids = Array.from(container.querySelectorAll('svg [id], svg[id]')).map(
@@ -273,7 +273,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     expect(
@@ -296,7 +296,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
     expect(
       screen
@@ -341,7 +341,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     fireEvent.click(screen.getByRole('option', { name: 'Tooth 11' }), {
@@ -385,7 +385,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     fireEvent.keyDown(screen.getByRole('option', { name: 'Tooth 18' }), {
@@ -450,7 +450,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     fireEvent.click(screen.getByRole('option', { name: 'Tooth 18' }));
@@ -473,7 +473,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     const tooth18 = screen.getByRole('option', { name: 'Tooth 18' });
@@ -503,7 +503,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(32);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(32);
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -544,7 +544,7 @@ describe('Odontogram', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('svg')).toHaveLength(64);
+      expect(container.querySelectorAll('[data-odontogram-tooth-position] svg')).toHaveLength(64);
     });
 
     const firstListbox = screen.getByRole('listbox', {
