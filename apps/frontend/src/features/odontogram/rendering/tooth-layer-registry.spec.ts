@@ -110,6 +110,104 @@ describe('tooth layer registry', () => {
     ]);
   });
 
+  it('maps fixed restoration layers with supplied appearance', () => {
+    expect(
+      deriveToothVisualLayers(
+        tooth(16, [
+          {
+            appearance: 'planned',
+            kind: 'restoration',
+            material: 'telescope',
+            restoration: 'crown',
+          },
+        ]),
+        'side',
+      ).layers,
+    ).toEqual([
+      { id: 'base', kind: 'base' },
+      { id: 'tooth-base', kind: 'base' },
+      { id: 'tooth-base-beauty', kind: 'base' },
+      { id: 'tooth-healthy-pulp', kind: 'base' },
+      {
+        appearance: 'planned',
+        id: 'telescope-crown',
+        kind: 'restoration',
+      },
+      {
+        appearance: 'planned',
+        id: 'telescope-crown-inside',
+        kind: 'restoration',
+      },
+      {
+        appearance: 'planned',
+        id: 'telescope-crown-outside',
+        kind: 'restoration',
+      },
+    ]);
+  });
+
+  it('adds the implant connector for an implant crown', () => {
+    expect(
+      deriveToothVisualLayers(
+        tooth(
+          16,
+          [
+            {
+              appearance: 'existing',
+              kind: 'restoration',
+              material: 'zircon',
+              restoration: 'crown',
+            },
+          ],
+          'implant',
+        ),
+        'side',
+      ).layers.map((layer) => layer.id),
+    ).toEqual([
+      'base',
+      'implant',
+      'implant-base',
+      'zircon-crown',
+      'implant-connector',
+    ]);
+  });
+
+  it('reports onlay as unsupported in side roots and renderable in occlusal roots', () => {
+    const sideResult = deriveToothVisualLayers(
+      tooth(16, [
+        {
+          appearance: 'existing',
+          kind: 'restoration',
+          material: 'gold',
+          restoration: 'onlay',
+        },
+      ]),
+      'side',
+    );
+    const occlusalResult = deriveToothVisualLayers(
+      tooth(16, [
+        {
+          appearance: 'existing',
+          kind: 'restoration',
+          material: 'gold',
+          restoration: 'onlay',
+        },
+      ]),
+      'occlusal',
+    );
+
+    expect(sideResult.layers.map((layer) => layer.id)).not.toContain(
+      'gold-onlay',
+    );
+    expect(sideResult.unsupportedVisuals).toEqual([
+      { condition: 'onlay', reason: 'unsupported-template-view' },
+    ]);
+    expect(occlusalResult.layers.map((layer) => layer.id)).toContain(
+      'gold-onlay',
+    );
+    expect(occlusalResult.unsupportedVisuals).toEqual([]);
+  });
+
   it('maps primary caries to caries surface layers with supplied appearance and severity', () => {
     expect(
       deriveToothSurfaceVisualLayers(

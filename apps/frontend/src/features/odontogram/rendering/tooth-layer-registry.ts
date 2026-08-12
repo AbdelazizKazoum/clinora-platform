@@ -3,15 +3,24 @@ import type {
   OdontogramAppearance,
   OdontogramCondition,
   OdontogramTooth,
+  RestorationType,
   ToothBase,
   ToothPosition,
   ToothSurface,
 } from '../model/odontogram';
+import {
+  composeRestorationLayers,
+  type RestorationLayerResult,
+} from './restoration-layers';
 import type { ToothSvgTemplateView } from './svg-template-loader';
 import { hasOcclusalToothView } from './tooth-layout';
 
 export type ToothSurfaceLayerKind = 'caries' | 'subcaries' | 'filling';
-export type ToothWholeLayerKind = 'base' | 'endodontic' | 'extraction';
+export type ToothWholeLayerKind =
+  | 'base'
+  | 'endodontic'
+  | 'extraction'
+  | 'restoration';
 export type ToothVisualLayer = ToothSurfaceVisualLayer | ToothWholeVisualLayer;
 
 export interface ToothSurfaceVisualLayer {
@@ -34,7 +43,7 @@ export interface UnsupportedToothSurfaceVisual {
 }
 
 export interface UnsupportedToothConditionVisual {
-  readonly condition: 'root-canal';
+  readonly condition: 'root-canal' | RestorationType;
   readonly reason: 'unsupported-template-view';
 }
 
@@ -158,10 +167,54 @@ export function deriveWholeToothVisualLayers(
           reason: 'unsupported-template-view',
         });
       }
+      continue;
+    }
+
+    if (condition.kind === 'restoration') {
+      const restorationResult = composeRestorationLayers({
+        material: condition.material,
+        restoration: condition.restoration,
+        view,
+      });
+
+      layers.push(
+        ...restorationResult.layerIds.map((id) => ({
+          appearance: condition.appearance,
+          id,
+          kind: 'restoration' as const,
+        })),
+      );
+
+      if (tooth.base === 'implant' && condition.restoration === 'crown') {
+        layers.push({
+          appearance: condition.appearance,
+          id: 'implant-connector',
+          kind: 'restoration',
+        });
+      }
+
+      addUnsupportedRestorationVisual(
+        unsupportedVisuals,
+        condition.restoration,
+        restorationResult,
+      );
     }
   }
 
   return { layers, unsupportedVisuals };
+}
+
+function addUnsupportedRestorationVisual(
+  unsupportedVisuals: UnsupportedToothVisual[],
+  restoration: RestorationType,
+  result: RestorationLayerResult,
+): void {
+  if (result.unsupportedReason === 'unsupported-view') {
+    unsupportedVisuals.push({
+      condition: restoration,
+      reason: 'unsupported-template-view',
+    });
+  }
 }
 
 export function deriveToothSurfaceVisualLayers(

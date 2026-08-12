@@ -305,7 +305,7 @@ function formatUnsupportedVisualMessage(
     return `Tooth ${position} ${unsupportedVisual.surface} surface is not shown in this view`;
   }
 
-  return `Tooth ${position} root-canal is not shown in this view`;
+  return `Tooth ${position} ${unsupportedVisual.condition} is not shown in this view`;
 }
 
 function formatUnsupportedVisualKey(

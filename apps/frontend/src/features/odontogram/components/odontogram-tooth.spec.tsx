@@ -305,6 +305,118 @@ describe('OdontogramTooth', () => {
     ).toBe('existing');
   });
 
+  it('renders fixed restorations through scoped SVG layers', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'planned',
+            kind: 'restoration',
+            material: 'telescope',
+            restoration: 'crown',
+          },
+        ])}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'telescope-crown')?.getAttribute('data-active'),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'telescope-crown-inside')?.getAttribute(
+          'data-active',
+        ),
+      ).toBe('1');
+    });
+
+    expect(
+      getLayer(container, 'telescope-crown')?.getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+  });
+
+  it('renders implant crown with implant connector', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(
+          16,
+          [
+            {
+              appearance: 'existing',
+              kind: 'restoration',
+              material: 'zircon',
+              restoration: 'crown',
+            },
+          ],
+          'implant',
+        )}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getLayer(container, 'implant')?.getAttribute('data-active')).toBe(
+        '1',
+      );
+      expect(
+        getLayer(container, 'implant-connector')?.getAttribute('data-active'),
+      ).toBe('1');
+      expect(
+        getLayer(container, 'zircon-crown')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+  });
+
+  it('renders side-only onlay as an accessible fallback', async () => {
+    render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'restoration',
+            material: 'gold',
+            restoration: 'onlay',
+          },
+        ])}
+      />,
+    );
+
+    expect(
+      await screen.findByText('Tooth 16 onlay is not shown in this view'),
+    ).toBeTruthy();
+  });
+
+  it('renders onlay on occlusal roots', async () => {
+    const { container } = render(
+      <OdontogramTooth
+        chartInstanceId="chart-a"
+        position={16}
+        tooth={tooth(16, [
+          {
+            appearance: 'existing',
+            kind: 'restoration',
+            material: 'gold',
+            restoration: 'onlay',
+          },
+        ])}
+        view="occlusal"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        getLayer(container, 'gold-onlay')?.getAttribute('data-active'),
+      ).toBe('1');
+    });
+  });
+
   it('reports root-canal as unavailable in occlusal-only tooth rendering', async () => {
     render(
       <OdontogramTooth
@@ -574,6 +686,12 @@ function createLoadedTemplate(
       <path id="implant-base" data-active="0" d="M0 0h1v1H0z" />
       <path id="extraction-plan" data-active="0" d="M0 0h1v1H0z" />
       <path id="endo-filling" data-active="0" d="M0 0h1v1H0z" />
+      <path id="zircon-crown" data-active="0" d="M0 0h1v1H0z" />
+      <path id="gold-onlay" data-active="0" d="M0 0h1v1H0z" />
+      <g id="telescope-crown" data-active="0" />
+      <path id="telescope-crown-inside" data-active="0" d="M0 0h1v1H0z" />
+      <path id="telescope-crown-outside" data-active="0" d="M0 0h1v1H0z" />
+      <path id="implant-connector" data-active="0" d="M0 0h1v1H0z" />
       <path id="caries-occlusal" data-active="0" d="M1 1h1v1H1z" />
       <path id="caries-mesial" data-active="0" d="M1 1h1v1H1z" />
       <path id="caries-lingual" data-active="0" d="M1 1h1v1H1z" />

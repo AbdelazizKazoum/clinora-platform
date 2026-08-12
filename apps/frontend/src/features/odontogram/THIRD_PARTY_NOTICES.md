@@ -41,3 +41,7 @@ The following files were copied byte-for-byte from `src/assets/teeth-svgs/` to `
 Primary-tooth display remapping, renderer state, Vite raw-SVG loading, periodontal logic, FHIR import/export, plugin support, and PDF/font export code were not migrated.
 
 No logo, toolbar icon, screenshot, translated README, generated documentation asset, font subset, ISO PDF, DOI badge, or other legacy asset was copied for ODONTO-03.
+
+### ODONTO-10 Adapted Files
+
+- `apps/frontend/src/features/odontogram/rendering/restoration-layers.ts` adapts the fixed-restoration material matrix and layer-composition rules from `src/registry/restorations.ts`. Clinora narrowed the adaptation to the approved visual renderer contract for crown, inlay, onlay, and veneer layers, including telescope crown child-layer activation. Legacy UI options, bridge rendering, removable prosthesis choices, FHIR, and clinical workflow logic were not migrated in this task.

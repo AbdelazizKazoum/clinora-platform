@@ -1,4 +1,5 @@
 import type { OdontogramTooth } from '../model/odontogram';
+import { RESTORATION_LAYER_RESET_IDS } from './restoration-layers';
 import type { ToothSvgTemplateView } from './svg-template-loader';
 import {
   TOOTH_SURFACE_LAYER_RESET_IDS,
@@ -28,6 +29,7 @@ export function applyToothVisuals({
   layerIdByOriginalId,
 }: ApplyToothVisualsOptions): ApplyToothVisualsResult {
   resetWholeToothLayers(svg, layerIdByOriginalId);
+  resetRestorationLayers(svg, layerIdByOriginalId);
   resetSurfaceLayers(svg, layerIdByOriginalId);
 
   const result = deriveToothVisualLayers(tooth, view);
@@ -46,6 +48,21 @@ function resetWholeToothLayers(
   layerIdByOriginalId: ReadonlyMap<string, string>,
 ): void {
   for (const layerId of TOOTH_WHOLE_LAYER_RESET_IDS) {
+    const layerElement = findLayerElement(svg, layerIdByOriginalId, layerId);
+    if (layerElement === null) {
+      continue;
+    }
+
+    layerElement.setAttribute('data-active', '0');
+    layerElement.removeAttribute('data-odontogram-appearance');
+  }
+}
+
+function resetRestorationLayers(
+  svg: SVGSVGElement,
+  layerIdByOriginalId: ReadonlyMap<string, string>,
+): void {
+  for (const layerId of RESTORATION_LAYER_RESET_IDS) {
     const layerElement = findLayerElement(svg, layerIdByOriginalId, layerId);
     if (layerElement === null) {
       continue;

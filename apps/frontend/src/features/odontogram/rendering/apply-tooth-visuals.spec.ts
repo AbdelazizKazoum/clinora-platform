@@ -113,6 +113,135 @@ describe('applyToothVisuals', () => {
     ).toBe('existing');
   });
 
+  it('activates fixed restoration layers with planned styling only from visual input', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [
+        {
+          appearance: 'planned',
+          kind: 'restoration',
+          material: 'telescope',
+          restoration: 'crown',
+        },
+      ]),
+      view: 'side',
+    });
+
+    expect(result.activeLayerIds).toEqual([
+      'base',
+      'tooth-base',
+      'tooth-base-beauty',
+      'tooth-healthy-pulp',
+      'telescope-crown',
+      'telescope-crown-inside',
+      'telescope-crown-outside',
+    ]);
+    expect(
+      getLayer(template.svg, 'telescope-crown').getAttribute('data-active'),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'telescope-crown-inside').getAttribute(
+        'data-active',
+      ),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'telescope-crown').getAttribute(
+        'data-odontogram-appearance',
+      ),
+    ).toBe('planned');
+  });
+
+  it('activates implant connector with implant crown to avoid a floating crown', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+
+    applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(
+        16,
+        [
+          {
+            appearance: 'existing',
+            kind: 'restoration',
+            material: 'zircon',
+            restoration: 'crown',
+          },
+        ],
+        'implant',
+      ),
+      view: 'side',
+    });
+
+    expect(getLayer(template.svg, 'implant').getAttribute('data-active')).toBe(
+      '1',
+    );
+    expect(
+      getLayer(template.svg, 'implant-connector').getAttribute('data-active'),
+    ).toBe('1');
+    expect(
+      getLayer(template.svg, 'zircon-crown').getAttribute('data-active'),
+    ).toBe('1');
+  });
+
+  it('reports side-view onlay as unsupported instead of silently hiding it', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'side');
+    const result = applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [
+        {
+          appearance: 'existing',
+          kind: 'restoration',
+          material: 'temporary',
+          restoration: 'onlay',
+        },
+      ]),
+      view: 'side',
+    });
+
+    expect(result.unsupportedVisuals).toEqual([
+      { condition: 'onlay', reason: 'unsupported-template-view' },
+    ]);
+    expect(
+      getLayer(template.svg, 'temporary-onlay').getAttribute('data-active'),
+    ).toBe('0');
+  });
+
+  it('renders onlay on occlusal roots and clears stale restoration layers', () => {
+    const template = createNamespacedFixture('chart-a', 16, 'occlusal');
+
+    applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, [
+        {
+          appearance: 'existing',
+          kind: 'restoration',
+          material: 'temporary',
+          restoration: 'onlay',
+        },
+      ]),
+      view: 'occlusal',
+    });
+    expect(
+      getLayer(template.svg, 'temporary-onlay').getAttribute('data-active'),
+    ).toBe('1');
+
+    applyToothVisuals({
+      layerIdByOriginalId: template.layerIdByOriginalId,
+      svg: template.svg,
+      tooth: tooth(16, []),
+      view: 'occlusal',
+    });
+
+    expect(
+      getLayer(template.svg, 'temporary-onlay').getAttribute('data-active'),
+    ).toBe('0');
+  });
+
   it('reports root-canal as unsupported on occlusal roots without activating an endodontic layer', () => {
     const template = createNamespacedFixture('chart-a', 16, 'occlusal');
     const result = applyToothVisuals({
@@ -295,6 +424,12 @@ function createSvgFixture(): SVGSVGElement {
       <path id="implant-base" data-active="0" />
       <path id="extraction-plan" data-active="0" />
       <path id="endo-filling" data-active="0" />
+      <path id="zircon-crown" data-active="0" />
+      <path id="temporary-onlay" data-active="0" />
+      <g id="telescope-crown" data-active="0" />
+      <path id="telescope-crown-inside" data-active="0" />
+      <path id="telescope-crown-outside" data-active="0" />
+      <path id="implant-connector" data-active="0" />
       <path id="caries-occlusal" data-active="0" />
       <path id="caries-mesial" data-active="0" />
       <path id="caries-lingual" data-active="0" />
