@@ -529,6 +529,56 @@ describe('Odontogram', () => {
     expect(onSelectionChange).not.toHaveBeenCalled();
   });
 
+  it('does not refetch or reconstruct tooth SVG roots for selection and one-tooth condition updates', async () => {
+    const chart = createChart();
+    const { container, rerender } = render(
+      <Odontogram data={chart} selection={EMPTY_SELECTION} />,
+    );
+
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll('[data-odontogram-tooth-position] svg'),
+      ).toHaveLength(32);
+    });
+    expect(mockedLoadToothSvgTemplate).toHaveBeenCalledTimes(32);
+
+    const tooth17SvgBefore = getToothSvg(container, 17);
+    rerender(
+      <Odontogram
+        data={chart}
+        selection={{
+          activeToothPosition: 18,
+          selectedToothPositions: [18],
+        }}
+      />,
+    );
+
+    expect(mockedLoadToothSvgTemplate).toHaveBeenCalledTimes(32);
+    expect(getToothSvg(container, 17)).toBe(tooth17SvgBefore);
+
+    const nextChart: OdontogramData = {
+      teeth: chart.teeth.map((tooth) =>
+        tooth.position === 16
+          ? {
+              ...tooth,
+              conditions: [
+                {
+                  appearance: 'existing',
+                  kind: 'caries',
+                  surface: 'occlusal',
+                },
+              ],
+            }
+          : tooth,
+      ),
+    };
+
+    rerender(<Odontogram data={nextChart} selection={EMPTY_SELECTION} />);
+
+    expect(mockedLoadToothSvgTemplate).toHaveBeenCalledTimes(32);
+    expect(getToothSvg(container, 17)).toBe(tooth17SvgBefore);
+  });
+
   it('keeps hover styling local and emits no selection callback', async () => {
     const onSelectionChange = jest.fn();
     const { container } = render(
@@ -665,6 +715,20 @@ function optionLabels(): readonly (string | null)[] {
     .getAllByRole('option')
     .slice(0, 4)
     .map((option) => option.getAttribute('aria-label'));
+}
+
+function getToothSvg(
+  container: HTMLElement,
+  position: ToothPosition,
+): SVGElement {
+  const svg = container.querySelector(
+    `[data-odontogram-tooth-position="${position}"] svg`,
+  );
+  if (svg === null) {
+    throw new Error(`Expected tooth ${position} SVG`);
+  }
+
+  return svg as unknown as SVGElement;
 }
 
 function createLoadedTemplate(

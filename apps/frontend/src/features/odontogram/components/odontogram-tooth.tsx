@@ -4,7 +4,7 @@
 // Created by Zoltan Dul (https://github.com/ZoliQua) 2025-2026
 // Adapted for Clinora in 2026: one instance-safe React tooth renderer; no singleton chart state.
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState } from 'react';
 
 import type {
   OdontogramTooth as OdontogramToothModel,
@@ -43,7 +43,7 @@ type ToothRenderStatus = 'loading' | 'ready' | 'error' | 'unavailable';
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
-export function OdontogramTooth({
+export const OdontogramTooth = memo(function OdontogramTooth({
   position,
   view = 'side',
   chartInstanceId,
@@ -213,7 +213,7 @@ export function OdontogramTooth({
         : null}
     </div>
   );
-}
+});
 
 export function resolveToothTemplateId(
   position: ToothPosition,

@@ -2,6 +2,12 @@
 // Created by Zoltan Dul (https://github.com/ZoliQua) 2025-2026
 // Adapted for Clinora in 2026: trusted static SVG template loading and in-memory normalization only.
 
+import { RESTORATION_LAYER_RESET_IDS } from './restoration-layers';
+import {
+  TOOTH_SURFACE_LAYER_RESET_IDS,
+  TOOTH_WHOLE_LAYER_RESET_IDS,
+} from './tooth-layer-registry';
+
 export type ToothSvgTemplateId =
   | '11'
   | '13'
@@ -44,6 +50,8 @@ export interface LoadedToothSvgTemplate {
 export interface NormalizedSvgTemplate {
   readonly svg: SVGSVGElement;
   readonly switchableLayerIds: readonly string[];
+  readonly prunedLayerIds: readonly string[];
+  readonly prunedDefinitionIds: readonly string[];
   readonly removedStyleElementCount: number;
 }
 
@@ -136,6 +144,16 @@ const ALL_TOOTH_SVG_TEMPLATE_IDS = Object.freeze([
   ...OCCLUSAL_TOOTH_SVG_TEMPLATE_IDS,
 ] as const satisfies readonly ToothSvgTemplateId[]);
 
+export const APPROVED_RUNTIME_TOOTH_LAYER_IDS = Object.freeze(
+  [
+    ...new Set([
+      ...TOOTH_SURFACE_LAYER_RESET_IDS,
+      ...TOOTH_WHOLE_LAYER_RESET_IDS,
+      ...RESTORATION_LAYER_RESET_IDS,
+    ]),
+  ].sort(),
+);
+
 const SWITCHABLE_GROUP_IDS = Object.freeze([
   'mods',
   'tooth-variants',
@@ -163,6 +181,7 @@ const REMOTE_URL_PATTERN = /url\(\s*['"]?(?:https?:|data:|\/\/)/i;
 const CSS_IMPORT_PATTERN = /@import\b/i;
 const DISPLAY_NONE_DECLARATION_PATTERN = /(?:^|;)\s*display\s*:\s*none\s*;?/gi;
 const FRAGMENT_URL_PATTERN = /url\(\s*['"]?#([^)'" ]+)['"]?\s*\)/i;
+const FRAGMENT_URL_GLOBAL_PATTERN = /url\(\s*['"]?#([^)'" ]+)['"]?\s*\)/gu;
 const STRICT_URL_ATTRIBUTES = new Set(['href', 'xlink:href', 'src']);
 const FRAGMENT_URL_ATTRIBUTES = new Set([
   'href',
@@ -276,11 +295,24 @@ export function normalizeTrustedSvgTemplate(
 
   stripInlineDisplayNoneToDataActive(clonedSvg);
   const switchableLayerIds = seedDataActiveDefaults(clonedSvg);
+  const prunedLayerIds = [
+    ...new Set([
+      ...pruneDormantSwitchableLayers(clonedSvg, switchableLayerIds),
+      ...pruneResidualInactiveLayers(clonedSvg),
+    ]),
+  ].sort();
+  const retainedSwitchableLayerIds = switchableLayerIds.filter(
+    (layerId) => !prunedLayerIds.includes(layerId),
+  );
+  const prunedDefinitionIds = pruneUnreferencedDefinitions(clonedSvg);
+  stripStructuralDataActiveAttributes(clonedSvg);
   clonedSvg.setAttribute(ODONTOGRAM_TEMPLATE_ROOT_ATTRIBUTE, '');
 
   return {
+    prunedDefinitionIds,
+    prunedLayerIds,
     svg: clonedSvg,
-    switchableLayerIds,
+    switchableLayerIds: retainedSwitchableLayerIds,
     removedStyleElementCount: styleElements.length,
   };
 }
@@ -526,6 +558,255 @@ function seedSwitchableElement(
   }
 
   switchableLayerIds.add(id);
+}
+
+function pruneDormantSwitchableLayers(
+  svg: SVGSVGElement,
+  switchableLayerIds: readonly string[],
+): readonly string[] {
+  const approvedLayerIds = new Set(APPROVED_RUNTIME_TOOTH_LAYER_IDS);
+  const prunedLayerIds: string[] = [];
+
+  for (const layerId of switchableLayerIds) {
+    const layerElement = findElementById(svg, layerId);
+    if (layerElement === null) {
+      continue;
+    }
+
+    if (approvedLayerIds.has(layerId)) {
+      continue;
+    }
+
+    if (
+      hasApprovedLayerAncestor(layerElement, approvedLayerIds) ||
+      hasApprovedLayerDescendant(layerElement, approvedLayerIds)
+    ) {
+      layerElement.removeAttribute('data-active');
+      continue;
+    }
+
+    layerElement.remove();
+    prunedLayerIds.push(layerId);
+  }
+
+  return Object.freeze(prunedLayerIds.sort());
+}
+
+function hasApprovedLayerAncestor(
+  element: Element,
+  approvedLayerIds: ReadonlySet<string>,
+): boolean {
+  let ancestor = element.parentElement;
+  while (ancestor !== null) {
+    const ancestorId = ancestor.getAttribute('id');
+    if (ancestorId !== null && approvedLayerIds.has(ancestorId)) {
+      return true;
+    }
+
+    ancestor = ancestor.parentElement;
+  }
+
+  return false;
+}
+
+function hasApprovedLayerDescendant(
+  element: Element,
+  approvedLayerIds: ReadonlySet<string>,
+): boolean {
+  return Array.from(element.querySelectorAll('[id]')).some((descendant) => {
+    const descendantId = descendant.getAttribute('id');
+
+    return descendantId !== null && approvedLayerIds.has(descendantId);
+  });
+}
+
+function stripStructuralDataActiveAttributes(svg: SVGSVGElement): void {
+  for (const element of Array.from(
+    svg.querySelectorAll('defs [data-active]'),
+  )) {
+    element.removeAttribute('data-active');
+  }
+
+  for (const groupId of SWITCHABLE_GROUP_IDS) {
+    findElementById(svg, groupId)?.removeAttribute('data-active');
+  }
+}
+
+function pruneResidualInactiveLayers(svg: SVGSVGElement): readonly string[] {
+  const approvedLayerIds = new Set(APPROVED_RUNTIME_TOOTH_LAYER_IDS);
+  const prunedLayerIds: string[] = [];
+
+  for (const element of Array.from(svg.querySelectorAll('[data-active][id]'))) {
+    const layerId = element.getAttribute('id');
+    if (layerId === null || approvedLayerIds.has(layerId)) {
+      continue;
+    }
+
+    if (
+      hasApprovedLayerAncestor(element, approvedLayerIds) ||
+      hasApprovedLayerDescendant(element, approvedLayerIds)
+    ) {
+      element.removeAttribute('data-active');
+      continue;
+    }
+
+    if (element.getAttribute('data-active') === '0') {
+      element.remove();
+      prunedLayerIds.push(layerId);
+      continue;
+    }
+
+    element.removeAttribute('data-active');
+  }
+
+  return prunedLayerIds;
+}
+
+function pruneUnreferencedDefinitions(svg: SVGSVGElement): readonly string[] {
+  const definitionElements = Array.from(svg.querySelectorAll('defs [id]'));
+  if (definitionElements.length === 0) {
+    return [];
+  }
+
+  const definitionById = new Map<string, Element>();
+  for (const element of definitionElements) {
+    const id = element.getAttribute('id');
+    if (id !== null) {
+      definitionById.set(id, element);
+    }
+  }
+
+  const requiredDefinitionIds = collectTransitivelyReferencedDefinitionIds(
+    svg,
+    definitionById,
+  );
+  const prunedDefinitionIds: string[] = [];
+
+  for (const element of [...definitionElements].reverse()) {
+    const id = element.getAttribute('id');
+    if (
+      id === null ||
+      requiredDefinitionIds.has(id) ||
+      hasRequiredDefinitionAncestor(element, requiredDefinitionIds)
+    ) {
+      continue;
+    }
+
+    element.remove();
+    prunedDefinitionIds.push(id);
+  }
+
+  return Object.freeze(prunedDefinitionIds.sort());
+}
+
+function hasRequiredDefinitionAncestor(
+  element: Element,
+  requiredDefinitionIds: ReadonlySet<string>,
+): boolean {
+  let ancestor = element.parentElement;
+  while (ancestor !== null && ancestor.localName !== 'defs') {
+    const ancestorId = ancestor.getAttribute('id');
+    if (ancestorId !== null && requiredDefinitionIds.has(ancestorId)) {
+      return true;
+    }
+
+    ancestor = ancestor.parentElement;
+  }
+
+  return false;
+}
+
+function collectTransitivelyReferencedDefinitionIds(
+  svg: SVGSVGElement,
+  definitionById: ReadonlyMap<string, Element>,
+): ReadonlySet<string> {
+  const requiredDefinitionIds = new Set<string>();
+  const pendingDefinitionIds: string[] = [];
+
+  for (const element of [svg, ...Array.from(svg.querySelectorAll('*'))]) {
+    if (element.closest('defs') !== null) {
+      continue;
+    }
+
+    for (const referencedId of collectElementFragmentReferences(element)) {
+      if (definitionById.has(referencedId)) {
+        requiredDefinitionIds.add(referencedId);
+        pendingDefinitionIds.push(referencedId);
+      }
+    }
+  }
+
+  while (pendingDefinitionIds.length > 0) {
+    const definitionId = pendingDefinitionIds.pop();
+    if (definitionId === undefined) {
+      continue;
+    }
+
+    const definitionElement = definitionById.get(definitionId);
+    if (definitionElement === undefined) {
+      continue;
+    }
+
+    for (const referencedId of collectElementAndDescendantFragmentReferences(
+      definitionElement,
+    )) {
+      if (
+        definitionById.has(referencedId) &&
+        !requiredDefinitionIds.has(referencedId)
+      ) {
+        requiredDefinitionIds.add(referencedId);
+        pendingDefinitionIds.push(referencedId);
+      }
+    }
+  }
+
+  return requiredDefinitionIds;
+}
+
+function collectElementAndDescendantFragmentReferences(
+  element: Element,
+): readonly string[] {
+  return [element, ...Array.from(element.querySelectorAll('*'))].flatMap(
+    (currentElement) => collectElementFragmentReferences(currentElement),
+  );
+}
+
+function collectElementFragmentReferences(element: Element): readonly string[] {
+  return Array.from(element.attributes).flatMap((attribute) =>
+    collectFragmentReferences(attribute.name, attribute.value),
+  );
+}
+
+function collectFragmentReferences(
+  attributeName: string,
+  value: string,
+): readonly string[] {
+  const referencedIds: string[] = [];
+
+  for (const match of value.matchAll(FRAGMENT_URL_GLOBAL_PATTERN)) {
+    if (match[1] !== undefined) {
+      referencedIds.push(match[1]);
+    }
+  }
+
+  if (
+    ['href', 'xlink:href'].includes(attributeName.toLowerCase()) &&
+    value.startsWith('#')
+  ) {
+    referencedIds.push(value.slice(1));
+  }
+
+  return referencedIds;
+}
+
+function findElementById(svg: SVGSVGElement, id: string): Element | null {
+  for (const element of [svg, ...Array.from(svg.querySelectorAll('[id]'))]) {
+    if (element.getAttribute('id') === id) {
+      return element;
+    }
+  }
+
+  return null;
 }
 
 function cloneSvg(svg: SVGSVGElement): SVGSVGElement {

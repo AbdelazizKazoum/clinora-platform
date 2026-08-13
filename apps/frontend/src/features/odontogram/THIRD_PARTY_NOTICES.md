@@ -51,3 +51,7 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
 - `apps/frontend/src/features/odontogram/rendering/bridge-layout.ts` adapts the bridge span and saddle-bar geometry concepts from `src/bridgeOverlay.ts`. Clinora adds explicit `bridgeId` grouping before adjacency detection so neighboring independent bridges do not merge, and keeps the logic pure for deterministic tests.
 - `apps/frontend/src/features/odontogram/components/bridge-overlay.tsx` adapts the bridge overlay rendering into an instance-scoped React component using a caller-provided chart container ref and scoped anchor queries. Legacy fixed IDs, document-level selectors, body/global overlay behavior, and singleton chart state were not migrated.
 - `apps/frontend/src/features/odontogram/rendering/restoration-layers.ts` now also adapts the bridge unit crown-plus-connector layer composition needed by bridge abutments and pontics, while leaving bridge workflow/business eligibility to the Clinora Treatment domain.
+
+### ODONTO-13 Adapted Files
+
+- `apps/frontend/src/features/odontogram/rendering/svg-template-loader.ts` now prunes dormant non-v1 layers and unused definitions from the normalized runtime clone after adapting the legacy switchable-layer normalization concepts. The public copied SVG files remain byte-for-byte upstream copies; no new legacy assets were copied.
