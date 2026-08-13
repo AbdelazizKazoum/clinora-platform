@@ -1,0 +1,210 @@
+import { validateOdontogramData } from '@/features/odontogram';
+
+import { createMockTreatmentVisit } from '../mock/treatment-workspace.mock';
+import type {
+  ClinicalFinding,
+  TreatmentAct,
+  TreatmentVisit,
+} from './treatment';
+import { mapTreatmentVisitToOdontogram } from './treatment-odontogram.mapper';
+
+const createdAt = new Date('2026-08-13T11:00:00.000Z');
+
+const tooth = (visit: TreatmentVisit, position: number) =>
+  mapTreatmentVisitToOdontogram(visit).data.teeth.find(
+    (candidate) => candidate.position === position,
+  );
+
+const directFilling = (
+  overrides: Partial<TreatmentAct> = {},
+): TreatmentAct => ({
+  approvedByDentistId: 'doctor-demo',
+  code: 'DIRECT_FILLING',
+  createdAt,
+  details: [{ key: 'FILLING_MATERIAL', value: 'COMPOSITE' }],
+  enteredByUserId: 'doctor-demo',
+  id: 'act-direct-filling-16',
+  note: null,
+  performedByUserId: null,
+  status: 'PLANNED',
+  target: {
+    arch: null,
+    kind: 'TOOTH_SURFACE',
+    periodontalSites: [],
+    surfaces: ['OCCLUSAL'],
+    toothNumbers: [16],
+  },
+  updatedAt: createdAt,
+  ...overrides,
+});
+
+describe('Treatment odontogram projection', () => {
+  it('projects the mock clinical record into a valid complete chart', () => {
+    const projection = mapTreatmentVisitToOdontogram(
+      createMockTreatmentVisit(),
+    );
+
+    expect(projection.data.teeth).toHaveLength(32);
+    expect(tooth(createMockTreatmentVisit(), 16)?.conditions).toContainEqual({
+      appearance: 'existing',
+      kind: 'caries',
+      severity: 4,
+      surface: 'occlusal',
+    });
+    expect(tooth(createMockTreatmentVisit(), 26)?.conditions).toContainEqual({
+      appearance: 'existing',
+      kind: 'filling',
+      material: 'amalgam',
+      surface: 'occlusal',
+    });
+    expect(tooth(createMockTreatmentVisit(), 46)?.base).toBe('missing');
+    expect(tooth(createMockTreatmentVisit(), 36)?.conditions).toContainEqual({
+      appearance: 'planned',
+      kind: 'endodontic',
+      state: 'root-canal',
+    });
+    expect(validateOdontogramData(projection.data)).toEqual({
+      data: projection.data,
+      valid: true,
+    });
+  });
+
+  it('keeps assistant drafts off the chart until a dentist approves them', () => {
+    const base = createMockTreatmentVisit();
+    const draft = directFilling({
+      approvedByDentistId: null,
+      enteredByUserId: 'assistant-demo',
+      status: 'DRAFT',
+    });
+    const withDraft = { ...base, acts: [...base.acts, draft] };
+    const approved = {
+      ...withDraft,
+      acts: withDraft.acts.map((act) =>
+        act.id === draft.id
+          ? {
+              ...act,
+              approvedByDentistId: 'doctor-demo',
+              status: 'PLANNED' as const,
+            }
+          : act,
+      ),
+    };
+
+    expect(
+      tooth(withDraft, 16)?.conditions.some(
+        (condition) => condition.kind === 'filling',
+      ),
+    ).toBe(false);
+    expect(tooth(approved, 16)?.conditions).toContainEqual({
+      appearance: 'planned',
+      kind: 'filling',
+      material: 'composite',
+      surface: 'occlusal',
+    });
+  });
+
+  it('uses a fixed restoration as the visual composition for that tooth', () => {
+    const base = createMockTreatmentVisit();
+    const crown: TreatmentAct = {
+      ...directFilling(),
+      code: 'CROWN',
+      details: [{ key: 'RESTORATION_MATERIAL', value: 'ZIRCON' }],
+      id: 'act-crown-16',
+      target: { ...directFilling().target, surfaces: [] },
+    };
+    const visit = { ...base, acts: [...base.acts, crown] };
+    const projection = mapTreatmentVisitToOdontogram(visit);
+    const projectedTooth = projection.data.teeth.find(
+      (candidate) => candidate.position === 16,
+    );
+
+    expect(projectedTooth?.conditions).toContainEqual({
+      appearance: 'planned',
+      kind: 'restoration',
+      material: 'zircon',
+      restoration: 'crown',
+    });
+    expect(
+      projectedTooth?.conditions.some(
+        (condition) =>
+          condition.kind === 'caries' || condition.kind === 'filling',
+      ),
+    ).toBe(false);
+    expect(validateOdontogramData(projection.data).valid).toBe(true);
+  });
+
+  it('projects a contiguous bridge with natural abutments and a missing pontic', () => {
+    const base = createMockTreatmentVisit();
+    const bridge: TreatmentAct = {
+      ...directFilling(),
+      code: 'BRIDGE',
+      details: [{ key: 'RESTORATION_MATERIAL', value: 'ZIRCON' }],
+      id: 'act-bridge-45-47',
+      target: {
+        arch: null,
+        kind: 'BRIDGE_SPAN',
+        periodontalSites: [],
+        surfaces: [],
+        toothNumbers: [45, 46, 47],
+      },
+    };
+    const visit = { ...base, acts: [...base.acts, bridge] };
+    const projection = mapTreatmentVisitToOdontogram(visit);
+
+    expect(tooth(visit, 46)?.conditions).toContainEqual(
+      expect.objectContaining({ kind: 'bridge', role: 'pontic' }),
+    );
+    expect(tooth(visit, 45)?.conditions).toContainEqual(
+      expect.objectContaining({ kind: 'bridge', role: 'abutment' }),
+    );
+    expect(tooth(visit, 47)?.conditions).toContainEqual(
+      expect.objectContaining({ kind: 'bridge', role: 'abutment' }),
+    );
+    expect(validateOdontogramData(projection.data).valid).toBe(true);
+  });
+
+  it('retains unsupported detail as an explicit projection issue', () => {
+    const base = createMockTreatmentVisit();
+    const finding: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'PULP_DIAGNOSIS',
+      details: [{ key: 'PULP_DIAGNOSIS', value: 'IRREVERSIBLE_PULPITIS' }],
+      id: 'finding-pulp-16',
+    };
+    const projection = mapTreatmentVisitToOdontogram({
+      ...base,
+      findings: [...base.findings, finding],
+    });
+
+    expect(projection.issues).toContainEqual({
+      recordId: finding.id,
+      reason:
+        'This clinical detail is recorded but not visualized in the current odontogram.',
+    });
+  });
+
+  it('does not silently render unsupported restoration combinations', () => {
+    const base = createMockTreatmentVisit();
+    const invalidOnlay: TreatmentAct = {
+      ...directFilling(),
+      code: 'ONLAY',
+      details: [{ key: 'RESTORATION_MATERIAL', value: 'METAL' }],
+      id: 'act-onlay-11',
+      target: { ...directFilling().target, surfaces: [], toothNumbers: [11] },
+    };
+    const projection = mapTreatmentVisitToOdontogram({
+      ...base,
+      acts: [...base.acts, invalidOnlay],
+    });
+
+    expect(projection.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ recordId: invalidOnlay.id }),
+      ]),
+    );
+    expect(
+      tooth({ ...base, acts: [...base.acts, invalidOnlay] }, 11)?.conditions,
+    ).toEqual([]);
+    expect(validateOdontogramData(projection.data).valid).toBe(true);
+  });
+});

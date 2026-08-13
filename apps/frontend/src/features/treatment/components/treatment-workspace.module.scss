@@ -1,0 +1,213 @@
+.workspace {
+  --treatment-panel-border: var(--bs-border-color);
+}
+
+.patientHeader {
+  border-left: 4px solid var(--bs-primary);
+}
+
+.patientAvatar {
+  align-items: center;
+  background: var(--bs-primary-bg-subtle);
+  border-radius: 50%;
+  color: var(--bs-primary);
+  display: flex;
+  flex: 0 0 3.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  height: 3.25rem;
+  justify-content: center;
+}
+
+.actorSelect {
+  min-width: 15rem;
+}
+
+.workspaceTabs {
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.chartCard,
+.detailsCard,
+.recordCard {
+  height: 100%;
+}
+
+.chartColumn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.detailsColumn {
+  flex: 0 0 20rem;
+  max-width: 20rem;
+}
+
+.detailsCard {
+  min-height: 46rem;
+}
+
+.chartLegend {
+  align-items: center;
+  color: var(--bs-secondary-color);
+  display: inline-flex;
+  font-size: 0.75rem;
+  gap: 0.75rem;
+}
+
+.chartLegend span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.existingLegend,
+.plannedLegend {
+  border: 2px solid var(--bs-primary);
+  display: inline-block;
+  height: 0.75rem;
+  width: 1.25rem;
+}
+
+.existingLegend {
+  background: rgba(var(--bs-primary-rgb), 0.14);
+  border-radius: 0.2rem;
+}
+
+.plannedLegend {
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top-style: dashed;
+  height: 0;
+}
+
+.surfaceSection {
+  align-items: center;
+  background: var(--bs-light-bg-subtle);
+  border: 1px dashed var(--treatment-panel-border);
+  border-radius: var(--bs-border-radius);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+}
+
+.toothDetailsLayout,
+.toothContextColumn,
+.toothEditorColumn {
+  display: grid;
+  gap: 1rem;
+}
+
+.projectionNotice {
+  align-items: center;
+  background: var(--bs-info-bg-subtle);
+  border-radius: var(--bs-border-radius);
+  color: var(--bs-info-text-emphasis);
+  display: flex;
+  font-size: 0.8125rem;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.toothRecord {
+  border-top: 1px solid var(--treatment-panel-border);
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+
+.recordMiniRow,
+.recordRow {
+  align-items: center;
+  border-bottom: 1px solid var(--treatment-panel-border);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.7rem 0;
+}
+
+.recordMiniRow:last-child,
+.recordRow:last-child {
+  border-bottom: 0;
+}
+
+.recordList {
+  display: grid;
+}
+
+.handoffFlow {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.handoffStep,
+.handoffStepActive {
+  align-items: center;
+  color: var(--bs-secondary-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.handoffStep span,
+.handoffStepActive span {
+  align-items: center;
+  background: var(--bs-secondary-bg);
+  border-radius: 50%;
+  display: flex;
+  font-weight: 600;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.handoffStepActive {
+  color: var(--bs-primary);
+}
+
+.handoffStepActive span {
+  background: var(--bs-primary);
+  color: var(--bs-white);
+}
+
+@media (max-width: 767.98px) {
+  .actorSelect {
+    min-width: 100%;
+  }
+
+  .surfaceSection {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .handoffFlow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1599.98px) {
+  .chartColumn,
+  .detailsColumn {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .detailsCard {
+    height: auto;
+    min-height: auto;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1599.98px) {
+  .toothDetailsLayout {
+    align-items: start;
+    grid-template-columns: minmax(18rem, 0.75fr) minmax(24rem, 1.25fr);
+  }
+}

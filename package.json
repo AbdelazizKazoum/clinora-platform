@@ -2,7 +2,9 @@
   "name": "@clinora-platform/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "dev:frontend:low-memory": "NODE_OPTIONS=--max-old-space-size=2048 NEXT_TELEMETRY_DISABLED=1 pnpm --dir apps/frontend exec next dev --webpack --disable-source-maps"
+  },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.8.0",

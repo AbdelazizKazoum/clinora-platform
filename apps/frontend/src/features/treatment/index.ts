@@ -15,6 +15,8 @@ export {
   parseTreatmentLaunchContext,
 } from './model/treatment.rules';
 export { mapTreatmentVisitFromDto } from './model/treatment.mapper';
+export { mapTreatmentVisitToOdontogram } from './model/treatment-odontogram.mapper';
+export { TreatmentWorkspacePage } from './pages/treatment-workspace-page';
 export type {
   ClinicalDetail,
   ClinicalFinding,
@@ -35,3 +37,7 @@ export type {
   TreatmentVisitStatus,
 } from './model/treatment';
 export type { TreatmentWorkspaceRole } from './model/treatment.rules';
+export type {
+  TreatmentOdontogramProjection,
+  TreatmentOdontogramProjectionIssue,
+} from './model/treatment-odontogram.mapper';

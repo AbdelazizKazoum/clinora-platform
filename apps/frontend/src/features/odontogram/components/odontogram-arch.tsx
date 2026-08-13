@@ -197,6 +197,7 @@ export function OdontogramArch({
                         chartInstanceId={chartInstanceId}
                         fetcher={fetcher}
                         position={position}
+                        showUnsupportedVisualFallback={false}
                         suppressImageRole
                         tooth={tooth}
                         view="occlusal"

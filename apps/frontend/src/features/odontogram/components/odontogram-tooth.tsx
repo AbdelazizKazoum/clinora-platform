@@ -174,6 +174,7 @@ export const OdontogramTooth = memo(function OdontogramTooth({
           : (ariaLabel ?? `Tooth ${position} ${view} view`)
       }
       className={[styles.toothTile, className].filter(Boolean).join(' ')}
+      data-odontogram-template={templateId ?? undefined}
       data-odontogram-tooth-position={position}
       data-odontogram-tooth-view={view}
       role={ariaHidden || suppressImageRole ? undefined : 'img'}
