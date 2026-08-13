@@ -55,3 +55,8 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
 ### ODONTO-13 Adapted Files
 
 - `apps/frontend/src/features/odontogram/rendering/svg-template-loader.ts` now prunes dormant non-v1 layers and unused definitions from the normalized runtime clone after adapting the legacy switchable-layer normalization concepts. The public copied SVG files remain byte-for-byte upstream copies; no new legacy assets were copied.
+
+### PARITY-01 Adapted Inventories
+
+- `apps/frontend/src/features/treatment/model/treatment-parity-inventory.ts` adapts the clinical-axis names, current non-axis surface-map names, periodontal record vocabulary, derived concepts, record-only distinctions, and named applicability seams from `src/registry/axes.ts`, `src/registry/restorations.ts`, `src/odontogram.ts`, `src/PerioChart.tsx`, `src/PerioSidebar.tsx`, and `src/perioClassification.ts`. It is an inert audit inventory and does not copy the legacy store, persistence, FHIR, UI, or rendering identifiers into Treatment.
+- `apps/frontend/src/features/odontogram/rendering/upstream-parity-layer-inventory.ts` records the unique semantic clear-set vocabulary from `src/registry/svgLayers.ts` for completeness tests only. It is not exported by the Odontogram public API, imported by the runtime renderer, or added to the approved runtime layer manifest; no visual family was activated by PARITY-01.
