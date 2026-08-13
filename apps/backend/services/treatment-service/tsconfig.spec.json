@@ -1,0 +1,13 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out-tsc/jest",
+    "types": ["jest", "node"],
+    "tsBuildInfoFile": "out-tsc/jest/tsconfig.spec.tsbuildinfo",
+    "paths": {
+      "@domain/*": ["./src/treatment/domain/*"]
+    }
+  },
+  "include": ["jest.config.cts", "src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": [{ "path": "./tsconfig.app.json" }]
+}

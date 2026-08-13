@@ -1,0 +1,8 @@
+{
+  "name": "contracts-treatment",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/contracts/treatment/src",
+  "projectType": "library",
+  "tags": ["platform:contracts", "type:lib", "scope:treatment"],
+  "targets": {}
+}

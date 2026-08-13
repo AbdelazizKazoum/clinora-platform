@@ -41,6 +41,12 @@
     },
     {
       "path": "./libs/contracts/appointment"
+    },
+    {
+      "path": "./apps/backend/services/treatment-service"
+    },
+    {
+      "path": "./libs/contracts/treatment"
     }
   ]
 }

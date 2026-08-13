@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+package treatment;
+
+service TreatmentService {
+  rpc GetTreatmentVisit (GetTreatmentVisitRequest) returns (TreatmentVisitReply);
+  rpc ListPatientTreatmentVisits (ListPatientTreatmentVisitsRequest) returns (TreatmentVisitsListReply);
+  rpc CreateTreatmentVisit (CreateTreatmentVisitRequest) returns (TreatmentVisitReply);
+  rpc StartTreatmentVisit (StartTreatmentVisitRequest) returns (TreatmentVisitReply);
+  rpc RecordClinicalFinding (RecordClinicalFindingRequest) returns (TreatmentVisitReply);
+  rpc RecordTreatmentAct (RecordTreatmentActRequest) returns (TreatmentVisitReply);
+  rpc TransitionTreatmentAct (TransitionTreatmentActRequest) returns (TreatmentVisitReply);
+  rpc AssignVisitDocumentation (AssignVisitDocumentationRequest) returns (TreatmentVisitReply);
+  rpc StartVisitDocumentation (UpdateDocumentationHandoffRequest) returns (TreatmentVisitReply);
+  rpc SubmitVisitDocumentation (UpdateDocumentationHandoffRequest) returns (TreatmentVisitReply);
+  rpc ReviewVisitDocumentation (ReviewDocumentationHandoffRequest) returns (TreatmentVisitReply);
+  rpc CompleteTreatmentVisit (CompleteTreatmentVisitRequest) returns (TreatmentVisitReply);
+  rpc CancelTreatmentVisit (CancelTreatmentVisitRequest) returns (TreatmentVisitReply);
+  rpc GetTreatmentCatalogue (Empty) returns (TreatmentCatalogueReply);
+}
+
+message Empty {}
+
+message ClinicalTargetReply {
+  string kind = 1;
+  string arch = 2;
+  repeated int32 tooth_numbers = 3;
+  repeated string surfaces = 4;
+  repeated string periodontal_sites = 5;
+}
+
+message ClinicalDetailReply {
+  string key = 1;
+  oneof value {
+    string string_value = 2;
+    int32 integer_value = 3;
+    bool boolean_value = 4;
+  }
+}
+
+message ClinicalFindingReply {
+  string id = 1;
+  string code = 2;
+  string status = 3;
+  ClinicalTargetReply target = 4;
+  repeated ClinicalDetailReply details = 5;
+  string note = 6;
+  string entered_by_user_id = 7;
+  string verified_by_user_id = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message TreatmentActReply {
+  string id = 1;
+  string code = 2;
+  string status = 3;
+  ClinicalTargetReply target = 4;
+  repeated ClinicalDetailReply details = 5;
+  string note = 6;
+  string entered_by_user_id = 7;
+  string approved_by_dentist_id = 8;
+  string performed_by_user_id = 9;
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+message DocumentationHandoffReply {
+  string id = 1;
+  string status = 2;
+  string assigned_by_dentist_id = 3;
+  string assigned_to_assistant_id = 4;
+  string note = 5;
+  string review_note = 6;
+  int32 revision = 7;
+  string assigned_at = 8;
+  string submitted_at = 9;
+  string reviewed_at = 10;
+}
+
+message TreatmentVisitReply {
+  string id = 1;
+  string clinic_id = 2;
+  string patient_id = 3;
+  string responsible_dentist_id = 4;
+  string appointment_id = 5;
+  string queue_entry_id = 6;
+  string chair_id = 7;
+  string status = 8;
+  string chief_complaint = 9;
+  string clinical_notes = 10;
+  repeated ClinicalFindingReply findings = 11;
+  repeated TreatmentActReply acts = 12;
+  optional DocumentationHandoffReply documentation_handoff = 13;
+  string started_at = 14;
+  string completed_at = 15;
+  string cancelled_at = 16;
+  string cancellation_reason = 17;
+  string created_at = 18;
+  string updated_at = 19;
+}
+
+message GetTreatmentVisitRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+}
+
+message ListPatientTreatmentVisitsRequest {
+  string clinic_id = 1;
+  string patient_id = 2;
+  optional int32 page = 3;
+  optional int32 limit = 4;
+}
+
+message TreatmentVisitsListReply {
+  repeated TreatmentVisitReply visits = 1;
+  int32 total = 2;
+}
+
+message CreateTreatmentVisitRequest {
+  string clinic_id = 1;
+  string patient_id = 2;
+  string responsible_dentist_id = 3;
+  string actor_user_id = 4;
+  optional string appointment_id = 5;
+  optional string queue_entry_id = 6;
+  optional string chair_id = 7;
+  optional string chief_complaint = 8;
+}
+
+message StartTreatmentVisitRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+}
+
+message RecordClinicalFindingRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  string code = 4;
+  ClinicalTargetReply target = 5;
+  repeated ClinicalDetailReply details = 6;
+  optional string note = 7;
+}
+
+message RecordTreatmentActRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  string code = 4;
+  ClinicalTargetReply target = 5;
+  repeated ClinicalDetailReply details = 6;
+  optional string note = 7;
+}
+
+message TransitionTreatmentActRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  string act_id = 4;
+  string status = 5;
+  optional string reason = 6;
+}
+
+message AssignVisitDocumentationRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  string assistant_id = 4;
+  optional string note = 5;
+}
+
+message UpdateDocumentationHandoffRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  optional string note = 4;
+}
+
+message ReviewDocumentationHandoffRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  optional string note = 4;
+  string decision = 5;
+}
+
+message CompleteTreatmentVisitRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+}
+
+message CancelTreatmentVisitRequest {
+  string clinic_id = 1;
+  string visit_id = 2;
+  string actor_user_id = 3;
+  string reason = 4;
+}
+
+message TreatmentCatalogueEntryReply {
+  string code = 1;
+  string category = 2;
+  string display = 3;
+  repeated string allowed_targets = 4;
+  repeated string supported_detail_keys = 5;
+  bool requires_dentist_approval = 6;
+}
+
+message ClinicalFindingCatalogueEntryReply {
+  string code = 1;
+  string display = 2;
+  repeated string allowed_targets = 3;
+  repeated string supported_detail_keys = 4;
+}
+
+message TreatmentCatalogueReply {
+  repeated TreatmentCatalogueEntryReply treatment_acts = 1;
+  repeated ClinicalFindingCatalogueEntryReply clinical_findings = 2;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@clinora-platform/treatment-service",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "treatment-service",
+    "targets": {
+      "test": {
+        "options": {
+          "passWithNoTests": false
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@clinora/contracts-treatment": "workspace:*",
+    "tslib": "^2.3.0"
+  }
+}
