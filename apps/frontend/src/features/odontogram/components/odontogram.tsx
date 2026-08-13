@@ -13,6 +13,7 @@ import { validateOdontogramSelection } from '../model/odontogram-selection';
 import type { LoadToothSvgTemplateOptions } from '../rendering/svg-template-loader';
 import { OdontogramArch } from './odontogram-arch';
 import styles from './odontogram.module.scss';
+import { OdontogramViewport } from './odontogram-viewport';
 
 export type OdontogramView = 'side' | 'side-and-occlusal';
 export type OdontogramInteractionMode = 'view' | 'select';
@@ -83,27 +84,34 @@ export function Odontogram({
       data-odontogram-root=""
       data-odontogram-view={view}
     >
-      <div
-        aria-label={ariaLabel}
-        aria-multiselectable={interactionMode === 'select' ? true : undefined}
-        className={styles.chartViewport}
-        role="listbox"
-      >
-        <OdontogramArch
-          assetPrefix={assetPrefix}
-          basePath={basePath}
-          chartInstanceId={chartInstanceId}
-          data={validationResult.data}
-          fetcher={fetcher}
-          interactionMode={interactionMode}
-          numberingSystem={numberingSystem}
-          onSelectionChange={
-            selectionValidationResult.valid ? onSelectionChange : undefined
-          }
-          selection={renderedSelection}
-          view={view}
-        />
-      </div>
+      <OdontogramViewport ariaLabel={ariaLabel}>
+        {({ zoom }) => (
+          <div
+            aria-label={ariaLabel}
+            aria-multiselectable={
+              interactionMode === 'select' ? true : undefined
+            }
+            className={styles.chartInteractionLayer}
+            role="listbox"
+          >
+            <OdontogramArch
+              assetPrefix={assetPrefix}
+              basePath={basePath}
+              chartInstanceId={chartInstanceId}
+              data={validationResult.data}
+              fetcher={fetcher}
+              interactionMode={interactionMode}
+              numberingSystem={numberingSystem}
+              onSelectionChange={
+                selectionValidationResult.valid ? onSelectionChange : undefined
+              }
+              selection={renderedSelection}
+              view={view}
+              viewportScale={zoom}
+            />
+          </div>
+        )}
+      </OdontogramViewport>
     </div>
   );
 }

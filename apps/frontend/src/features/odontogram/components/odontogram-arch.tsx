@@ -37,6 +37,7 @@ export interface OdontogramArchProps {
   readonly basePath?: string;
   readonly assetPrefix?: string;
   readonly fetcher?: LoadToothSvgTemplateOptions['fetcher'];
+  readonly viewportScale?: number;
 }
 
 const ARCH_CONFIGS = [
@@ -76,6 +77,7 @@ export function OdontogramArch({
   basePath,
   assetPrefix,
   fetcher,
+  viewportScale = 1,
 }: OdontogramArchProps) {
   const toothByPosition = new Map(
     data.teeth.map((tooth) => [tooth.position, tooth]),
@@ -224,7 +226,8 @@ export function OdontogramArch({
       <BridgeOverlay
         containerRef={chartContainerRef}
         data={data}
-        layoutKey={view}
+        layoutKey={`${view}:${viewportScale}`}
+        measurementScale={viewportScale}
       />
     </div>
   );

@@ -97,12 +97,8 @@ const ARCH_POSITIONS = Object.freeze({
 } satisfies Record<ToothArch, readonly ToothPosition[]>);
 
 const ARCH_BY_POSITION: ReadonlyMap<ToothPosition, ToothArch> = new Map([
-  ...UPPER_ARCH_POSITIONS.map(
-    (position) => [position, 'upper'] as const,
-  ),
-  ...LOWER_ARCH_POSITIONS.map(
-    (position) => [position, 'lower'] as const,
-  ),
+  ...UPPER_ARCH_POSITIONS.map((position) => [position, 'upper'] as const),
+  ...LOWER_ARCH_POSITIONS.map((position) => [position, 'lower'] as const),
 ]);
 
 const ARCH_INDEX_BY_POSITION: ReadonlyMap<ToothPosition, number> = new Map(
@@ -138,7 +134,8 @@ export function deriveBridgeSpans(data: OdontogramData): BridgeSpanDerivation {
     }
 
     const firstUnit = sortedUnits[0];
-    const arch = firstUnit === undefined ? undefined : getArch(firstUnit.position);
+    const arch =
+      firstUnit === undefined ? undefined : getArch(firstUnit.position);
     if (firstUnit === undefined || arch === undefined) {
       continue;
     }
@@ -272,7 +269,8 @@ function validateBridgeGroup(
 
 function hasContiguousPositions(units: readonly BridgeUnit[]): boolean {
   const firstUnit = units[0];
-  const arch = firstUnit === undefined ? undefined : getArch(firstUnit.position);
+  const arch =
+    firstUnit === undefined ? undefined : getArch(firstUnit.position);
   if (arch === undefined) {
     return false;
   }

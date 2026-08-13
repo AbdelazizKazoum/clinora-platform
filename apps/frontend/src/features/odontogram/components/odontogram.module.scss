@@ -17,11 +17,47 @@
   overflow: hidden;
 }
 
+.viewportShell {
+  max-width: 100%;
+}
+
+.viewportToolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.zoomStatus {
+  color: var(--bs-secondary-color);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 3rem;
+  text-align: center;
+}
+
 .chartViewport {
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto;
   padding: 0.25rem;
+}
+
+.chartScaleSizer {
+  display: inline-block;
+  min-width: max-content;
+  transform-origin: left top;
+}
+
+.chartScaleLayer {
+  display: inline-block;
+  transform: scale(var(--odontogram-zoom, 1));
+  transform-origin: left top;
+}
+
+.chartInteractionLayer {
+  outline: 0;
 }
 
 .archStack {
@@ -166,6 +202,45 @@
 
 .toothSvgHost [data-odontogram-appearance='planned'] {
   stroke-dasharray: 3 2;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chartScaleLayer {
+    transition: transform 120ms ease-out;
+  }
+
+  .toothOption,
+  .bridgeOverlayBar {
+    transition:
+      background-color 120ms ease-out,
+      border-color 120ms ease-out,
+      box-shadow 120ms ease-out,
+      opacity 120ms ease-out;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .viewportToolbar {
+    justify-content: flex-start;
+  }
+
+  .chartViewport {
+    margin-inline: -0.25rem;
+    padding: 0.25rem;
+  }
+
+  .archGrid {
+    grid-template-columns: repeat(16, minmax(2.35rem, 1fr));
+  }
+
+  .sideCell {
+    min-height: 4.25rem;
+  }
+
+  .occlusalCell,
+  .occlusalPlaceholder {
+    min-height: 2.75rem;
+  }
 }
 
 .toothSvgHost .caries-deep {

@@ -19,6 +19,7 @@ export interface BridgeOverlayProps {
   readonly data: OdontogramData;
   readonly containerRef: RefObject<HTMLElement | null>;
   readonly layoutKey?: string;
+  readonly measurementScale?: number;
 }
 
 interface OverlaySize {
@@ -32,13 +33,14 @@ export function BridgeOverlay({
   data,
   containerRef,
   layoutKey,
+  measurementScale = 1,
 }: BridgeOverlayProps) {
   const [bars, setBars] = useState<readonly BridgeBar[]>([]);
   const [size, setSize] = useState<OverlaySize>(EMPTY_SIZE);
 
   useEffect(() => {
     let disposed = false;
-    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
+    let timeoutId: number | null = null;
     const container = containerRef.current;
 
     const scheduleMeasure = () => {
@@ -64,15 +66,16 @@ export function BridgeOverlay({
         return;
       }
 
+      const scale = normalizeMeasurementScale(measurementScale);
       const containerRect = currentContainer.getBoundingClientRect();
       const bridgeSpans = deriveBridgeSpans(data).spans;
       const nextBars = computeBridgeBars(bridgeSpans, (position) =>
-        getBridgeAnchorRect(currentContainer, containerRect, position),
+        getBridgeAnchorRect(currentContainer, containerRect, position, scale),
       );
 
       setSize({
-        height: containerRect.height,
-        width: containerRect.width,
+        height: containerRect.height / scale,
+        width: containerRect.width / scale,
       });
       setBars(nextBars);
     };
@@ -97,7 +100,7 @@ export function BridgeOverlay({
       resizeObserver?.disconnect();
       window.removeEventListener('resize', scheduleMeasure);
     };
-  }, [containerRef, data, layoutKey]);
+  }, [containerRef, data, layoutKey, measurementScale]);
 
   return (
     <svg
@@ -131,6 +134,7 @@ function getBridgeAnchorRect(
   container: HTMLElement,
   containerRect: DOMRect,
   position: ToothPosition,
+  scale: number,
 ): GridRelativeRect | null {
   const anchor = container.querySelector<HTMLElement>(
     `[data-odontogram-bridge-anchor="true"][data-odontogram-position="${position}"]`,
@@ -141,9 +145,13 @@ function getBridgeAnchorRect(
 
   const anchorRect = anchor.getBoundingClientRect();
   return {
-    height: anchorRect.height,
-    width: anchorRect.width,
-    x: anchorRect.left - containerRect.left,
-    y: anchorRect.top - containerRect.top,
+    height: anchorRect.height / scale,
+    width: anchorRect.width / scale,
+    x: (anchorRect.left - containerRect.left) / scale,
+    y: (anchorRect.top - containerRect.top) / scale,
   };
+}
+
+function normalizeMeasurementScale(scale: number): number {
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
 }

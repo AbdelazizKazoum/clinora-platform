@@ -118,7 +118,10 @@ describe('bridge layout', () => {
     }
 
     expect(
-      computeBridgeBars([span], rectFor({ 16: rect(10, 20), 15: rect(60, 20) })),
+      computeBridgeBars(
+        [span],
+        rectFor({ 16: rect(10, 20), 15: rect(60, 20) }),
+      ),
     ).toEqual([
       {
         appearance: 'existing',

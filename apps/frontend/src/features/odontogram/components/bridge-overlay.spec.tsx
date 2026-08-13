@@ -76,7 +76,7 @@ describe('BridgeOverlay', () => {
     expect(bar.getAttribute('data-odontogram-bridge-segment')).toBe('16-15');
     expect(bar.getAttribute('fill')).toBe('#feffbf');
     expect(bar.getAttribute('x')).toBe('145.2');
-    expect(bar.getAttribute('width')).toBe('19.599999999999994');
+    expect(Number(bar.getAttribute('width'))).toBeCloseTo(19.6);
   });
 
   it('keeps adjacent independent bridge IDs as separate overlay bars', async () => {
@@ -92,7 +92,9 @@ describe('BridgeOverlay', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll('[data-odontogram-bridge-id]')).toHaveLength(2);
+      expect(
+        container.querySelectorAll('[data-odontogram-bridge-id]'),
+      ).toHaveLength(2);
     });
     expect(
       Array.from(container.querySelectorAll('[data-odontogram-bridge-id]')).map(
@@ -149,18 +151,54 @@ describe('BridgeOverlay', () => {
     );
 
     const firstBar = await findBridgeBar(container, 'bridge-a');
-    expect(firstBar.getAttribute('width')).toBe('19.599999999999994');
+    expect(Number(firstBar.getAttribute('width'))).toBeCloseTo(19.6);
 
     tooth15Left = 180;
     resizeObserverInstances[0]?.trigger();
 
     await waitFor(() => {
       expect(
-        container
-          .querySelector('[data-odontogram-bridge-id="bridge-a"]')
-          ?.getAttribute('width'),
-      ).toBe('39.599999999999994');
+        Number(
+          container
+            .querySelector('[data-odontogram-bridge-id="bridge-a"]')
+            ?.getAttribute('width'),
+        ),
+      ).toBeCloseTo(39.6);
     });
+  });
+
+  it('keeps bridge coordinates in the unscaled chart system at viewport zoom', async () => {
+    rectSpy.mockImplementation(function getMockRect(this: HTMLElement) {
+      const position = this.getAttribute('data-odontogram-position');
+      if (this.getAttribute('data-testid') === 'odontogram-chart') {
+        return domRect(100, 50, 540, 330);
+      }
+
+      if (position === '16') {
+        return domRect(115, 80, 60, 150);
+      }
+
+      if (position === '15') {
+        return domRect(190, 80, 60, 150);
+      }
+
+      return domRect(0, 0, 0, 0);
+    });
+
+    const { container } = render(
+      <BridgeOverlayHarness
+        data={chart({
+          16: [bridge('bridge-a', 'abutment')],
+          15: [bridge('bridge-a', 'pontic')],
+        })}
+        measurementScale={1.5}
+      />,
+    );
+
+    const bar = await findBridgeBar(container, 'bridge-a');
+
+    expect(Number(bar.getAttribute('x'))).toBeCloseTo(45.2);
+    expect(Number(bar.getAttribute('width'))).toBeCloseTo(19.6);
   });
 
   it('disconnects observers safely across Strict Mode remount cleanup', async () => {
@@ -189,9 +227,11 @@ describe('BridgeOverlay', () => {
 function BridgeOverlayHarness({
   data,
   layoutKey,
+  measurementScale,
 }: {
   readonly data: OdontogramData;
   readonly layoutKey?: string;
+  readonly measurementScale?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -208,6 +248,7 @@ function BridgeOverlayHarness({
         containerRef={containerRef}
         data={data}
         layoutKey={layoutKey}
+        measurementScale={measurementScale}
       />
     </div>
   );
