@@ -1,6 +1,7 @@
 # Clinora Odontogram Integration Plan
 
-Status: analysis complete; implementation has not started
+Status: v1 renderer foundation implemented; production integration and final
+release gates remain incomplete
 
 Plan date: 2026-08-12
 
@@ -11,6 +12,12 @@ This document is the implementation authority for the odontogram integration.
 It must be read together with the repository-root AGENTS.md,
 apps/frontend/AGENTS.md, and docs/architecture/frontend.md before executing an
 ODONTO task.
+
+This plan intentionally defines a bounded v1 visual renderer. The follow-up
+roadmap for full clinical/tooth-detail parity is
+`ODONTOGRAM_CLINICAL_PARITY_ROADMAP.md`. New conditions, implant lifecycle,
+prostheses, diagnostics, orthodontics, and periodontal work should follow that
+roadmap before the final ODONTO-16-style release audit.
 
 ## 1. Executive Summary
 
