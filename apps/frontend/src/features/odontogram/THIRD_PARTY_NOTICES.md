@@ -84,3 +84,20 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
   manifest was expanded only for the reviewed PARITY-02 layers, and the
   renderer performance fixture was re-baselined to the measured normalized
   node/asset totals.
+
+### PARITY-04 Adapted Files
+
+- `apps/frontend/src/features/treatment/model/periodontal.ts` adapts the
+  upstream six-site periodontal semantics, position-aware furcation entrances,
+  four-surface plaque/index geometries, implant-only mPI/mBI gates, derived CAL,
+  Cairo recession, and whole-mouth summaries into serializable pure Treatment
+  rules. It intentionally does not use legacy `Map`/`Set` state or FHIR code.
+- `apps/frontend/src/features/treatment/components/periodontal-workspace.tsx`
+  adapts the upstream six-site charting workflow into a Clinora-owned accessible
+  Treatment sub-workspace with keyboard-friendly form order, explicit empty
+  versus charted values, and assistant draft/dentist confirmation behavior.
+- `apps/frontend/src/features/odontogram/rendering/tooth-layer-registry.ts` and
+  `apps/frontend/src/features/treatment/model/treatment-odontogram.mapper.ts`
+  adapt only the reviewed calculus, periodontal-involvement, mucositis, and
+  peri-implant bone-loss layer composition. Probing and index records remain
+  Treatment-owned record data and are not inferred from SVG state.

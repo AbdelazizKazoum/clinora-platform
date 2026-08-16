@@ -241,6 +241,7 @@ export interface TreatmentVisit {
   clinicalNotes: string | null;
   findings: readonly ClinicalFinding[];
   acts: readonly TreatmentAct[];
+  readonly periodontalExamination?: PeriodontalExamination | null;
   documentationHandoff: DocumentationHandoff | null;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -275,3 +276,4 @@ export const documentationHandoffStatusLabels = {
   ACCEPTED: 'Accepted by dentist',
   CANCELLED: 'Cancelled',
 } satisfies Record<DocumentationHandoffStatus, string>;
+import type { PeriodontalExamination } from './periodontal';

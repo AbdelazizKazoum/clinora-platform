@@ -1,6 +1,7 @@
 import { createMockTreatmentVisit } from '../mock/treatment-workspace.mock';
 import { mapTreatmentVisitToOdontogram } from './treatment-odontogram.mapper';
 import {
+  approveWorkspacePeriodontalExamination,
   approveWorkspaceAct,
   assignWorkspaceDocumentation,
   completeWorkspaceVisit,
@@ -9,8 +10,10 @@ import {
   startWorkspaceDocumentation,
   submitWorkspaceDocumentation,
   transitionWorkspaceAct,
+  updateWorkspacePeriodontalExamination,
   type MockTreatmentActor,
 } from './treatment-workspace';
+import { updatePeriodontalSite } from './periodontal';
 
 const now = new Date('2026-08-13T12:00:00.000Z');
 const dentist: MockTreatmentActor = {
@@ -178,5 +181,33 @@ describe('Mock Treatment workspace workflow', () => {
         now,
       ),
     ).toThrow('Treatment act cannot transition to PLANNED.');
+  });
+
+  it('keeps assistant periodontal charting as a draft until dentist approval', () => {
+    const assigned = assignWorkspaceDocumentation(
+      createMockTreatmentVisit(),
+      dentist,
+      assistant.userId,
+      'handoff-periodontal',
+      now,
+    );
+    const started = startWorkspaceDocumentation(assigned, assistant, now);
+    const drafted = updateWorkspacePeriodontalExamination(
+      started,
+      assistant,
+      (examination) => updatePeriodontalSite(examination, 16, 'B', { pd: 5 }, now),
+      now,
+    );
+
+    expect(drafted.periodontalExamination).toMatchObject({
+      status: 'DRAFT',
+      teeth: [{ toothNumber: 16, sites: { B: { pd: 5 } } }],
+    });
+
+    const approved = approveWorkspacePeriodontalExamination(drafted, dentist, now);
+    expect(approved.periodontalExamination).toMatchObject({
+      status: 'CONFIRMED',
+      verifiedByDentistId: dentist.userId,
+    });
   });
 });

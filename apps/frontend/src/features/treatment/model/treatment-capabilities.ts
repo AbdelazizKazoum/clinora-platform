@@ -161,7 +161,11 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   TreatmentCapability
 > = {
   APICAL_DIAGNOSIS: existingFinding(),
-  CALCULUS: existingFinding(),
+  CALCULUS: existingFinding({
+    bases: ['natural'],
+    projection: 'existing-only',
+    svgLayers: ['calculus'],
+  }),
   CARIES: existingFinding({
     projection: 'existing-only',
     svgLayers: ['caries surface'],
@@ -212,8 +216,23 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   MOBILITY: existingFinding(),
   ORTHODONTIC_STATE: existingFinding(),
   PERIAPICAL_LESION: existingFinding(),
-  PERI_IMPLANT_STATUS: existingFinding(),
-  PERIODONTAL_INVOLVEMENT: existingFinding(),
+  PERI_IMPLANT_STATUS: existingFinding({
+    bases: ['implant'],
+    projection: 'existing-only',
+    subtypeSupport: {
+      HEALTHY: 'record-only',
+      MILD: 'existing-only',
+      MODERATE: 'existing-only',
+      MUCOSITIS: 'existing-only',
+      SEVERE: 'existing-only',
+    },
+    svgLayers: ['parodontal', 'peri-implant-bone-loss'],
+  }),
+  PERIODONTAL_INVOLVEMENT: existingFinding({
+    bases: ['natural'],
+    projection: 'existing-only',
+    svgLayers: ['parodontal'],
+  }),
   PERIODONTAL_MEASUREMENT: existingFinding(),
   PLAQUE_FINDING: existingFinding(),
   PULP_DIAGNOSIS: existingFinding(),
@@ -451,15 +470,19 @@ export const getTreatmentCapabilityPresentation = (
   capability: TreatmentCapability,
   context: TreatmentCapabilityContext,
 ): TreatmentCapabilityPresentation => {
+  const projection =
+    context.subtype !== undefined
+      ? capability.subtypeSupport?.[context.subtype] ?? capability.projection
+      : capability.projection;
   if (
     !capability.bases.includes(context.base) ||
     !capability.dentitions.includes(context.dentition) ||
     (context.subtype !== undefined &&
       capability.subtypeBases?.[context.subtype] !== undefined &&
       !capability.subtypeBases[context.subtype].includes(context.base)) ||
-    capability.projection === 'none'
+    projection === 'none'
   ) {
     return 'not-available';
   }
-  return capability.projection === 'record-only' ? 'record-only' : 'visual';
+  return projection === 'record-only' ? 'record-only' : 'visual';
 };

@@ -1076,3 +1076,28 @@ Reviewed and implemented on 2026-08-16:
 - PARITY-02 implementation checkpoints are complete. The external clinical
   approval gates in section 12 remain required before release sign-off; no
   PARITY-03 through PARITY-05 clinical family was implemented in this step.
+
+## 17. PARITY-04 Progress Evidence
+
+Implemented on 2026-08-16:
+
+- Added a serializable Treatment periodontal examination with six-site PD/GM,
+  derived CAL, BOP, suppuration, mobility, position-aware furcation, O'Leary
+  plaque, PI/GI, implant-only mPI/mBI, KG, CEJ visibility, root concavity,
+  gingival phenotype, and Miller class fields.
+- Added pure validation/update rules preserving uncharted versus healthy values,
+  clearing orphaned site flags when PD is removed, gating furcation by tooth
+  position, and gating mPI/mBI by implant status.
+- Added Cairo recession derivation and whole-mouth summaries. The 2017
+  classification result is explicitly `NOT_CLINICALLY_APPROVED`; no release
+  diagnosis/stage/grade/extent is inferred without clinical approval.
+- Added a separate Treatment periodontal workspace with six-site inputs,
+  keyboard-friendly tab order, furcation/index controls, mucogingival details,
+  implant gating, summaries, and draft/confirmation lifecycle behavior.
+- Added calculus, periodontal-involvement, mucositis, and severity-scaled
+  peri-implant bone-loss visual layers with stale-layer reset tests.
+- Added focused model, mapper, renderer, lifecycle, and workspace coverage.
+
+PARITY-04 remains pending the clinical approval gate for classification formulas
+and terminology, plus the later full arch-curve/overlay and lazy-loading release
+performance review. No PARITY-05 workflow or backend handoff was implemented.

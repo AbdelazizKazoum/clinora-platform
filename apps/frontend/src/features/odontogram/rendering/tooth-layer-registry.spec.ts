@@ -334,6 +334,28 @@ describe('tooth layer registry', () => {
     expect(result.layers.map((layer) => layer.id)).toContain('tooth-base');
   });
 
+  it('renders calculus, periodontal involvement, and peri-implant severity layers', () => {
+    expect(
+      deriveWholeToothVisualLayers(
+        tooth(16, [
+          { appearance: 'existing', kind: 'periodontal', state: 'calculus' },
+          { appearance: 'existing', kind: 'periodontal', state: 'involvement' },
+        ]),
+        'side',
+      ).layers.map((layer) => layer.id),
+    ).toEqual(expect.arrayContaining(['calculus', 'parodontal']));
+
+    expect(
+      deriveWholeToothVisualLayers(
+        tooth(16, [{ appearance: 'existing', kind: 'peri-implant', state: 'moderate' }], 'implant'),
+        'side',
+      ).layers,
+    ).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'parodontal' }),
+      expect.objectContaining({ id: 'peri-implant-bone-loss', opacity: '0.7' }),
+    ]));
+  });
+
   it('reports onlay as unsupported in side roots and renderable in occlusal roots', () => {
     const sideResult = deriveToothVisualLayers(
       tooth(16, [
@@ -521,6 +543,9 @@ describe('tooth layer registry', () => {
       'prosthesis-implant',
       'prosthesis-implant-crown',
       'prosthesis-implant-gum',
+      'calculus',
+      'parodontal',
+      'peri-implant-bone-loss',
     ]);
   });
 });

@@ -74,4 +74,15 @@ describe('Treatment workspace page', () => {
       true,
     );
   });
+
+  it('opens the separate periodontal workspace with six-site controls and empty-state summary', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Periodontal chart' }));
+
+    expect(screen.getByText('Periodontal examination')).toBeTruthy();
+    expect(screen.getByRole('spinbutton', { name: 'MB probing depth' })).toBeTruthy();
+    expect(screen.getByRole('spinbutton', { name: 'DL probing depth' })).toBeTruthy();
+    expect(screen.getByText('Whole-mouth summary')).toBeTruthy();
+    expect(screen.getByText('Charted sites')).toBeTruthy();
+  });
 });

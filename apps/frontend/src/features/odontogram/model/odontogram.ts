@@ -96,6 +96,16 @@ export type OdontogramCondition =
       readonly groupId: string;
       readonly prosthesis: ImplantProsthesisType;
       readonly appearance: OdontogramAppearance;
+    }
+  | {
+      readonly kind: 'periodontal';
+      readonly state: 'calculus' | 'involvement';
+      readonly appearance: 'existing';
+    }
+  | {
+      readonly kind: 'peri-implant';
+      readonly state: 'mucositis' | 'mild' | 'moderate' | 'severe';
+      readonly appearance: 'existing';
     };
 
 export interface OdontogramTooth {
@@ -175,6 +185,8 @@ const CONDITION_KINDS = [
   'structure',
   'planned-implant',
   'prosthesis',
+  'periodontal',
+  'peri-implant',
 ] as const;
 const BRIDGE_ROLES = ['abutment', 'pontic'] as const;
 const ROOT_CANAL_STATES = ['root-canal'] as const;
@@ -201,6 +213,8 @@ const PROSTHESIS_TYPES = [
   'removable-partial',
   'removable-full',
 ] as const;
+const PERIODONTAL_STATES = ['calculus', 'involvement'] as const;
+const PERI_IMPLANT_STATES = ['mucositis', 'mild', 'moderate', 'severe'] as const;
 const TOOTH_POSITION_SET: ReadonlySet<number> = new Set<number>(
   TOOTH_POSITIONS,
 );
@@ -630,6 +644,22 @@ function parseConditionByKind(
       }
       return { kind, groupId, prosthesis, appearance };
     }
+
+    case 'periodontal': {
+      validateExactKeys(value, ['kind', 'state', 'appearance'], path, issues);
+      const state = readEnum(value.state, PERIODONTAL_STATES, `${path}.state`, issues);
+      const appearance = readEnum(value.appearance, ['existing'] as const, `${path}.appearance`, issues);
+      if (issues.length !== issueCount || state === undefined || appearance === undefined) return null;
+      return { kind, state, appearance };
+    }
+
+    case 'peri-implant': {
+      validateExactKeys(value, ['kind', 'state', 'appearance'], path, issues);
+      const state = readEnum(value.state, PERI_IMPLANT_STATES, `${path}.state`, issues);
+      const appearance = readEnum(value.appearance, ['existing'] as const, `${path}.appearance`, issues);
+      if (issues.length !== issueCount || state === undefined || appearance === undefined) return null;
+      return { kind, state, appearance };
+    }
   }
 }
 
@@ -828,6 +858,8 @@ function conditionIsSupportedByBase(
       ? !condition.prosthesis.startsWith('removable-')
       : base === 'missing' && condition.prosthesis.startsWith('removable-');
   }
+  if (condition.kind === 'periodontal') return base === 'natural';
+  if (condition.kind === 'peri-implant') return base === 'implant';
   switch (base) {
     case 'natural':
       return condition.kind !== 'bridge' || condition.role === 'abutment';

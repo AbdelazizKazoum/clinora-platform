@@ -10,6 +10,10 @@ import {
   type TypedClinicalFindingInput,
   type TypedTreatmentActInput,
 } from './treatment-inputs';
+import {
+  createEmptyPeriodontalExamination,
+  type PeriodontalExamination,
+} from './periodontal';
 import type { TreatmentWorkspaceRole } from './treatment.rules';
 
 export interface MockTreatmentActor {
@@ -20,6 +24,10 @@ export interface MockTreatmentActor {
 
 export type RecordWorkspaceFindingInput = TypedClinicalFindingInput;
 export type RecordWorkspaceActInput = TypedTreatmentActInput;
+
+export type PeriodontalExaminationUpdater = (
+  examination: PeriodontalExamination,
+) => PeriodontalExamination;
 
 const ACT_TRANSITIONS: Readonly<
   Record<TreatmentActStatus, readonly TreatmentActStatus[]>
@@ -129,6 +137,53 @@ export const approveWorkspaceAct = (
           }
         : act,
     ),
+    updatedAt: now,
+  };
+};
+
+export const updateWorkspacePeriodontalExamination = (
+  visit: TreatmentVisit,
+  actor: MockTreatmentActor,
+  update: PeriodontalExaminationUpdater,
+  now: Date,
+): TreatmentVisit => {
+  assertCanDocument(visit, actor);
+  const current =
+    visit.periodontalExamination ??
+    createEmptyPeriodontalExamination(actor.userId, now);
+  const next = update(current);
+  return {
+    ...visit,
+    periodontalExamination: {
+      ...next,
+      enteredByUserId: current.enteredByUserId,
+      status: actor.role === 'doctor' ? 'CONFIRMED' : 'DRAFT',
+      updatedAt: now,
+      verifiedByDentistId:
+        actor.role === 'doctor' ? actor.userId : current.verifiedByDentistId,
+    },
+    updatedAt: now,
+  };
+};
+
+export const approveWorkspacePeriodontalExamination = (
+  visit: TreatmentVisit,
+  dentist: MockTreatmentActor,
+  now: Date,
+): TreatmentVisit => {
+  assertResponsibleDentist(visit, dentist);
+  const examination = visit.periodontalExamination;
+  if (examination === null || examination === undefined) {
+    throw new Error('No periodontal examination is available for approval.');
+  }
+  return {
+    ...visit,
+    periodontalExamination: {
+      ...examination,
+      status: 'CONFIRMED',
+      updatedAt: now,
+      verifiedByDentistId: dentist.userId,
+    },
     updatedAt: now,
   };
 };
@@ -275,7 +330,8 @@ export const completeWorkspaceVisit = (
     visit.findings.some(({ status }) => status === 'DRAFT') ||
     visit.acts.some(
       ({ status }) => status === 'DRAFT' || status === 'IN_PROGRESS',
-    )
+    ) ||
+    visit.periodontalExamination?.status === 'DRAFT'
   ) {
     throw new Error('Approve or resolve all draft clinical entries first.');
   }

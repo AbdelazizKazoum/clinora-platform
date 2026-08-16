@@ -363,6 +363,50 @@ const projectFinding = (
     return;
   }
 
+  if (
+    finding.code === 'CALCULUS' ||
+    finding.code === 'PERIODONTAL_INVOLVEMENT'
+  ) {
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      if (tooth.base !== 'natural') {
+        addIssue(issues, finding.id, `Periodontal layer skipped on tooth ${position}.`);
+        continue;
+      }
+      addUniqueCondition(tooth, {
+        appearance: 'existing',
+        kind: 'periodontal',
+        state: finding.code === 'CALCULUS' ? 'calculus' : 'involvement',
+      });
+    }
+    return;
+  }
+
+  if (finding.code === 'PERI_IMPLANT_STATUS') {
+    const state = detailString(finding.details, 'PERI_IMPLANT_STATE');
+    const stateMap: Record<string, 'mucositis' | 'mild' | 'moderate' | 'severe' | undefined> = {
+      MILD: 'mild',
+      MODERATE: 'moderate',
+      MUCOSITIS: 'mucositis',
+      SEVERE: 'severe',
+    };
+    const periImplantState = stateMap[state ?? ''];
+    if (!periImplantState) return;
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      if (tooth.base !== 'implant') {
+        addIssue(issues, finding.id, `Peri-implant status requires implant tooth ${position}.`);
+        continue;
+      }
+      addUniqueCondition(tooth, {
+        appearance: 'existing',
+        kind: 'peri-implant',
+        state: periImplantState,
+      });
+    }
+    return;
+  }
+
   addIssue(
     issues,
     finding.id,
@@ -731,6 +775,9 @@ const conditionKey = (condition: OdontogramCondition): string => {
   }
   if (condition.kind === 'structure') return `${condition.kind}:${condition.state}`;
   if (condition.kind === 'planned-implant') return condition.kind;
+  if (condition.kind === 'periodontal' || condition.kind === 'peri-implant') {
+    return `${condition.kind}:${condition.state}`;
+  }
   return condition.kind;
 };
 

@@ -55,6 +55,7 @@ function resetWholeToothLayers(
 
     layerElement.setAttribute('data-active', '0');
     layerElement.removeAttribute('data-odontogram-appearance');
+    layerElement.style.removeProperty('opacity');
   }
 }
 
@@ -104,6 +105,9 @@ function activateVisualLayer(
   layerElement.setAttribute('data-active', '1');
   if (layer.appearance !== undefined) {
     layerElement.setAttribute('data-odontogram-appearance', layer.appearance);
+  }
+  if ('opacity' in layer && layer.opacity !== undefined) {
+    layerElement.style.opacity = layer.opacity;
   }
 
   if (!isSurfaceVisualLayer(layer)) {

@@ -24,7 +24,8 @@ export type ToothWholeLayerKind =
   | 'extraction'
   | 'restoration'
   | 'structure'
-  | 'prosthesis';
+  | 'prosthesis'
+  | 'periodontal';
 export type ToothVisualLayer = ToothSurfaceVisualLayer | ToothWholeVisualLayer;
 
 export interface ToothSurfaceVisualLayer {
@@ -39,6 +40,7 @@ export interface ToothWholeVisualLayer {
   readonly id: string;
   readonly kind: ToothWholeLayerKind;
   readonly appearance?: OdontogramAppearance;
+  readonly opacity?: string;
 }
 
 export interface UnsupportedToothSurfaceVisual {
@@ -126,6 +128,9 @@ export const TOOTH_WHOLE_LAYER_RESET_IDS = Object.freeze([
   'prosthesis-implant',
   'prosthesis-implant-crown',
   'prosthesis-implant-gum',
+  'calculus',
+  'parodontal',
+  'peri-implant-bone-loss',
 ] as const);
 
 export const FILLING_SURFACE_LAYER_ID_BY_MATERIAL = Object.freeze(
@@ -211,6 +216,37 @@ export function deriveWholeToothVisualLayers(
           appearance: condition.appearance,
           id,
           kind: 'prosthesis',
+        });
+      }
+      continue;
+    }
+
+    if (condition.kind === 'periodontal') {
+      layers.push({
+        appearance: condition.appearance,
+        id: condition.state === 'calculus' ? 'calculus' : 'parodontal',
+        kind: 'periodontal',
+      });
+      continue;
+    }
+
+    if (condition.kind === 'peri-implant') {
+      layers.push({
+        appearance: condition.appearance,
+        id: 'parodontal',
+        kind: 'periodontal',
+      });
+      if (condition.state !== 'mucositis') {
+        layers.push({
+          appearance: condition.appearance,
+          id: 'peri-implant-bone-loss',
+          kind: 'periodontal',
+          opacity:
+            condition.state === 'mild'
+              ? '0.4'
+              : condition.state === 'moderate'
+                ? '0.7'
+                : '1',
         });
       }
       continue;

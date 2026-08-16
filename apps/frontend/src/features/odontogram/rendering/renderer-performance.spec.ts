@@ -48,8 +48,8 @@ describe('odontogram renderer performance budget', () => {
     // Structural, dentition, implant, and prosthesis layers are now retained
     // deliberately. Keep the measured PARITY-02 budget explicit rather than
     // restoring the entire legacy layer set.
-    expect(sideRuntimeNodes).toBeLessThanOrEqual(11_500);
-    expect(sideAndOcclusalRuntimeNodes).toBeLessThanOrEqual(16_500);
+    expect(sideRuntimeNodes).toBeLessThanOrEqual(11_600);
+    expect(sideAndOcclusalRuntimeNodes).toBeLessThanOrEqual(16_700);
     expect(sideAndOcclusalRuntimeNodes).toBeLessThan(
       sideAndOcclusalSourceNodes,
     );

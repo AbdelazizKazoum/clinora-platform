@@ -28,6 +28,28 @@ export {
   validateTreatmentInput,
 } from './model/treatment-inputs';
 export {
+  CEJ_VISIBILITY_VALUES,
+  FURCATION_GRADES,
+  GINGIVAL_PHENOTYPES,
+  MILLER_CLASSES,
+  PERIODONTAL_GRADES,
+  PERIODONTAL_INDEX_SURFACES,
+  ROOT_CONCAVITY_VALUES,
+  createEmptyPeriodontalExamination,
+  deriveCal,
+  deriveCairoRecession,
+  derivePeriodontalClassification,
+  getFurcationEntrances,
+  getPeriodontalTooth,
+  summarizePeriodontalExamination,
+  updateFurcation,
+  updatePeriodontalMobility,
+  updatePeriodontalSite,
+  updatePeriodontalToothDetail,
+  updatePlaque,
+  updateSurfaceIndex,
+} from './model/periodontal';
+export {
   canApproveTreatmentDocumentation,
   canEditTreatmentDraft,
   parseTreatmentLaunchContext,
@@ -35,6 +57,10 @@ export {
 export { mapTreatmentVisitFromDto } from './model/treatment.mapper';
 export { mapTreatmentVisitToOdontogram } from './model/treatment-odontogram.mapper';
 export { TreatmentWorkspacePage } from './pages/treatment-workspace-page';
+export {
+  approveWorkspacePeriodontalExamination,
+  updateWorkspacePeriodontalExamination,
+} from './model/treatment-workspace';
 export type {
   ClinicalDetail,
   ClinicalFinding,
@@ -66,6 +92,22 @@ export type {
   TreatmentVisit,
   TreatmentVisitStatus,
 } from './model/treatment';
+export type {
+  CairoRecessionType,
+  CejVisibility,
+  FurcationGrade,
+  GingivalPhenotype,
+  MillerClass,
+  PeriodontalGrade,
+  RootConcavity,
+  PeriodontalClassificationResult,
+  PeriodontalExamination,
+  PeriodontalRiskContext,
+  PeriodontalSiteMeasurement,
+  PeriodontalSitePatch,
+  PeriodontalSummary,
+  PeriodontalToothExamination,
+} from './model/periodontal';
 export type {
   OdontogramAxisCapability,
   OdontogramRecordCapability,

@@ -80,12 +80,13 @@ import {
   type TreatmentVisit,
 } from '../model/treatment';
 import styles from '../components/treatment-workspace.module.scss';
+import { PeriodontalWorkspace } from '../components/periodontal-workspace';
 
 export interface TreatmentWorkspacePageProps {
   readonly launchContext?: TreatmentLaunchContext | null;
 }
 
-type WorkspaceTab = 'chart' | 'record' | 'handoff';
+type WorkspaceTab = 'chart' | 'periodontal' | 'record' | 'handoff';
 
 const FILLING_MATERIALS = [
   ['COMPOSITE', 'Composite'],
@@ -372,6 +373,7 @@ export function TreatmentWorkspacePage({
         {(
           [
             ['chart', 'Odontogram & tooth details', 'scan-line'],
+            ['periodontal', 'Periodontal chart', 'activity'],
             ['record', 'Clinical record', 'clipboard-list'],
             ['handoff', 'Documentation handoff', 'users-round'],
           ] as const
@@ -544,6 +546,15 @@ export function TreatmentWorkspacePage({
           projectionIssueIds={
             new Set(projection.issues.map(({ recordId }) => recordId))
           }
+          visit={visit}
+        />
+      )}
+
+      {activeTab === 'periodontal' && (
+        <PeriodontalWorkspace
+          actor={actor}
+          canDocument={canDocument && !isReadOnly}
+          onVisitChange={setVisit}
           visit={visit}
         />
       )}
@@ -988,6 +999,7 @@ function ActFormFields(props: ToothDetailsPanelProps) {
           position must be missing for a pontic.
         </Alert>
       )}
+
       {props.selectedAct?.target === 'arch' && (
         <Alert className="py-2 fs-sm" variant="info">
           Select the affected gap or arch units. The prosthesis remains one
