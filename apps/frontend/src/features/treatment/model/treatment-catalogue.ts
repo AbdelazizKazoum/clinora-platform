@@ -244,6 +244,9 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       ['NATURAL', 'Permanent tooth'],
       ['MISSING', 'Missing tooth'],
       ['IMPLANT', 'Implant'],
+      ['PRIMARY', 'Primary / deciduous tooth'],
+      ['UNDER_GUM', 'Tooth under gum'],
+      ['MISSING_AFTER_EXTRACTION', 'Missing after extraction'],
     ),
   },
   {
@@ -470,7 +473,7 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
     code: 'TOOTH_FRACTURE',
     label: 'Tooth fracture',
     group: 'Other',
-    target: 'surface',
+    target: 'tooth-region',
   },
   {
     code: 'EXTRACTION_WOUND',

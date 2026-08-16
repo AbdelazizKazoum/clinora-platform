@@ -61,3 +61,26 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
 - `apps/frontend/src/features/treatment/model/treatment-capabilities.ts` adapts the reviewed clinical-axis names, special per-surface fields, applicability notes, lifecycle projection support, and record-only distinctions from `src/registry/axes.ts`, `src/registry/restorations.ts`, `src/registry/svgLayers.ts`, and `src/fhir/codesystems.ts`. It is an inert Treatment capability inventory and does not copy the legacy store, persistence, FHIR, UI, or renderer implementation.
 - `apps/frontend/src/features/treatment/model/treatment-inputs.ts` adapts the legacy restorative, periodontal, index-surface, and furcation geometry distinctions into serializable Clinora input contracts with a runtime UI boundary validator. It does not import or execute legacy code.
 - No new legacy SVG layer was activated by PARITY-01. The existing approved runtime manifest remains unchanged.
+
+### PARITY-02 Adapted Files
+
+- `apps/frontend/src/features/odontogram/model/odontogram.ts` adapts the
+  reviewed structural, primary-dentition, planned-implant, and prosthesis visual
+  DTO concepts while keeping lifecycle/business eligibility in Treatment.
+- `apps/frontend/src/features/odontogram/utils/tooth-numbering.ts` adapts the
+  upstream primary FDI and Universal display remapping while preserving the
+  permanent-position identity used by Clinora.
+- `apps/frontend/src/features/odontogram/rendering/tooth-layer-registry.ts`
+  adapts the structural and implant/prosthesis layer compositions from
+  `src/odontogram.ts`, `src/registry/svgLayers.ts`, and
+  `src/__tests__/prosthesis-render.test.ts`. The renderer remains controlled and
+  instance-scoped; it does not import the legacy store or decide Treatment
+  eligibility.
+- `apps/frontend/src/features/treatment/model/treatment-odontogram.mapper.ts`
+  maps Treatment findings and acts into those visual conditions, including
+  deterministic planned/completed/cancelled implant lifecycle behavior and
+  stable prosthesis group IDs.
+- The six copied SVG assets were not changed. The approved runtime layer
+  manifest was expanded only for the reviewed PARITY-02 layers, and the
+  renderer performance fixture was re-baselined to the measured normalized
+  node/asset totals.

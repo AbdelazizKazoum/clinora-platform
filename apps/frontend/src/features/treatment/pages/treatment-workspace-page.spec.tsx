@@ -56,4 +56,22 @@ describe('Treatment workspace page', () => {
       ),
     ).toBeTruthy();
   });
+
+  it('reports an unavailable prosthesis subtype for a natural tooth', () => {
+    render(<TreatmentWorkspacePage />);
+
+    fireEvent.change(screen.getByLabelText('Finding'), {
+      target: { value: 'EXISTING_PROSTHESIS' },
+    });
+
+    expect(
+      screen.getByText(
+        'This clinical concept is not available for the selected tooth base or dentition.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Confirm finding' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
 });

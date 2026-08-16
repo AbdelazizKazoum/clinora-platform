@@ -207,4 +207,158 @@ describe('Treatment odontogram projection', () => {
     ).toEqual([]);
     expect(validateOdontogramData(projection.data).valid).toBe(true);
   });
+
+  it('keeps a primary tooth on its permanent position while exposing primary dentition', () => {
+    const base = createMockTreatmentVisit();
+    const primary: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'TOOTH_STATE',
+      details: [{ key: 'TOOTH_STATE', value: 'PRIMARY' }],
+      id: 'finding-primary-16',
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [16],
+      },
+    };
+    const projected = mapTreatmentVisitToOdontogram({
+      ...base,
+      findings: [primary],
+    });
+
+    expect(tooth({ ...base, findings: [primary] }, 16)).toMatchObject({
+      base: 'natural',
+      dentition: 'primary',
+      position: 16,
+    });
+    expect(projected.data.teeth).toHaveLength(32);
+    expect(validateOdontogramData(projected.data).valid).toBe(true);
+  });
+
+  it('projects structural substrate, fracture, extraction socket, and crown actions', () => {
+    const base = createMockTreatmentVisit();
+    const substrate: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'TOOTH_SUBSTRATE',
+      details: [{ key: 'TOOTH_SUBSTRATE', value: 'BROKEN' }],
+      id: 'finding-broken-16',
+      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [16] },
+    };
+    const fracture: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'TOOTH_FRACTURE',
+      details: [],
+      id: 'finding-fracture-16',
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH_REGION',
+        surfaces: ['MESIAL', 'OCCLUSAL'],
+        toothNumbers: [16],
+      },
+    };
+    const wound: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'EXTRACTION_WOUND',
+      details: [],
+      id: 'finding-wound-26',
+      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [26] },
+    };
+    const crownReplacement: TreatmentAct = {
+      ...directFilling(),
+      code: 'CROWN_REPLACEMENT',
+      details: [{ key: 'RESTORATION_MATERIAL', value: 'ZIRCON' }],
+      id: 'act-crown-replacement-16',
+      target: { ...directFilling().target, kind: 'TOOTH', surfaces: [] },
+    };
+    const existingCrown: ClinicalFinding = {
+      ...base.findings[1],
+      code: 'EXISTING_FIXED_RESTORATION',
+      details: [
+        { key: 'RESTORATION_TYPE', value: 'CROWN' },
+        { key: 'RESTORATION_MATERIAL', value: 'ZIRCON' },
+      ],
+      id: 'finding-existing-crown-16',
+      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [16] },
+    };
+    const projected = mapTreatmentVisitToOdontogram({
+      ...base,
+      findings: [
+        ...base.findings.filter((finding) => finding.target.toothNumbers[0] !== 16),
+        substrate,
+        fracture,
+        wound,
+        existingCrown,
+      ],
+      acts: [crownReplacement],
+    });
+
+    expect(tooth({ ...base, findings: [substrate, fracture, existingCrown, wound], acts: [crownReplacement] }, 16)?.conditions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'structure', state: 'broken' }),
+        expect.objectContaining({ kind: 'structure', state: 'crown-replacement' }),
+      ]),
+    );
+    expect(tooth({ ...base, findings: [substrate, fracture, wound], acts: [crownReplacement] }, 26)?.conditions).toContainEqual(
+      expect.objectContaining({ kind: 'structure', state: 'extraction-wound' }),
+    );
+    expect(validateOdontogramData(projected.data).valid).toBe(true);
+  });
+
+  it('maps planned and completed implant placement separately and removes cancelled acts', () => {
+    const base = createMockTreatmentVisit();
+    const placement = (status: TreatmentAct['status']): TreatmentAct => ({
+      ...directFilling(),
+      code: 'IMPLANT_PLACEMENT',
+      details: [],
+      id: `act-implant-${status}`,
+      status,
+      target: { ...directFilling().target, kind: 'TOOTH', surfaces: [], toothNumbers: [46] },
+    });
+
+    expect(tooth({ ...base, acts: [placement('PLANNED')] }, 46)?.conditions).toContainEqual({
+      appearance: 'planned',
+      kind: 'planned-implant',
+    });
+    expect(tooth({ ...base, acts: [placement('IN_PROGRESS')] }, 46)?.conditions).toContainEqual(
+      expect.objectContaining({ kind: 'planned-implant' }),
+    );
+    expect(tooth({ ...base, acts: [placement('COMPLETED')] }, 46)).toMatchObject({
+      base: 'implant',
+      conditions: [],
+    });
+    expect(tooth({ ...base, acts: [placement('CANCELLED')] }, 46)).toMatchObject({
+      base: 'missing',
+      conditions: [],
+    });
+  });
+
+  it('keeps prosthesis groups deterministic and reports fixed/prosthesis conflicts', () => {
+    const base = createMockTreatmentVisit();
+    const implantFinding: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'TOOTH_STATE',
+      details: [{ key: 'TOOTH_STATE', value: 'IMPLANT' }],
+      id: 'finding-implant-14',
+      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [14] },
+    };
+    const prosthesis: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'EXISTING_PROSTHESIS',
+      details: [{ key: 'PROSTHESIS_TYPE', value: 'LOCATOR' }],
+      id: 'finding-locator-14',
+      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [14] },
+    };
+    const projected = mapTreatmentVisitToOdontogram({
+      ...base,
+      findings: [implantFinding, prosthesis],
+    });
+    expect(tooth({ ...base, findings: [implantFinding, prosthesis] }, 14)?.conditions).toContainEqual({
+      appearance: 'existing',
+      groupId: 'finding-locator-14',
+      kind: 'prosthesis',
+      prosthesis: 'locator',
+    });
+    expect(validateOdontogramData(projected.data).valid).toBe(true);
+  });
 });

@@ -16,6 +16,7 @@ export {
   ODONTOGRAM_PERIODONTAL_RECORD_CAPABILITIES,
   ODONTOGRAM_UPSTREAM_LAYER_IDS,
   TREATMENT_ACT_CAPABILITIES,
+  getTreatmentCapabilityPresentation,
 } from './model/treatment-capabilities';
 export {
   createTreatmentActInput,
@@ -70,6 +71,8 @@ export type {
   OdontogramRecordCapability,
   OdontogramProjectionSupport,
   OdontogramViewSupport,
+  TreatmentCapabilityContext,
+  TreatmentCapabilityPresentation,
   TreatmentCapability,
 } from './model/treatment-capabilities';
 export type { TreatmentDetailOption } from './model/treatment-catalogue';

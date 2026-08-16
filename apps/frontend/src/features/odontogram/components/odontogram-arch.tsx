@@ -129,12 +129,16 @@ export function OdontogramArch({
           key={archConfig.arch}
         >
           {archConfig.positions.map((position) => {
-            const label = formatToothNumber(position, numberingSystem);
+            const tooth = getRequiredTooth(toothByPosition, position);
+            const label = formatToothNumber(
+              position,
+              numberingSystem,
+              tooth.dentition,
+            );
             const optionId = `${chartInstanceId}-tooth-${position}`;
             const isSelected = selectedPositions.has(position);
             const isActive = selection.activeToothPosition === position;
             const isHovered = hoveredPosition === position;
-            const tooth = getRequiredTooth(toothByPosition, position);
             const option = (
               <ToothOption
                 active={isActive}

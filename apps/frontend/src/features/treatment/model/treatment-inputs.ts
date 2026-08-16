@@ -164,7 +164,10 @@ const assertTarget = (
   if (!isNonEmptyArray(target.toothNumbers)) {
     throw new Error(`${code} requires at least one tooth number.`);
   }
-  if (target.kind === 'TOOTH_SURFACE' && !isNonEmptyArray(target.surfaces)) {
+  if (
+    (target.kind === 'TOOTH_SURFACE' || target.kind === 'TOOTH_REGION') &&
+    !isNonEmptyArray(target.surfaces)
+  ) {
     throw new Error(`${code} requires at least one restorative surface.`);
   }
   if (target.kind === 'INDEX_SURFACE' && !isNonEmptyArray(target.surfaces)) {

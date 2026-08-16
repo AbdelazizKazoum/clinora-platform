@@ -97,9 +97,10 @@ describe('tooth-numbering', () => {
     },
   );
 
-  it('does not conflate primary labels with permanent positions', () => {
-    expect(formatToothNumber(15, 'universal')).toBe('4');
-    expect(formatToothNumber(15, 'palmer')).toBe('UR-5');
+  it('remaps primary labels without changing the permanent position key', () => {
+    expect(formatToothNumber(11, 'fdi', 'primary')).toBe('51');
+    expect(formatToothNumber(15, 'universal', 'primary')).toBe('E');
+    expect(formatToothNumber(15, 'palmer', 'primary')).toBe('UR-5');
   });
 });
 

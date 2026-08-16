@@ -19,6 +19,7 @@ export type {
 export type { ToothSurfaceSelectorProps } from './components/tooth-surface-selector';
 export type {
   FillingMaterial,
+  ImplantProsthesisType,
   OdontogramAppearance,
   OdontogramCondition,
   OdontogramData,
@@ -29,9 +30,12 @@ export type {
   RestorationMaterial,
   RestorationType,
   ToothBase,
+  ToothDentition,
+  ToothFractureRegion,
   ToothNumberingSystem,
   ToothPosition,
   ToothSurface,
+  ToothStructureState,
 } from './model/odontogram';
 export type {
   OdontogramSelectionValidationResult,

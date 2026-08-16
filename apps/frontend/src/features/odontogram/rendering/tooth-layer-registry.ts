@@ -3,6 +3,7 @@ import type {
   OdontogramAppearance,
   OdontogramCondition,
   OdontogramTooth,
+  ImplantProsthesisType,
   RestorationType,
   ToothBase,
   ToothPosition,
@@ -21,7 +22,9 @@ export type ToothWholeLayerKind =
   | 'base'
   | 'endodontic'
   | 'extraction'
-  | 'restoration';
+  | 'restoration'
+  | 'structure'
+  | 'prosthesis';
 export type ToothVisualLayer = ToothSurfaceVisualLayer | ToothWholeVisualLayer;
 
 export interface ToothSurfaceVisualLayer {
@@ -95,6 +98,34 @@ export const TOOTH_WHOLE_LAYER_RESET_IDS = Object.freeze([
   'implant-base',
   'extraction-plan',
   'endo-filling',
+  'milktooth',
+  'milktooth-base',
+  'milktooth-beauty',
+  'milktooth-healthy-pulp',
+  'milktooth-inflam-pulp',
+  'tooth-under-gum',
+  'tooth-radix',
+  'tooth-crownprep',
+  'tooth-broken-incisal',
+  'tooth-broken-distal-incisal',
+  'tooth-broken-distal',
+  'tooth-broken-mesial-distal-incisal',
+  'tooth-broken-mesial-distal',
+  'tooth-broken-mesial-incisal',
+  'tooth-broken-mesial',
+  'no-tooth-after-extraction',
+  'missing-closed',
+  'crown-needed',
+  'crown-replace',
+  'implant-healing-abutment',
+  'implant-locator-screw',
+  'implant-bar',
+  'prosthesis',
+  'prosthesis-crown',
+  'prosthesis-connector',
+  'prosthesis-implant',
+  'prosthesis-implant-crown',
+  'prosthesis-implant-gum',
 ] as const);
 
 export const FILLING_SURFACE_LAYER_ID_BY_MATERIAL = Object.freeze(
@@ -138,7 +169,7 @@ export function deriveWholeToothVisualLayers(
 ): ToothVisualLayerResult {
   const layers: ToothWholeVisualLayer[] = [
     { id: 'base', kind: 'base' },
-    ...getToothBaseLayerIds(tooth.base).map((id) => ({
+    ...getToothBaseLayerIds(tooth).map((id) => ({
       id,
       kind: 'base' as const,
     })),
@@ -152,6 +183,36 @@ export function deriveWholeToothVisualLayers(
         id: 'extraction-plan',
         kind: 'extraction',
       });
+      continue;
+    }
+
+    if (condition.kind === 'structure') {
+      for (const id of structureLayerIds(condition)) {
+        layers.push({
+          appearance: condition.appearance,
+          id,
+          kind: 'structure',
+        });
+      }
+      continue;
+    }
+
+    if (condition.kind === 'planned-implant') {
+      layers.push(
+        { appearance: condition.appearance, id: 'implant', kind: 'base' },
+        { appearance: condition.appearance, id: 'implant-base', kind: 'base' },
+      );
+      continue;
+    }
+
+    if (condition.kind === 'prosthesis') {
+      for (const id of prosthesisLayerIds(condition.prosthesis, tooth.base)) {
+        layers.push({
+          appearance: condition.appearance,
+          id,
+          kind: 'prosthesis',
+        });
+      }
       continue;
     }
 
@@ -326,14 +387,96 @@ function collectSurfaceConditions<K extends 'caries' | 'filling'>(
   return conditionsBySurface;
 }
 
-function getToothBaseLayerIds(base: ToothBase): readonly string[] {
-  if (base === 'natural') {
+function getToothBaseLayerIds(tooth: OdontogramTooth): readonly string[] {
+  const hidesNaturalBase = tooth.conditions.some(
+    (condition) =>
+      condition.kind === 'structure' &&
+      ['under-gum', 'radix', 'broken', 'crown-preparation'].includes(
+        condition.state,
+      ),
+  );
+
+  if (hidesNaturalBase && tooth.base === 'natural') {
+    return [];
+  }
+
+  if (tooth.base === 'natural' && tooth.dentition === 'primary') {
+    return [
+      'milktooth',
+      'milktooth-base',
+      'milktooth-beauty',
+      'milktooth-healthy-pulp',
+    ];
+  }
+
+  if (tooth.base === 'natural') {
     return ['tooth-base', 'tooth-base-beauty', 'tooth-healthy-pulp'];
   }
 
-  if (base === 'implant') {
+  if (tooth.base === 'implant') {
     return ['implant', 'implant-base'];
   }
 
+  return [];
+}
+
+function structureLayerIds(
+  condition: Extract<OdontogramCondition, { readonly kind: 'structure' }>,
+): readonly string[] {
+  switch (condition.state) {
+    case 'under-gum':
+      return ['tooth-under-gum'];
+    case 'radix':
+      return ['tooth-radix'];
+    case 'crown-preparation':
+      return ['tooth-crownprep'];
+    case 'missing-after-extraction':
+    case 'extraction-wound':
+      return ['no-tooth-after-extraction'];
+    case 'missing-closed':
+      return ['missing-closed'];
+    case 'crown-needed':
+      return ['crown-needed'];
+    case 'crown-replacement':
+      return ['crown-replace'];
+    case 'broken':
+      return [brokenLayerId(condition.fractureRegions ?? ['incisal'])];
+  }
+}
+
+function brokenLayerId(
+  regions: readonly ('mesial' | 'incisal' | 'distal')[],
+): string {
+  const hasMesial = regions.includes('mesial');
+  const hasIncisal = regions.includes('incisal');
+  const hasDistal = regions.includes('distal');
+  if (hasMesial && hasIncisal && hasDistal) return 'tooth-broken-mesial-distal-incisal';
+  if (hasMesial && hasIncisal) return 'tooth-broken-mesial-incisal';
+  if (hasMesial && hasDistal) return 'tooth-broken-mesial-distal';
+  if (hasIncisal && hasDistal) return 'tooth-broken-distal-incisal';
+  if (hasMesial) return 'tooth-broken-mesial';
+  if (hasDistal) return 'tooth-broken-distal';
+  return 'tooth-broken-incisal';
+}
+
+function prosthesisLayerIds(
+  prosthesis: ImplantProsthesisType,
+  base: ToothBase,
+): readonly string[] {
+  if (base === 'missing' && (prosthesis === 'removable-partial' || prosthesis === 'removable-full')) {
+    return ['prosthesis', 'prosthesis-crown', 'prosthesis-connector'];
+  }
+  if (base !== 'implant') return [];
+  if (prosthesis === 'healing-abutment') return ['implant-healing-abutment'];
+
+  const attachment = ['implant-connector', 'implant-locator-screw'];
+  if (prosthesis === 'locator') return attachment;
+  if (prosthesis === 'bar') return [...attachment, 'implant-bar'];
+  if (prosthesis === 'locator-overdenture') {
+    return [...attachment, 'prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'];
+  }
+  if (prosthesis === 'bar-overdenture') {
+    return [...attachment, 'implant-bar', 'prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'];
+  }
   return [];
 }

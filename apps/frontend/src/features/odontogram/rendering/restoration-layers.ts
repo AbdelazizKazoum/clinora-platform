@@ -106,7 +106,18 @@ function crownLayerIds(material: RestorationMaterial): readonly string[] {
 }
 
 function collectRestorationLayerIds(): readonly string[] {
-  const layerIds = new Set<string>(['implant-connector']);
+  const layerIds = new Set<string>([
+    'implant-connector',
+    'implant-healing-abutment',
+    'implant-locator-screw',
+    'implant-bar',
+    'prosthesis',
+    'prosthesis-crown',
+    'prosthesis-connector',
+    'prosthesis-implant',
+    'prosthesis-implant-crown',
+    'prosthesis-implant-gum',
+  ]);
 
   for (const material of FULL_RESTORATION_MATERIALS) {
     for (const layerId of composeBridgeUnitLayers(material)) {

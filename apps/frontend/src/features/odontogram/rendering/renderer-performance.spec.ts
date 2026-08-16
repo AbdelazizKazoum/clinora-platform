@@ -34,7 +34,9 @@ describe('odontogram renderer performance budget', () => {
           totalBytes + readTemplateMeasurement(templateId).bytes,
         0,
       ),
-    ).toBe(413_445);
+    // PARITY-02 re-baseline: the copied upstream assets currently measure
+    // 416,455 bytes across the six approved templates.
+    ).toBe(416_455);
   });
 
   it('keeps normalized runtime SVG node counts below the approved ODONTO-13 baseline', () => {
@@ -43,8 +45,11 @@ describe('odontogram renderer performance budget', () => {
       projectRuntimeNodeCount(ALL_TEMPLATE_IDS);
     const sideAndOcclusalSourceNodes = projectSourceNodeCount(ALL_TEMPLATE_IDS);
 
-    expect(sideRuntimeNodes).toBeLessThanOrEqual(9_500);
-    expect(sideAndOcclusalRuntimeNodes).toBeLessThanOrEqual(14_000);
+    // Structural, dentition, implant, and prosthesis layers are now retained
+    // deliberately. Keep the measured PARITY-02 budget explicit rather than
+    // restoring the entire legacy layer set.
+    expect(sideRuntimeNodes).toBeLessThanOrEqual(11_500);
+    expect(sideAndOcclusalRuntimeNodes).toBeLessThanOrEqual(16_500);
     expect(sideAndOcclusalRuntimeNodes).toBeLessThan(
       sideAndOcclusalSourceNodes,
     );

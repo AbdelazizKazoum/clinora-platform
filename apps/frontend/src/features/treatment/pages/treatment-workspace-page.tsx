@@ -42,6 +42,11 @@ import {
   getTreatmentActOption,
   type TreatmentCatalogueTarget,
 } from '../model/treatment-catalogue';
+import {
+  getTreatmentCapabilityPresentation,
+  type TreatmentCapabilityContext,
+  type TreatmentCapabilityPresentation,
+} from '../model/treatment-capabilities';
 import { mapTreatmentVisitToOdontogram } from '../model/treatment-odontogram.mapper';
 import {
   createTreatmentActInput,
@@ -162,6 +167,9 @@ export function TreatmentWorkspacePage({
     [visit],
   );
   const activeTooth = selection.activeToothPosition;
+  const activeToothVisual = projection.data.teeth.find(
+    (tooth) => tooth.position === activeTooth,
+  );
   const activeToothFindings = visit.findings.filter((finding) =>
     activeTooth ? finding.target.toothNumbers.includes(activeTooth) : false,
   );
@@ -442,6 +450,10 @@ export function TreatmentWorkspacePage({
           <Col className={styles.detailsColumn}>
             <ToothDetailsPanel
               actCode={actCode}
+              capabilityContext={{
+                base: activeToothVisual?.base ?? 'natural',
+                dentition: activeToothVisual?.dentition ?? 'permanent',
+              }}
               activeTooth={activeTooth}
               acts={activeToothActs}
               actor={actor}
@@ -611,6 +623,7 @@ function PatientVisitHeader({
 
 interface ToothDetailsPanelProps {
   readonly activeTooth: ToothPosition | null;
+  readonly capabilityContext: TreatmentCapabilityContext;
   readonly selectedToothCount: number;
   readonly surfaces: readonly ToothSurface[];
   readonly findings: readonly ClinicalFinding[];
@@ -647,6 +660,19 @@ interface ToothDetailsPanelProps {
 
 function ToothDetailsPanel(props: ToothDetailsPanelProps) {
   const [mode, setMode] = useState<'finding' | 'act'>('finding');
+  const selectedCapability =
+    mode === 'finding'
+      ? props.selectedFinding?.capability
+      : props.selectedAct?.capability;
+  const capabilityPresentation = selectedCapability
+    ? getTreatmentCapabilityPresentation(
+        selectedCapability,
+        {
+          ...props.capabilityContext,
+          subtype: mode === 'finding' ? props.findingDetail : undefined,
+        },
+      )
+    : 'not-available';
   const needsSurface =
     mode === 'finding'
       ? requiresSurface(props.selectedFinding?.target)
@@ -711,6 +737,10 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
               </ButtonGroup>
 
               <Form>
+                <CapabilityStatus
+                  capability={selectedCapability?.projection}
+                  presentation={capabilityPresentation}
+                />
                 {mode === 'finding' ? (
                   <FindingFormFields {...props} />
                 ) : (
@@ -737,7 +767,9 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
                 />
                 <Button
                   className="w-100 mt-3"
-                  disabled={!props.canDocument}
+                  disabled={
+                    !props.canDocument || capabilityPresentation === 'not-available'
+                  }
                   onClick={
                     mode === 'finding' ? props.onAddFinding : props.onAddAct
                   }
@@ -755,12 +787,17 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
                       ? 'Plan treatment act'
                       : 'Add draft treatment act'}
                 </Button>
-                {!props.canDocument && (
+                {capabilityPresentation === 'not-available' ? (
+                  <small className="text-warning d-block text-center mt-2">
+                    This clinical concept is not available for the selected tooth
+                    base or dentition.
+                  </small>
+                ) : !props.canDocument ? (
                   <small className="text-muted d-block text-center mt-2">
                     Assistant editing requires an active documentation
                     assignment.
                   </small>
-                )}
+                ) : null}
               </Form>
             </div>
           </div>
@@ -772,6 +809,35 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
         )}
       </CardBody>
     </Card>
+  );
+}
+
+function CapabilityStatus({
+  capability,
+  presentation,
+}: {
+  readonly capability?: string;
+  readonly presentation: TreatmentCapabilityPresentation;
+}) {
+  const label =
+    presentation === 'visual'
+      ? 'Visual chart support'
+      : presentation === 'record-only'
+        ? 'Record-only support'
+        : 'Not available for this tooth';
+  const variant =
+    presentation === 'visual'
+      ? 'success'
+      : presentation === 'record-only'
+        ? 'secondary'
+        : 'warning';
+  return (
+    <div className="d-flex align-items-center justify-content-between mb-2">
+      <small className="text-muted">Capability</small>
+      <Badge bg={variant} title={capability}>
+        {label}
+      </Badge>
+    </div>
   );
 }
 
@@ -920,6 +986,12 @@ function ActFormFields(props: ToothDetailsPanelProps) {
         <Alert className="py-2 fs-sm" variant="info">
           Select a contiguous span with Ctrl/Cmd-click. At least one selected
           position must be missing for a pontic.
+        </Alert>
+      )}
+      {props.selectedAct?.target === 'arch' && (
+        <Alert className="py-2 fs-sm" variant="info">
+          Select the affected gap or arch units. The prosthesis remains one
+          grouped arch-owned act rather than unrelated tooth records.
         </Alert>
       )}
       {props.selectedAct?.requiresMaterial === 'filling' && (
@@ -1405,6 +1477,8 @@ const buildTarget = (
       ? ('TOOTH_SURFACE' as const)
       : target === 'index-surface'
         ? ('INDEX_SURFACE' as const)
+        : target === 'tooth-region'
+          ? ('TOOTH_REGION' as const)
       : target === 'bridge'
         ? ('BRIDGE_SPAN' as const)
         : target === 'arch'
@@ -1413,14 +1487,16 @@ const buildTarget = (
             ? ('PERIODONTAL_SITE' as const)
             : ('TOOTH' as const),
   periodontalSites: target === 'periodontal' ? [periodontalSite] : [],
-  surfaces: (target === 'surface'
+  surfaces: (target === 'surface' || target === 'tooth-region'
     ? surfaces.map((surface) => surface.toUpperCase())
     : []) as TreatmentSurface[],
   toothNumbers,
 });
 
 const requiresSurface = (target?: TreatmentCatalogueTarget) =>
-  target === 'surface' || target === 'index-surface';
+  target === 'surface' ||
+  target === 'index-surface' ||
+  target === 'tooth-region';
 
 const isPartialRestoration = (code: string) =>
   code === 'INLAY' || code === 'ONLAY' || code === 'VENEER';

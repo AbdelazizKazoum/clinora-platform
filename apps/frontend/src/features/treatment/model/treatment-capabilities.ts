@@ -29,10 +29,14 @@ export interface TreatmentCapability {
   )[];
   readonly views: readonly OdontogramViewSupport[];
   readonly bases: readonly ('natural' | 'missing' | 'implant' | 'primary')[];
+  readonly dentitions: readonly ('permanent' | 'primary')[];
   readonly svgLayers: readonly string[];
   readonly applicability: readonly string[];
   readonly subtypeSupport?: Readonly<
     Record<string, OdontogramProjectionSupport>
+  >;
+  readonly subtypeBases?: Readonly<
+    Record<string, readonly ('natural' | 'missing' | 'implant' | 'primary')[]>
   >;
 }
 
@@ -41,6 +45,7 @@ const existingFinding = (
 ): TreatmentCapability => ({
   applicability: ['confirmed finding'],
   bases: ['natural', 'missing', 'implant'],
+  dentitions: ['permanent', 'primary'],
   lifecycle: ['existing'],
   projection: 'record-only',
   svgLayers: [],
@@ -54,6 +59,7 @@ const plannedAct = (
 ): TreatmentCapability => ({
   applicability: ['planned or completed act'],
   bases: ['natural', 'missing', 'implant'],
+  dentitions: ['permanent', 'primary'],
   lifecycle: ['planned', 'in-progress', 'completed'],
   projection,
   svgLayers: [],
@@ -66,13 +72,25 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   TreatmentCapability
 > = {
   APICOECTOMY: plannedAct(),
-  BAR_ATTACHMENT: plannedAct(),
-  BAR_OVERDENTURE: plannedAct(),
+  BAR_ATTACHMENT: plannedAct('existing-and-planned', {
+    applicability: ['existing implant fixture'],
+    bases: ['implant'],
+    svgLayers: ['implant-connector', 'implant-locator-screw', 'implant-bar'],
+  }),
+  BAR_OVERDENTURE: plannedAct('existing-and-planned', {
+    applicability: ['implant-supported prosthesis group'],
+    bases: ['implant'],
+    svgLayers: ['implant-bar', 'prosthesis-implant'],
+  }),
   BRIDGE: plannedAct('existing-and-planned', {
     applicability: ['bridge span with at least two tooth units'],
     svgLayers: ['bridge connector'],
   }),
-  COMPLETE_REMOVABLE_DENTURE: plannedAct(),
+  COMPLETE_REMOVABLE_DENTURE: plannedAct('existing-and-planned', {
+    applicability: ['arch/gap prosthesis group'],
+    bases: ['missing'],
+    svgLayers: ['prosthesis', 'prosthesis-crown', 'prosthesis-connector'],
+  }),
   CROWN: plannedAct('existing-and-planned', {
     svgLayers: ['restoration crown'],
   }),
@@ -90,18 +108,30 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   }),
   FISSURE_SEALING: plannedAct(),
   GLASS_FIBER_POST: plannedAct(),
-  HEALING_ABUTMENT: plannedAct(),
-  IMPLANT_PLACEMENT: plannedAct('existing-only', {
-    applicability: ['completed implant placement only in the current renderer'],
-    bases: ['missing', 'implant'],
-    svgLayers: ['implant-base'],
+  HEALING_ABUTMENT: plannedAct('existing-and-planned', {
+    applicability: ['existing implant fixture'],
+    bases: ['implant'],
+    svgLayers: ['implant-healing-abutment'],
+  }),
+  IMPLANT_PLACEMENT: plannedAct('existing-and-planned', {
+    applicability: ['natural or missing tooth; completed becomes existing implant'],
+    bases: ['natural', 'missing', 'implant'],
+    svgLayers: ['implant', 'implant-base'],
   }),
   INLAY: plannedAct('existing-and-planned', {
     applicability: ['natural tooth and supported material'],
     svgLayers: ['restoration inlay'],
   }),
-  LOCATOR_ATTACHMENT: plannedAct(),
-  LOCATOR_OVERDENTURE: plannedAct(),
+  LOCATOR_ATTACHMENT: plannedAct('existing-and-planned', {
+    applicability: ['existing implant fixture'],
+    bases: ['implant'],
+    svgLayers: ['implant-connector', 'implant-locator-screw'],
+  }),
+  LOCATOR_OVERDENTURE: plannedAct('existing-and-planned', {
+    applicability: ['implant-supported prosthesis group'],
+    bases: ['implant'],
+    svgLayers: ['prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'],
+  }),
   METAL_POST: plannedAct(),
   ONLAY: plannedAct('existing-and-planned', {
     applicability: ['posterior tooth and occlusal view'],
@@ -109,7 +139,11 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   }),
   ORTHODONTIC_APPLIANCE: plannedAct(),
   PARAPULPAL_PIN: plannedAct(),
-  PARTIAL_REMOVABLE_DENTURE: plannedAct(),
+  PARTIAL_REMOVABLE_DENTURE: plannedAct('existing-and-planned', {
+    applicability: ['arch/gap prosthesis group'],
+    bases: ['missing'],
+    svgLayers: ['prosthesis', 'prosthesis-crown', 'prosthesis-connector'],
+  }),
   ROOT_CANAL_FILLING: plannedAct('existing-and-planned', {
     applicability: ['natural tooth; side view'],
     svgLayers: ['endo-filling'],
@@ -155,8 +189,24 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     projection: 'existing-only',
     svgLayers: ['restoration'],
   }),
-  EXISTING_PROSTHESIS: existingFinding(),
-  EXTRACTION_WOUND: existingFinding(),
+  EXISTING_PROSTHESIS: existingFinding({
+    bases: ['implant', 'missing'],
+    projection: 'existing-only',
+    subtypeBases: {
+      BAR: ['implant'],
+      BAR_DENTURE: ['implant'],
+      HEALING_ABUTMENT: ['implant'],
+      LOCATOR: ['implant'],
+      LOCATOR_DENTURE: ['implant'],
+      REMOVABLE_FULL: ['missing'],
+      REMOVABLE_PARTIAL: ['missing'],
+    },
+    svgLayers: ['implant/prosthesis composition'],
+  }),
+  EXTRACTION_WOUND: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['no-tooth-after-extraction'],
+  }),
   FURCATION_INVOLVEMENT: existingFinding(),
   GINGIVAL_FINDING: existingFinding(),
   MOBILITY: existingFinding(),
@@ -169,20 +219,32 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   PULP_DIAGNOSIS: existingFinding(),
   ROOT_CARIES: existingFinding(),
   ROOT_RESORPTION: existingFinding(),
-  TOOTH_FRACTURE: existingFinding(),
+  TOOTH_FRACTURE: existingFinding({
+    bases: ['natural'],
+    dentitions: ['permanent'],
+    projection: 'existing-only',
+    svgLayers: ['tooth-broken-*'],
+  }),
   TOOTH_STATE: existingFinding({
     applicability: ['confirmed structural tooth status'],
     bases: ['natural', 'missing', 'implant', 'primary'],
     projection: 'existing-only',
-    subtypeSupport: {
-      IMPLANT: 'existing-only',
-      MISSING: 'existing-only',
-      NATURAL: 'existing-only',
-      PRIMARY: 'record-only',
+      subtypeSupport: {
+        IMPLANT: 'existing-only',
+        MISSING: 'existing-only',
+        MISSING_AFTER_EXTRACTION: 'existing-only',
+        NATURAL: 'existing-only',
+        PRIMARY: 'existing-only',
+        UNDER_GUM: 'existing-only',
     },
     svgLayers: ['natural base', 'missing base', 'implant-base'],
   }),
-  TOOTH_SUBSTRATE: existingFinding(),
+  TOOTH_SUBSTRATE: existingFinding({
+    bases: ['natural'],
+    dentitions: ['permanent'],
+    projection: 'existing-only',
+    svgLayers: ['tooth-under-gum', 'tooth-radix', 'tooth-broken-*', 'tooth-crownprep'],
+  }),
   TOOTH_WEAR: existingFinding(),
 };
 
@@ -369,6 +431,35 @@ export const hasExplicitCapabilityMetadata = (
       capability.lifecycle.length > 0 &&
       capability.views.length > 0 &&
       capability.bases.length > 0 &&
+      capability.dentitions.length > 0 &&
       Array.isArray(capability.svgLayers) &&
       Array.isArray(capability.applicability),
   );
+
+export type TreatmentCapabilityPresentation =
+  | 'visual'
+  | 'record-only'
+  | 'not-available';
+
+export interface TreatmentCapabilityContext {
+  readonly base: 'natural' | 'missing' | 'implant';
+  readonly dentition: 'permanent' | 'primary';
+  readonly subtype?: string;
+}
+
+export const getTreatmentCapabilityPresentation = (
+  capability: TreatmentCapability,
+  context: TreatmentCapabilityContext,
+): TreatmentCapabilityPresentation => {
+  if (
+    !capability.bases.includes(context.base) ||
+    !capability.dentitions.includes(context.dentition) ||
+    (context.subtype !== undefined &&
+      capability.subtypeBases?.[context.subtype] !== undefined &&
+      !capability.subtypeBases[context.subtype].includes(context.base)) ||
+    capability.projection === 'none'
+  ) {
+    return 'not-available';
+  }
+  return capability.projection === 'record-only' ? 'record-only' : 'visual';
+};

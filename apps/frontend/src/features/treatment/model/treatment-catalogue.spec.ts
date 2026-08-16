@@ -4,6 +4,7 @@ import {
   TREATMENT_ACT_CAPABILITIES,
   ODONTOGRAM_PERIODONTAL_RECORD_CAPABILITIES,
   ODONTOGRAM_UPSTREAM_LAYER_IDS,
+  getTreatmentCapabilityPresentation,
   hasExplicitCapabilityMetadata,
 } from './treatment-capabilities';
 import {
@@ -80,6 +81,25 @@ describe('PARITY-01 capability inventory', () => {
     expect(getClinicalFindingOption('PULP_DIAGNOSIS')?.capability.projection).toBe(
       'record-only',
     );
+  });
+
+  it('reports subtype and tooth-base applicability without changing Treatment meaning', () => {
+    const option = getClinicalFindingOption('EXISTING_PROSTHESIS');
+    if (option === undefined) throw new Error('Missing prosthesis catalogue option');
+    const capability = option.capability;
+    const missingRemovable = getTreatmentCapabilityPresentation(capability, {
+      base: 'missing',
+      dentition: 'permanent',
+      subtype: 'REMOVABLE_PARTIAL',
+    });
+    const missingLocator = getTreatmentCapabilityPresentation(capability, {
+      base: 'missing',
+      dentition: 'permanent',
+      subtype: 'LOCATOR',
+    });
+
+    expect(missingRemovable).toBe('visual');
+    expect(missingLocator).toBe('not-available');
   });
 
   it('rejects interchangeable target geometries at the UI boundary', () => {

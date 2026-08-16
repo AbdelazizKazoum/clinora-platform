@@ -1042,6 +1042,37 @@ Reviewed and implemented on 2026-08-16:
 - Added focused catalogue/input tests covering metadata completeness, legacy
   inventory coverage, target-geometry separation, and typed validation.
 
-PARITY-01 remains open for the remaining editor accessibility/error-association
-coverage and full clinical-family panel extraction. No PARITY-02 through
-PARITY-05 capability was implemented in this step.
+The PARITY-01 foundation remains the dependency for the remaining editor
+accessibility/error-association coverage and full clinical-family panel
+extraction. No PARITY-02 through PARITY-05 capability was implemented in that
+step.
+
+## 16. PARITY-02 Progress Evidence
+
+Reviewed and implemented on 2026-08-16:
+
+- Checkpoint A: added typed primary dentition, structural states, fracture
+  combinations, extraction socket, extraction wound, closed gap, crown-needed,
+  and crown-replacement visual conditions. Primary labels remap from stable
+  permanent FDI positions without changing chart identity.
+- Checkpoint B: planned and in-progress implant placement now produce a
+  separate planned-implant condition using the reviewed implant fixture artwork
+  with planned appearance. Completed placement becomes an existing implant
+  base; cancelled and entered-in-error acts do not project. Completing staged
+  extraction -> implant clears incompatible prior visual contributions so a
+  later crown can be applied deterministically.
+- Checkpoint C: healing abutment, locator, locator overdenture, bar, bar
+  overdenture, partial removable denture, and complete removable denture
+  compositions are represented with stable prosthesis group IDs. Fixed and
+  removable prostheses report conflicts instead of silently overwriting each
+  other, and adjacent bridge groups retain their independent IDs.
+- Renderer normalization now retains only the reviewed PARITY-02 layer set.
+  Performance measurements were re-baselined to 416,455 copied asset bytes,
+  11,224 projected side-view runtime nodes, and 16,356 projected side-plus-
+  occlusal runtime nodes.
+- Added structural, primary-numbering, implant-lifecycle, prosthesis, conflict,
+  layer-fixture, visual-model, capability-applicability, and editor accessibility
+  tests.
+- PARITY-02 implementation checkpoints are complete. The external clinical
+  approval gates in section 12 remain required before release sign-off; no
+  PARITY-03 through PARITY-05 clinical family was implemented in this step.

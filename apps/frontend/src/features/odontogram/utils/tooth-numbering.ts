@@ -1,19 +1,29 @@
 // Part of React Advanced Odontogram - https://github.com/ZoliQua/React-Odontogram-Modul
 // Created by Zoltan Dul (https://github.com/ZoliQua) 2025-2026
-// Adapted for Clinora in 2026: permanent ToothPosition formatting only; primary-tooth remapping is deferred.
+// Adapted for Clinora in 2026: stable permanent-position formatting with
+// primary-dentition display remapping.
 
-import type { ToothNumberingSystem, ToothPosition } from '../model/odontogram';
+import type {
+  ToothDentition,
+  ToothNumberingSystem,
+  ToothPosition,
+} from '../model/odontogram';
 
 /**
  * Formats Clinora's stable permanent FDI position into a display label.
  *
  * Primary dentition uses the same internal permanent positions in the visual
- * chart, so primary display remapping remains outside ODONTO-02.
+ * chart, while the displayed label follows the selected numbering system.
  */
 export function formatToothNumber(
   position: ToothPosition,
   system: ToothNumberingSystem,
+  dentition: ToothDentition = 'permanent',
 ): string {
+  if (dentition === 'primary') {
+    return formatPrimaryToothNumber(position, system);
+  }
+
   if (system === 'fdi') {
     return String(position);
   }
@@ -26,6 +36,33 @@ export function formatToothNumber(
   }
 
   return formatPalmerAdultTooth(quadrant, quadrantPosition);
+}
+
+function formatPrimaryToothNumber(
+  position: ToothPosition,
+  system: ToothNumberingSystem,
+): string {
+  const quadrant = Math.floor(position / 10);
+  const quadrantPosition = position % 10;
+  const primaryQuadrant = quadrant + 4;
+
+  if (system === 'fdi') {
+    return `${primaryQuadrant}${quadrantPosition}`;
+  }
+
+  if (system === 'universal') {
+    const index =
+      quadrant === 1
+        ? quadrantPosition - 1
+        : quadrant === 2
+          ? 5 + quadrantPosition - 1
+          : quadrant === 3
+            ? 10 + quadrantPosition - 1
+            : 15 + quadrantPosition - 1;
+    return String.fromCharCode('A'.charCodeAt(0) + index);
+  }
+
+  return `${getPrimaryPalmerQuadrantLabel(quadrant)}-${quadrantPosition}`;
 }
 
 function formatUniversalAdultTooth(
@@ -70,4 +107,10 @@ function getPalmerQuadrantLabel(quadrant: number): 'UR' | 'UL' | 'LL' | 'LR' {
   }
 
   return 'LR';
+}
+
+function getPrimaryPalmerQuadrantLabel(
+  quadrant: number,
+): 'UR' | 'UL' | 'LL' | 'LR' {
+  return getPalmerQuadrantLabel(quadrant);
 }

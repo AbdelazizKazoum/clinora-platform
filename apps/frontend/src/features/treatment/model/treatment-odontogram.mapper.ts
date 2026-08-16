@@ -1,12 +1,15 @@
 import {
   TOOTH_POSITIONS,
   type FillingMaterial,
+  type ImplantProsthesisType,
   type OdontogramAppearance,
   type OdontogramCondition,
   type OdontogramData,
   type RestorationMaterial,
   type RestorationType,
   type ToothBase,
+  type ToothDentition,
+  type ToothFractureRegion,
   type ToothPosition,
   type ToothSurface as OdontogramSurface,
 } from '@/features/odontogram';
@@ -62,6 +65,16 @@ const RESTORATION_TYPES: Record<string, RestorationType> = {
   VENEER: 'veneer',
 };
 
+const PROSTHESIS_TYPES: Record<string, ImplantProsthesisType> = {
+  BAR: 'bar',
+  BAR_DENTURE: 'bar-overdenture',
+  HEALING_ABUTMENT: 'healing-abutment',
+  LOCATOR: 'locator',
+  LOCATOR_DENTURE: 'locator-overdenture',
+  REMOVABLE_FULL: 'removable-full',
+  REMOVABLE_PARTIAL: 'removable-partial',
+};
+
 const PARTIAL_RESTORATION_MATERIALS: ReadonlySet<RestorationMaterial> = new Set(
   ['emax', 'gold', 'gradia', 'temporary', 'zircon'],
 );
@@ -73,6 +86,7 @@ const ANTERIOR_POSITIONS: ReadonlySet<ToothPosition> = new Set([
 type MutableTooth = {
   position: ToothPosition;
   base: ToothBase;
+  dentition: ToothDentition;
   conditions: OdontogramCondition[];
 };
 
@@ -82,7 +96,7 @@ export const mapTreatmentVisitToOdontogram = (
   const teeth = new Map<ToothPosition, MutableTooth>(
     TOOTH_POSITIONS.map((position) => [
       position,
-      { base: 'natural', conditions: [], position },
+       { base: 'natural', conditions: [], dentition: 'permanent', position },
     ]),
   );
   const issues: TreatmentOdontogramProjectionIssue[] = [];
@@ -136,19 +150,100 @@ const projectFinding = (
 
   if (finding.code === 'TOOTH_STATE') {
     const state = detailString(finding.details, 'TOOTH_STATE');
-    const base: ToothBase | undefined =
-      state === 'MISSING'
-        ? 'missing'
-        : state === 'IMPLANT'
-          ? 'implant'
-          : state === 'NATURAL'
-            ? 'natural'
-            : undefined;
-    if (!base) return addIssue(issues, finding.id, 'Unsupported tooth state.');
+    const supportedState = [
+      'NATURAL',
+      'MISSING',
+      'IMPLANT',
+      'PRIMARY',
+      'UNDER_GUM',
+      'MISSING_AFTER_EXTRACTION',
+    ].includes(state ?? '');
+    if (!supportedState) return addIssue(issues, finding.id, 'Unsupported tooth state.');
     for (const position of targets) {
       const tooth = getProjectionTooth(teeth, position);
-      tooth.base = base;
-      if (base === 'missing') tooth.conditions = [];
+      clearStructuralState(tooth);
+      if (state === 'MISSING' || state === 'MISSING_AFTER_EXTRACTION') {
+        tooth.base = 'missing';
+        tooth.dentition = 'permanent';
+        tooth.conditions = [];
+        if (state === 'MISSING_AFTER_EXTRACTION') {
+          addUniqueCondition(tooth, {
+            kind: 'structure',
+            state: 'missing-after-extraction',
+          });
+        }
+      } else if (state === 'IMPLANT') {
+        tooth.base = 'implant';
+        tooth.dentition = 'permanent';
+        tooth.conditions = [];
+      } else {
+        tooth.base = 'natural';
+        tooth.dentition = state === 'PRIMARY' ? 'primary' : 'permanent';
+        if (state === 'UNDER_GUM') {
+          addUniqueCondition(tooth, { kind: 'structure', state: 'under-gum' });
+        }
+      }
+    }
+    return;
+  }
+
+  if (finding.code === 'TOOTH_SUBSTRATE') {
+    const substrate = detailString(finding.details, 'TOOTH_SUBSTRATE');
+    const stateBySubstrate: Record<string, 'natural' | 'radix' | 'broken' | 'crown-preparation'> = {
+      BROKEN: 'broken',
+      CROWNPREP: 'crown-preparation',
+      NATURAL: 'natural',
+      RADIX: 'radix',
+    };
+    const state = stateBySubstrate[substrate ?? ''];
+    if (!state) return addIssue(issues, finding.id, 'Unsupported tooth substrate.');
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      if (tooth.base !== 'natural' || tooth.dentition === 'primary') {
+        addIssue(issues, finding.id, `Tooth substrate skipped on tooth ${position}.`);
+        continue;
+      }
+      clearStructuralState(tooth);
+      if (state !== 'natural') {
+        addUniqueCondition(tooth, { kind: 'structure', state });
+      }
+    }
+    return;
+  }
+
+  if (finding.code === 'TOOTH_FRACTURE') {
+    const regions = finding.target.surfaces
+      .filter((surface): surface is 'MESIAL' | 'DISTAL' | 'OCCLUSAL' =>
+        surface === 'MESIAL' || surface === 'DISTAL' || surface === 'OCCLUSAL',
+      )
+      .map((surface): ToothFractureRegion =>
+        surface === 'OCCLUSAL' ? 'incisal' : surface.toLowerCase() as 'mesial' | 'distal',
+      );
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      if (tooth.base !== 'natural' || tooth.dentition === 'primary') {
+        addIssue(issues, finding.id, `Fracture skipped on tooth ${position}.`);
+        continue;
+      }
+      clearStructuralState(tooth);
+      addUniqueCondition(tooth, {
+        fractureRegions: regions.length > 0 ? regions : ['incisal'],
+        kind: 'structure',
+        state: 'broken',
+      });
+    }
+    return;
+  }
+
+  if (finding.code === 'EXTRACTION_WOUND') {
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      tooth.base = 'missing';
+      tooth.conditions = [];
+      addUniqueCondition(tooth, {
+        kind: 'structure',
+        state: 'extraction-wound',
+      });
     }
     return;
   }
@@ -241,6 +336,28 @@ const projectFinding = (
         appearance: 'existing',
         kind: 'endodontic',
         state: 'root-canal',
+      });
+    }
+    return;
+  }
+
+  if (finding.code === 'EXISTING_PROSTHESIS') {
+    const prosthesis =
+      PROSTHESIS_TYPES[detailString(finding.details, 'PROSTHESIS_TYPE') ?? ''];
+    if (!prosthesis) {
+      return addIssue(issues, finding.id, 'Unsupported prosthesis type.');
+    }
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      if (!isProsthesisCompatible(tooth, prosthesis)) {
+        addIssue(issues, finding.id, `Prosthesis is not compatible with tooth ${position}.`);
+        continue;
+      }
+      addUniqueCondition(tooth, {
+        appearance: 'existing',
+        groupId: finding.id,
+        kind: 'prosthesis',
+        prosthesis,
       });
     }
     return;
@@ -346,6 +463,10 @@ const projectAct = (
       if (act.status === 'COMPLETED') {
         tooth.base = 'missing';
         tooth.conditions = [];
+        addUniqueCondition(tooth, {
+          kind: 'structure',
+          state: 'missing-after-extraction',
+        });
       } else {
         addUniqueCondition(tooth, {
           appearance: 'planned',
@@ -360,15 +481,72 @@ const projectAct = (
     if (act.status === 'COMPLETED') {
       for (const position of targets) {
         const tooth = getProjectionTooth(teeth, position);
+        if (tooth.base === 'implant') continue;
         tooth.base = 'implant';
         tooth.conditions = [];
       }
     } else {
-      addIssue(
-        issues,
-        act.id,
-        'Planned implant placement has no approved renderer symbol yet.',
+      for (const position of targets) {
+        const tooth = getProjectionTooth(teeth, position);
+        if (tooth.base === 'implant') {
+          addIssue(issues, act.id, `Planned implant skipped on existing implant tooth ${position}.`);
+          continue;
+        }
+        addUniqueCondition(tooth, {
+          appearance: 'planned',
+          kind: 'planned-implant',
+        });
+      }
+    }
+    return;
+  }
+
+  if (
+    act.code === 'HEALING_ABUTMENT' ||
+    act.code === 'LOCATOR_ATTACHMENT' ||
+    act.code === 'LOCATOR_OVERDENTURE' ||
+    act.code === 'BAR_ATTACHMENT' ||
+    act.code === 'BAR_OVERDENTURE' ||
+    act.code === 'PARTIAL_REMOVABLE_DENTURE' ||
+    act.code === 'COMPLETE_REMOVABLE_DENTURE'
+  ) {
+    const prosthesis = prosthesisForAct(act.code);
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      if (!isProsthesisCompatible(tooth, prosthesis)) {
+        addIssue(issues, act.id, `Prosthesis act is not compatible with tooth ${position}.`);
+        continue;
+      }
+      if (hasIncompatibleProsthesis(tooth, prosthesis)) {
+        addIssue(issues, act.id, `Prosthesis act conflicts with existing prosthesis on tooth ${position}.`);
+        continue;
+      }
+      addUniqueCondition(tooth, {
+        appearance,
+        groupId: act.id,
+        kind: 'prosthesis',
+        prosthesis,
+      });
+    }
+    return;
+  }
+
+  if (act.code === 'CROWN_REPLACEMENT') {
+    for (const position of targets) {
+      const tooth = getProjectionTooth(teeth, position);
+      const hasExistingRestoration = tooth.conditions.some(
+        (condition) =>
+          condition.kind === 'restoration' || condition.kind === 'bridge',
       );
+      if (!hasExistingRestoration) {
+        addIssue(issues, act.id, `Crown replacement requires an existing restoration on tooth ${position}.`);
+        continue;
+      }
+      addUniqueCondition(tooth, {
+        appearance,
+        kind: 'structure',
+        state: 'crown-replacement',
+      });
     }
     return;
   }
@@ -383,6 +561,10 @@ const projectAct = (
       );
     for (const position of targets) {
       const tooth = getProjectionTooth(teeth, position);
+      if (tooth.conditions.some((condition) => condition.kind === 'prosthesis')) {
+        addIssue(issues, act.id, `Bridge conflicts with prosthesis on tooth ${position}.`);
+        continue;
+      }
       tooth.conditions = tooth.conditions.filter(
         (condition) =>
           condition.kind !== 'restoration' &&
@@ -390,7 +572,7 @@ const projectAct = (
           condition.kind !== 'caries' &&
           condition.kind !== 'filling',
       );
-      tooth.conditions.push({
+      addUniqueCondition(tooth, {
         appearance,
         bridgeId: act.id,
         kind: 'bridge',
@@ -461,6 +643,9 @@ const wholeRestorationIncompatibility = (
   if (tooth.base === 'missing') {
     return `Restoration skipped on tooth ${position} because the tooth is missing.`;
   }
+  if (tooth.conditions.some((condition) => condition.kind === 'prosthesis')) {
+    return `Restoration conflicts with prosthesis on tooth ${position}.`;
+  }
   if (tooth.base === 'implant' && restoration !== 'crown') {
     return `Only a crown can be visualized on implant tooth ${position}.`;
   }
@@ -484,10 +669,68 @@ const addUniqueCondition = (
   tooth.conditions.push(condition);
 };
 
+const clearStructuralState = (tooth: MutableTooth): void => {
+  tooth.conditions = tooth.conditions.filter(
+    (condition) =>
+      condition.kind !== 'structure' && condition.kind !== 'planned-implant',
+  );
+};
+
+const isProsthesisCompatible = (
+  tooth: MutableTooth,
+  prosthesis: ImplantProsthesisType,
+): boolean =>
+  tooth.base === 'implant'
+    ? !prosthesis.startsWith('removable-')
+    : tooth.base === 'missing' && prosthesis.startsWith('removable-');
+
+const hasIncompatibleProsthesis = (
+  tooth: MutableTooth,
+  next: ImplantProsthesisType,
+): boolean =>
+  tooth.conditions.some(
+    (condition) =>
+      condition.kind === 'prosthesis' && condition.prosthesis !== next,
+  );
+
+const prosthesisForAct = (
+  code:
+    | 'HEALING_ABUTMENT'
+    | 'LOCATOR_ATTACHMENT'
+    | 'LOCATOR_OVERDENTURE'
+    | 'BAR_ATTACHMENT'
+    | 'BAR_OVERDENTURE'
+    | 'PARTIAL_REMOVABLE_DENTURE'
+    | 'COMPLETE_REMOVABLE_DENTURE',
+): ImplantProsthesisType => {
+  switch (code) {
+    case 'HEALING_ABUTMENT':
+      return 'healing-abutment';
+    case 'LOCATOR_ATTACHMENT':
+      return 'locator';
+    case 'LOCATOR_OVERDENTURE':
+      return 'locator-overdenture';
+    case 'BAR_ATTACHMENT':
+      return 'bar';
+    case 'BAR_OVERDENTURE':
+      return 'bar-overdenture';
+    case 'PARTIAL_REMOVABLE_DENTURE':
+      return 'removable-partial';
+    case 'COMPLETE_REMOVABLE_DENTURE':
+      return 'removable-full';
+  }
+};
+
 const conditionKey = (condition: OdontogramCondition): string => {
   if (condition.kind === 'caries' || condition.kind === 'filling') {
     return `${condition.kind}:${condition.surface}`;
   }
+  if (condition.kind === 'bridge') return `${condition.kind}:${condition.bridgeId}`;
+  if (condition.kind === 'prosthesis') {
+    return `${condition.kind}:${condition.groupId}`;
+  }
+  if (condition.kind === 'structure') return `${condition.kind}:${condition.state}`;
+  if (condition.kind === 'planned-implant') return condition.kind;
   return condition.kind;
 };
 

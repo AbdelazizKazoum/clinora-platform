@@ -263,6 +263,77 @@ describe('tooth layer registry', () => {
     ]);
   });
 
+  it('renders primary dentition on the stable permanent position', () => {
+    expect(
+      deriveWholeToothVisualLayers(tooth(15, [], 'natural', 'primary'), 'side').layers.map(
+        (layer) => layer.id,
+      ),
+    ).toEqual([
+      'base',
+      'milktooth',
+      'milktooth-base',
+      'milktooth-beauty',
+      'milktooth-healthy-pulp',
+    ]);
+  });
+
+  it.each([
+    ['under-gum', ['tooth-under-gum']],
+    ['radix', ['tooth-radix']],
+    ['crown-preparation', ['tooth-crownprep']],
+    ['missing-closed', ['missing-closed']],
+    ['crown-needed', ['crown-needed']],
+    ['crown-replacement', ['crown-replace']],
+  ] as const)('renders structural state %s', (state, expected) => {
+    expect(
+      deriveWholeToothVisualLayers(
+        tooth(16, [{ kind: 'structure', state }]),
+        'side',
+      ).layers.map((layer) => layer.id),
+    ).toEqual(
+      ['missing-closed', 'crown-needed', 'crown-replacement'].includes(state)
+        ? ['base', 'tooth-base', 'tooth-base-beauty', 'tooth-healthy-pulp', ...expected]
+        : ['base', ...expected],
+    );
+  });
+
+  it('composes every reviewed prosthesis family without sharing fixed restoration layers', () => {
+    const cases = [
+      ['healing-abutment', 'implant-healing-abutment'],
+      ['locator', 'implant-locator-screw'],
+      ['locator-overdenture', 'prosthesis-implant-crown'],
+      ['bar', 'implant-bar'],
+      ['bar-overdenture', 'prosthesis-implant-gum'],
+    ] as const;
+    for (const [prosthesis, expected] of cases) {
+      const result = deriveWholeToothVisualLayers(
+        tooth(14, [{ kind: 'prosthesis', groupId: 'group-1', prosthesis, appearance: 'existing' }], 'implant'),
+        'side',
+      );
+      expect(result.layers.map((layer) => layer.id)).toContain(expected);
+      expect(result.unsupportedVisuals).toEqual([]);
+    }
+    expect(
+      deriveWholeToothVisualLayers(
+        tooth(15, [{ kind: 'prosthesis', groupId: 'denture-1', prosthesis: 'removable-partial', appearance: 'planned' }], 'missing'),
+        'side',
+      ).layers.map((layer) => layer.id),
+    ).toEqual(['base', 'prosthesis', 'prosthesis-crown', 'prosthesis-connector']);
+  });
+
+  it('renders planned implant artwork without changing the existing base contract', () => {
+    const result = deriveWholeToothVisualLayers(
+      tooth(46, [{ kind: 'planned-implant', appearance: 'planned' }]),
+      'side',
+    );
+    expect(result.layers).toContainEqual({
+      appearance: 'planned',
+      id: 'implant-base',
+      kind: 'base',
+    });
+    expect(result.layers.map((layer) => layer.id)).toContain('tooth-base');
+  });
+
   it('reports onlay as unsupported in side roots and renderable in occlusal roots', () => {
     const sideResult = deriveToothVisualLayers(
       tooth(16, [
@@ -422,6 +493,34 @@ describe('tooth layer registry', () => {
       'implant-base',
       'extraction-plan',
       'endo-filling',
+      'milktooth',
+      'milktooth-base',
+      'milktooth-beauty',
+      'milktooth-healthy-pulp',
+      'milktooth-inflam-pulp',
+      'tooth-under-gum',
+      'tooth-radix',
+      'tooth-crownprep',
+      'tooth-broken-incisal',
+      'tooth-broken-distal-incisal',
+      'tooth-broken-distal',
+      'tooth-broken-mesial-distal-incisal',
+      'tooth-broken-mesial-distal',
+      'tooth-broken-mesial-incisal',
+      'tooth-broken-mesial',
+      'no-tooth-after-extraction',
+      'missing-closed',
+      'crown-needed',
+      'crown-replace',
+      'implant-healing-abutment',
+      'implant-locator-screw',
+      'implant-bar',
+      'prosthesis',
+      'prosthesis-crown',
+      'prosthesis-connector',
+      'prosthesis-implant',
+      'prosthesis-implant-crown',
+      'prosthesis-implant-gum',
     ]);
   });
 });
@@ -430,10 +529,12 @@ function tooth(
   position: OdontogramTooth['position'],
   conditions: OdontogramTooth['conditions'],
   base: OdontogramTooth['base'] = 'natural',
+  dentition: OdontogramTooth['dentition'] = 'permanent',
 ): OdontogramTooth {
   return {
     base,
     conditions,
+    dentition,
     position,
   };
 }

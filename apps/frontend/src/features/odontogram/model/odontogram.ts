@@ -5,6 +5,7 @@ export const TOOTH_POSITIONS = [
 
 export type ToothPosition = (typeof TOOTH_POSITIONS)[number];
 export type ToothNumberingSystem = 'fdi' | 'universal' | 'palmer';
+export type ToothDentition = 'permanent' | 'primary';
 export type ToothSurface =
   | 'buccal'
   | 'lingual'
@@ -24,6 +25,26 @@ export type RestorationMaterial =
   | 'metal-ceramic'
   | 'telescope'
   | 'temporary';
+
+export type ToothStructureState =
+  | 'under-gum'
+  | 'radix'
+  | 'broken'
+  | 'crown-preparation'
+  | 'missing-after-extraction'
+  | 'extraction-wound'
+  | 'missing-closed'
+  | 'crown-needed'
+  | 'crown-replacement';
+export type ToothFractureRegion = 'mesial' | 'incisal' | 'distal';
+export type ImplantProsthesisType =
+  | 'healing-abutment'
+  | 'locator'
+  | 'locator-overdenture'
+  | 'bar'
+  | 'bar-overdenture'
+  | 'removable-partial'
+  | 'removable-full';
 
 export type OdontogramCondition =
   | {
@@ -59,11 +80,28 @@ export type OdontogramCondition =
       readonly role: 'abutment' | 'pontic';
       readonly material: RestorationMaterial;
       readonly appearance: OdontogramAppearance;
+    }
+  | {
+      readonly kind: 'structure';
+      readonly state: ToothStructureState;
+      readonly appearance?: OdontogramAppearance;
+      readonly fractureRegions?: readonly ToothFractureRegion[];
+    }
+  | {
+      readonly kind: 'planned-implant';
+      readonly appearance: 'planned';
+    }
+  | {
+      readonly kind: 'prosthesis';
+      readonly groupId: string;
+      readonly prosthesis: ImplantProsthesisType;
+      readonly appearance: OdontogramAppearance;
     };
 
 export interface OdontogramTooth {
   readonly position: ToothPosition;
   readonly base: ToothBase;
+  readonly dentition?: ToothDentition;
   readonly conditions: readonly OdontogramCondition[];
 }
 
@@ -134,10 +172,35 @@ const CONDITION_KINDS = [
   'endodontic',
   'extraction',
   'bridge',
+  'structure',
+  'planned-implant',
+  'prosthesis',
 ] as const;
 const BRIDGE_ROLES = ['abutment', 'pontic'] as const;
 const ROOT_CANAL_STATES = ['root-canal'] as const;
 const PLANNED_APPEARANCES = ['planned'] as const;
+const TOOTH_DENTITIONS = ['permanent', 'primary'] as const;
+const TOOTH_STRUCTURE_STATES = [
+  'under-gum',
+  'radix',
+  'broken',
+  'crown-preparation',
+  'missing-after-extraction',
+  'extraction-wound',
+  'missing-closed',
+  'crown-needed',
+  'crown-replacement',
+] as const;
+const FRACTURE_REGIONS = ['mesial', 'incisal', 'distal'] as const;
+const PROSTHESIS_TYPES = [
+  'healing-abutment',
+  'locator',
+  'locator-overdenture',
+  'bar',
+  'bar-overdenture',
+  'removable-partial',
+  'removable-full',
+] as const;
 const TOOTH_POSITION_SET: ReadonlySet<number> = new Set<number>(
   TOOTH_POSITIONS,
 );
@@ -485,7 +548,108 @@ function parseConditionByKind(
 
       return { kind, bridgeId, role, material, appearance };
     }
+
+    case 'structure': {
+      validateExactKeys(
+        value,
+        ['kind', 'state', 'appearance', 'fractureRegions'],
+        path,
+        issues,
+      );
+      const state = readEnum(
+        value.state,
+        TOOTH_STRUCTURE_STATES,
+        `${path}.state`,
+        issues,
+      );
+      const appearance =
+        value.appearance === undefined
+          ? undefined
+          : readEnum(
+              value.appearance,
+              ODONTOGRAM_APPEARANCES,
+              `${path}.appearance`,
+              issues,
+            );
+      const fractureRegions = readOptionalEnumArray(
+        value.fractureRegions,
+        FRACTURE_REGIONS,
+        `${path}.fractureRegions`,
+        issues,
+      );
+
+      if (issues.length !== issueCount || state === undefined) return null;
+      return fractureRegions === undefined
+        ? appearance === undefined
+          ? { kind, state }
+          : { kind, state, appearance }
+        : appearance === undefined
+          ? { kind, state, fractureRegions }
+          : { kind, state, appearance, fractureRegions };
+    }
+
+    case 'planned-implant': {
+      validateExactKeys(value, ['kind', 'appearance'], path, issues);
+      const appearance = readEnum(
+        value.appearance,
+        PLANNED_APPEARANCES,
+        `${path}.appearance`,
+        issues,
+      );
+      if (issues.length !== issueCount || appearance === undefined) return null;
+      return { kind, appearance };
+    }
+
+    case 'prosthesis': {
+      validateExactKeys(
+        value,
+        ['kind', 'groupId', 'prosthesis', 'appearance'],
+        path,
+        issues,
+      );
+      const groupId = readBridgeId(value.groupId, `${path}.groupId`, issues);
+      const prosthesis = readEnum(
+        value.prosthesis,
+        PROSTHESIS_TYPES,
+        `${path}.prosthesis`,
+        issues,
+      );
+      const appearance = readEnum(
+        value.appearance,
+        ODONTOGRAM_APPEARANCES,
+        `${path}.appearance`,
+        issues,
+      );
+      if (
+        issues.length !== issueCount ||
+        groupId === undefined ||
+        prosthesis === undefined ||
+        appearance === undefined
+      ) {
+        return null;
+      }
+      return { kind, groupId, prosthesis, appearance };
+    }
   }
+}
+
+function readOptionalEnumArray<T extends string>(
+  value: unknown,
+  allowedValues: readonly T[],
+  path: string,
+  issues: OdontogramDataIssue[],
+): readonly T[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    addInvalidShape(issues, path);
+    return undefined;
+  }
+  const values = value.map((entry, index) =>
+    readEnum(entry, allowedValues, `${path}[${index}]`, issues),
+  );
+  return values.every((entry): entry is T => entry !== undefined)
+    ? values
+    : undefined;
 }
 
 function parseTooth(
@@ -503,7 +667,7 @@ function parseTooth(
 
   const exactKeys = validateExactKeys(
     value,
-    ['position', 'base', 'conditions'],
+    ['position', 'base', 'dentition', 'conditions'],
     path,
     issues,
   );
@@ -522,6 +686,15 @@ function parseTooth(
   }
 
   const base = readEnum(value.base, TOOTH_BASES, `${path}.base`, issues);
+  const dentition =
+    value.dentition === undefined
+      ? undefined
+      : readEnum(
+          value.dentition,
+          TOOTH_DENTITIONS,
+          `${path}.dentition`,
+          issues,
+        );
   const parsedConditions: OdontogramCondition[] = [];
   let conditionsValid = true;
 
@@ -548,12 +721,15 @@ function parseTooth(
     !exactKeys ||
     position === undefined ||
     base === undefined ||
+    (value.dentition !== undefined && dentition === undefined) ||
     !conditionsValid
   ) {
     return null;
   }
 
-  return { position, base, conditions: parsedConditions };
+  return dentition === undefined
+    ? { position, base, conditions: parsedConditions }
+    : { position, base, dentition, conditions: parsedConditions };
 }
 
 function parseStructure(input: unknown): ParsedStructure {
@@ -643,6 +819,15 @@ function conditionIsSupportedByBase(
   base: ToothBase,
   condition: OdontogramCondition,
 ): boolean {
+  if (condition.kind === 'structure') return true;
+  if (condition.kind === 'planned-implant') {
+    return base === 'natural' || base === 'missing';
+  }
+  if (condition.kind === 'prosthesis') {
+    return base === 'implant'
+      ? !condition.prosthesis.startsWith('removable-')
+      : base === 'missing' && condition.prosthesis.startsWith('removable-');
+  }
   switch (base) {
     case 'natural':
       return condition.kind !== 'bridge' || condition.role === 'abutment';
@@ -704,6 +889,12 @@ function validateToothConditions(
   const bridges = tooth.conditions.filter(
     (condition): condition is BridgeCondition => condition.kind === 'bridge',
   );
+  const prostheses = tooth.conditions.filter(
+    (condition) => condition.kind === 'prosthesis',
+  );
+  const plannedImplants = tooth.conditions.filter(
+    (condition) => condition.kind === 'planned-implant',
+  );
 
   validateSurfaceCardinality(
     caries,
@@ -725,6 +916,7 @@ function validateToothConditions(
     ['endodontic condition', endodontics],
     ['extraction marker', extractions],
     ['bridge membership', bridges],
+    ['prosthesis membership', prostheses],
   ];
 
   for (const [name, conditions] of singletonCounts) {
@@ -745,6 +937,18 @@ function validateToothConditions(
         issueKeys,
         tooth.position,
         `${condition.kind} is not supported on ${describeBase(tooth.base)}`,
+      );
+    }
+
+    if (
+      condition.kind === 'planned-implant' &&
+      tooth.base === 'implant'
+    ) {
+      addConditionIssue(
+        issues,
+        issueKeys,
+        tooth.position,
+        'a planned implant cannot coexist with an existing implant base',
       );
     }
 
@@ -803,6 +1007,24 @@ function validateToothConditions(
       issueKeys,
       tooth.position,
       'a standalone restoration cannot be combined with bridge membership',
+    );
+  }
+
+  if (prostheses.length > 0 && (restorations.length > 0 || bridges.length > 0)) {
+    addConditionIssue(
+      issues,
+      issueKeys,
+      tooth.position,
+      'a prosthesis cannot be combined with fixed restoration or bridge membership',
+    );
+  }
+
+  if (plannedImplants.length > 0 && (restorations.length > 0 || bridges.length > 0)) {
+    addConditionIssue(
+      issues,
+      issueKeys,
+      tooth.position,
+      'a planned implant cannot be combined with fixed restoration or bridge membership',
     );
   }
 
