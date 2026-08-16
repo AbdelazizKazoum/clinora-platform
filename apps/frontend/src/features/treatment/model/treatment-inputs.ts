@@ -23,6 +23,9 @@ type DetailValueByKey = {
   readonly TOOTH_STATE: 'NATURAL' | 'MISSING' | 'IMPLANT' | 'PRIMARY' | 'UNDER_GUM' | 'MISSING_AFTER_EXTRACTION';
   readonly TOOTH_SUBSTRATE: 'NATURAL' | 'RADIX' | 'BROKEN' | 'CROWNPREP';
   readonly ICDAS_CARS_SEVERITY: number;
+  readonly CARIES_TYPE: 'PRIMARY' | 'SUBCROWN';
+  readonly RADIOGRAPHIC_DEPTH: 'E1' | 'E2' | 'D1' | 'D2' | 'D3';
+  readonly FILLING_DEFECT: 'MARGINAL' | 'FRACTURE' | 'WEAR';
   readonly FILLING_MATERIAL: 'AMALGAM' | 'COMPOSITE' | 'GIC' | 'TEMPORARY';
   readonly RESTORATION_TYPE: 'CROWN' | 'INLAY' | 'ONLAY' | 'VENEER' | 'BRIDGE';
   readonly RESTORATION_MATERIAL: 'EMAX' | 'GOLD' | 'GRADIA' | 'METAL' | 'METAL_CERAMIC' | 'TELESCOPE' | 'TEMPORARY' | 'ZIRCON';
@@ -60,9 +63,9 @@ export type TypedDetail<K extends keyof DetailValueByKey> = {
 type FindingDetailKeys = {
   readonly TOOTH_STATE: keyof Pick<DetailValueByKey, 'TOOTH_STATE'>;
   readonly TOOTH_SUBSTRATE: keyof Pick<DetailValueByKey, 'TOOTH_SUBSTRATE'>;
-  readonly CARIES: keyof Pick<DetailValueByKey, 'ICDAS_CARS_SEVERITY'>;
+  readonly CARIES: keyof Pick<DetailValueByKey, 'ICDAS_CARS_SEVERITY' | 'CARIES_TYPE' | 'RADIOGRAPHIC_DEPTH'>;
   readonly ROOT_CARIES: keyof Pick<DetailValueByKey, 'ROOT_CARIES_STATE'>;
-  readonly EXISTING_FILLING: keyof Pick<DetailValueByKey, 'FILLING_MATERIAL'>;
+  readonly EXISTING_FILLING: keyof Pick<DetailValueByKey, 'FILLING_MATERIAL' | 'FILLING_DEFECT'>;
   readonly EXISTING_FIXED_RESTORATION: keyof Pick<DetailValueByKey, 'RESTORATION_TYPE' | 'RESTORATION_MATERIAL'>;
   readonly EXISTING_ENDODONTIC_STATE: keyof Pick<DetailValueByKey, 'ENDODONTIC_STATE'>;
   readonly EXISTING_PROSTHESIS: keyof Pick<DetailValueByKey, 'PROSTHESIS_TYPE'>;
@@ -198,6 +201,9 @@ const assertDetails = (
   details: readonly ClinicalDetail[],
 ): void => {
   const enumValues: Readonly<Record<string, readonly string[]>> = {
+    CARIES_TYPE: ['PRIMARY', 'SUBCROWN'],
+    RADIOGRAPHIC_DEPTH: ['E1', 'E2', 'D1', 'D2', 'D3'],
+    FILLING_DEFECT: ['MARGINAL', 'FRACTURE', 'WEAR'],
     FILLING_MATERIAL: ['AMALGAM', 'COMPOSITE', 'GIC', 'TEMPORARY'],
     RESTORATION_MATERIAL: [
       'EMAX',
@@ -214,7 +220,10 @@ const assertDetails = (
     'TOOTH_STATE',
     'TOOTH_SUBSTRATE',
     'ICDAS_CARS_SEVERITY',
+    'CARIES_TYPE',
+    'RADIOGRAPHIC_DEPTH',
     'FILLING_MATERIAL',
+    'FILLING_DEFECT',
     'RESTORATION_TYPE',
     'RESTORATION_MATERIAL',
     'ENDODONTIC_STATE',
@@ -264,6 +273,10 @@ const assertDetails = (
     ...(code === 'EXISTING_FIXED_RESTORATION'
       ? ['RESTORATION_MATERIAL']
       : []),
+    ...(code === 'CARIES'
+      ? ['CARIES_TYPE', 'RADIOGRAPHIC_DEPTH']
+      : []),
+    ...(code === 'EXISTING_FILLING' ? ['FILLING_DEFECT'] : []),
   ]);
   const requiredKeys = new Set<string>([
     ...(findingOption?.detailKey ? [findingOption.detailKey] : []),

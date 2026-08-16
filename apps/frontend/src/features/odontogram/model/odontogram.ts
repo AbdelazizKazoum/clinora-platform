@@ -45,6 +45,27 @@ export type ImplantProsthesisType =
   | 'bar-overdenture'
   | 'removable-partial'
   | 'removable-full';
+export type ClinicalVisualConcept =
+  | 'fissure-sealing'
+  | 'root-caries'
+  | 'subcrown-caries'
+  | 'filling-defect'
+  | 'contact-mesial'
+  | 'contact-distal'
+  | 'crown-leakage'
+  | 'apicoectomy'
+  | 'parapulpal-pin'
+  | 'pulp-diagnosis'
+  | 'apical-diagnosis'
+  | 'periapical-lesion'
+  | 'root-resorption'
+  | 'wear-edge'
+  | 'wear-cervical'
+  | 'discoloration'
+  | 'ortho-appliance'
+  | 'ortho-drift'
+  | 'ortho-vertical'
+  | 'ortho-rotation';
 
 export type OdontogramCondition =
   | {
@@ -67,7 +88,12 @@ export type OdontogramCondition =
     }
   | {
       readonly kind: 'endodontic';
-      readonly state: 'root-canal';
+      readonly state:
+        | 'root-canal'
+        | 'medication'
+        | 'incomplete'
+        | 'glass-fiber-post'
+        | 'metal-post';
       readonly appearance: OdontogramAppearance;
     }
   | {
@@ -106,6 +132,13 @@ export type OdontogramCondition =
       readonly kind: 'peri-implant';
       readonly state: 'mucositis' | 'mild' | 'moderate' | 'severe';
       readonly appearance: 'existing';
+    }
+  | {
+      readonly kind: 'clinical';
+      readonly concept: ClinicalVisualConcept;
+      readonly subtype?: string;
+      readonly surface?: ToothSurface;
+      readonly appearance: OdontogramAppearance;
     };
 
 export interface OdontogramTooth {
@@ -187,9 +220,16 @@ const CONDITION_KINDS = [
   'prosthesis',
   'periodontal',
   'peri-implant',
+  'clinical',
 ] as const;
 const BRIDGE_ROLES = ['abutment', 'pontic'] as const;
-const ROOT_CANAL_STATES = ['root-canal'] as const;
+const ROOT_CANAL_STATES = [
+  'root-canal',
+  'medication',
+  'incomplete',
+  'glass-fiber-post',
+  'metal-post',
+] as const;
 const PLANNED_APPEARANCES = ['planned'] as const;
 const TOOTH_DENTITIONS = ['permanent', 'primary'] as const;
 const TOOTH_STRUCTURE_STATES = [
@@ -215,6 +255,13 @@ const PROSTHESIS_TYPES = [
 ] as const;
 const PERIODONTAL_STATES = ['calculus', 'involvement'] as const;
 const PERI_IMPLANT_STATES = ['mucositis', 'mild', 'moderate', 'severe'] as const;
+const CLINICAL_VISUAL_CONCEPTS = [
+  'fissure-sealing', 'root-caries', 'subcrown-caries', 'filling-defect',
+  'contact-mesial', 'contact-distal', 'crown-leakage', 'apicoectomy',
+  'parapulpal-pin', 'pulp-diagnosis', 'apical-diagnosis', 'periapical-lesion',
+  'root-resorption', 'wear-edge', 'wear-cervical', 'discoloration',
+  'ortho-appliance', 'ortho-drift', 'ortho-vertical', 'ortho-rotation',
+] as const;
 const TOOTH_POSITION_SET: ReadonlySet<number> = new Set<number>(
   TOOTH_POSITIONS,
 );
@@ -660,6 +707,21 @@ function parseConditionByKind(
       if (issues.length !== issueCount || state === undefined || appearance === undefined) return null;
       return { kind, state, appearance };
     }
+
+    case 'clinical': {
+      validateExactKeys(value, ['kind', 'concept', 'subtype', 'surface', 'appearance'], path, issues);
+      const concept = readEnum(value.concept, CLINICAL_VISUAL_CONCEPTS, `${path}.concept`, issues);
+      const surface = value.surface === undefined ? undefined : readEnum(value.surface, TOOTH_SURFACES, `${path}.surface`, issues);
+      const appearance = readEnum(value.appearance, ODONTOGRAM_APPEARANCES, `${path}.appearance`, issues);
+      if (issues.length !== issueCount || concept === undefined || appearance === undefined) return null;
+      return {
+        ...(surface === undefined ? {} : { surface }),
+        ...(typeof value.subtype === 'string' ? { subtype: value.subtype } : {}),
+        appearance,
+        concept,
+        kind,
+      };
+    }
   }
 }
 
@@ -860,6 +922,7 @@ function conditionIsSupportedByBase(
   }
   if (condition.kind === 'periodontal') return base === 'natural';
   if (condition.kind === 'peri-implant') return base === 'implant';
+  if (condition.kind === 'clinical') return base === 'natural' || base === 'implant';
   switch (base) {
     case 'natural':
       return condition.kind !== 'bridge' || condition.role === 'abutment';

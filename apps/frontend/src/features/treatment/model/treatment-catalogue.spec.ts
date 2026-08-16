@@ -79,7 +79,7 @@ describe('PARITY-01 capability inventory', () => {
 
     expect(input.code).toBe('PULP_DIAGNOSIS');
     expect(getClinicalFindingOption('PULP_DIAGNOSIS')?.capability.projection).toBe(
-      'record-only',
+      'existing-only',
     );
   });
 

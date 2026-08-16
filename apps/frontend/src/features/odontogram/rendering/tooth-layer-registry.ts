@@ -25,7 +25,8 @@ export type ToothWholeLayerKind =
   | 'restoration'
   | 'structure'
   | 'prosthesis'
-  | 'periodontal';
+  | 'periodontal'
+  | 'clinical';
 export type ToothVisualLayer = ToothSurfaceVisualLayer | ToothWholeVisualLayer;
 
 export interface ToothSurfaceVisualLayer {
@@ -131,6 +132,33 @@ export const TOOTH_WHOLE_LAYER_RESET_IDS = Object.freeze([
   'calculus',
   'parodontal',
   'peri-implant-bone-loss',
+  'endo-medical-filling',
+  'endo-filling-incomplete',
+  'endo-glass-pin',
+  'endo-metal-pin',
+  'endo-resection',
+  'parapulpal-pin',
+  'endo-resorption',
+  'fissure-sealing',
+  'caries-root',
+  'caries-subcrown',
+  'defect-buccal',
+  'defect-lingual',
+  'defect-mesial',
+  'defect-distal',
+  'defect-occlusal',
+  'mesial-no-contact-point',
+  'distal-no-contact-point',
+  'crown-leakage',
+  'tooth-bruxism-wear',
+  'tooth-bruxism-neck-wear',
+  'ortho-bracket',
+  'ortho-ring',
+  'arrow-mesial',
+  'arrow-distal',
+  'arrow-up',
+  'arrow-down',
+  'arrow-rotation',
 ] as const);
 
 export const FILLING_SURFACE_LAYER_ID_BY_MATERIAL = Object.freeze(
@@ -252,13 +280,23 @@ export function deriveWholeToothVisualLayers(
       continue;
     }
 
-    if (condition.kind === 'endodontic') {
-      if (view === 'side') {
+    if (condition.kind === 'clinical') {
+      for (const layer of clinicalLayerIds(condition)) {
         layers.push({
           appearance: condition.appearance,
-          id: 'endo-filling',
-          kind: 'endodontic',
+          id: layer.id,
+          kind: 'clinical',
+          ...(layer.opacity === undefined ? {} : { opacity: layer.opacity }),
         });
+      }
+      continue;
+    }
+
+    if (condition.kind === 'endodontic') {
+      if (view === 'side') {
+        for (const id of endodonticLayerIds(condition.state)) {
+          layers.push({ appearance: condition.appearance, id, kind: 'endodontic' });
+        }
       } else {
         unsupportedVisuals.push({
           condition: 'root-canal',
@@ -454,6 +492,56 @@ function getToothBaseLayerIds(tooth: OdontogramTooth): readonly string[] {
   }
 
   return [];
+}
+
+function endodonticLayerIds(
+  state: Extract<OdontogramCondition, { readonly kind: 'endodontic' }>['state'],
+): readonly string[] {
+  if (state === 'medication') return ['endo-medical-filling'];
+  if (state === 'incomplete') return ['endo-filling-incomplete'];
+  if (state === 'glass-fiber-post') return ['endo-filling', 'endo-glass-pin'];
+  if (state === 'metal-post') return ['endo-filling', 'endo-metal-pin'];
+  return ['endo-filling'];
+}
+
+function clinicalLayerIds(
+  condition: Extract<OdontogramCondition, { readonly kind: 'clinical' }>,
+): readonly { readonly id: string; readonly opacity?: string }[] {
+  switch (condition.concept) {
+    case 'fissure-sealing': return [{ id: 'fissure-sealing' }];
+    case 'root-caries': return [{ id: 'caries-root', opacity: rootCariesOpacity(condition.subtype) }];
+    case 'subcrown-caries': return [{ id: 'caries-subcrown' }];
+    case 'filling-defect': return condition.surface ? [{ id: `defect-${condition.surface}` }] : [];
+    case 'contact-mesial': return [{ id: 'mesial-no-contact-point' }];
+    case 'contact-distal': return [{ id: 'distal-no-contact-point' }];
+    case 'crown-leakage': return [{ id: 'crown-leakage' }];
+    case 'apicoectomy': return [{ id: 'endo-resection' }];
+    case 'parapulpal-pin': return [{ id: 'parapulpal-pin' }];
+    case 'root-resorption': return [{ id: 'endo-resorption' }];
+    case 'wear-edge': return [{ id: 'tooth-bruxism-wear' }];
+    case 'wear-cervical': return [{ id: 'tooth-bruxism-neck-wear' }];
+    case 'ortho-appliance': return [{ id: condition.subtype === 'BAND' ? 'ortho-ring' : 'ortho-bracket' }];
+    case 'ortho-drift': return [{ id: condition.subtype === 'DISTAL' ? 'arrow-distal' : 'arrow-mesial' }];
+    case 'ortho-vertical': return [{ id: condition.subtype === 'INTRUSION' ? 'arrow-down' : 'arrow-up' }];
+    case 'ortho-rotation': return [{ id: 'arrow-rotation' }];
+    case 'pulp-diagnosis': return condition.subtype && condition.subtype !== 'NORMAL' ? [{ id: 'tooth-inflam-pulp' }] : [];
+    case 'apical-diagnosis':
+    case 'periapical-lesion':
+      return condition.subtype && condition.subtype !== 'NORMAL'
+        ? [{ id: 'inflammation' }, { id: periapicalLayerId(condition.subtype) }]
+        : [];
+    case 'discoloration': return [];
+  }
+}
+
+function rootCariesOpacity(subtype: string | undefined): string {
+  return subtype === 'ACTIVE' ? '0.5' : subtype === 'ARRESTED' ? '0.7' : '1';
+}
+
+function periapicalLayerId(subtype: string): string {
+  if (subtype === 'CYST') return 'cysta';
+  if (subtype === 'ABSCESS' || subtype.includes('ABSCESS')) return 'abscess';
+  return 'granuloma';
 }
 
 function structureLayerIds(

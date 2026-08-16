@@ -147,6 +147,7 @@ export function TreatmentWorkspacePage({
   const [findingCode, setFindingCode] = useState<ClinicalFindingCode>('CARIES');
   const [findingSearch, setFindingSearch] = useState('');
   const [findingDetail, setFindingDetail] = useState('4');
+  const [findingAdditionalDetail, setFindingAdditionalDetail] = useState('');
   const [periodontalSite, setPeriodontalSite] = useState<PeriodontalSite>('B');
   const [actCode, setActCode] = useState<TreatmentActCode>('DIRECT_FILLING');
   const [actSearch, setActSearch] = useState('');
@@ -230,6 +231,9 @@ export function TreatmentWorkspacePage({
     }
     if (findingCode === 'EXISTING_FIXED_RESTORATION') {
       details.push({ key: 'RESTORATION_MATERIAL', value: restorationMaterial });
+    }
+    if (selectedFinding.additionalDetailKey && findingAdditionalDetail) {
+      details.push({ key: selectedFinding.additionalDetailKey, value: findingAdditionalDetail });
     }
 
     runAction(
@@ -323,6 +327,7 @@ export function TreatmentWorkspacePage({
         ? String(option.numericDetail.min)
         : (option?.detailOptions?.[0]?.value ?? ''),
     );
+    setFindingAdditionalDetail(option?.additionalDetailOptions?.[0]?.value ?? '');
   };
 
   const selectFindingDetail = (value: string) => {
@@ -463,6 +468,7 @@ export function TreatmentWorkspacePage({
               fillingMaterial={fillingMaterial}
               findingCode={findingCode}
               findingDetail={findingDetail}
+              findingAdditionalDetail={findingAdditionalDetail}
               findingSearch={findingSearch}
               findings={activeToothFindings}
               note={note}
@@ -490,6 +496,7 @@ export function TreatmentWorkspacePage({
               onFillingMaterialChange={setFillingMaterial}
               onFindingCodeChange={selectFindingCode}
               onFindingDetailChange={selectFindingDetail}
+              onFindingAdditionalDetailChange={setFindingAdditionalDetail}
               onFindingSearchChange={setFindingSearch}
               onActSearchChange={setActSearch}
               onNoteChange={setNote}
@@ -643,6 +650,7 @@ interface ToothDetailsPanelProps {
   readonly canDocument: boolean;
   readonly findingCode: ClinicalFindingCode;
   readonly findingDetail: string;
+  readonly findingAdditionalDetail: string;
   readonly findingSearch: string;
   readonly selectedFinding: ReturnType<typeof getClinicalFindingOption>;
   readonly actCode: TreatmentActCode;
@@ -655,6 +663,7 @@ interface ToothDetailsPanelProps {
   readonly onSurfacesChange: (surfaces: readonly ToothSurface[]) => void;
   readonly onFindingCodeChange: (code: ClinicalFindingCode) => void;
   readonly onFindingDetailChange: (value: string) => void;
+  readonly onFindingAdditionalDetailChange: (value: string) => void;
   readonly onFindingSearchChange: (value: string) => void;
   readonly onActSearchChange: (value: string) => void;
   readonly onActCodeChange: (code: TreatmentActCode) => void;
@@ -998,6 +1007,23 @@ function ActFormFields(props: ToothDetailsPanelProps) {
           Select a contiguous span with Ctrl/Cmd-click. At least one selected
           position must be missing for a pontic.
         </Alert>
+      )}
+
+      {props.selectedFinding?.additionalDetailOptions && (
+        <>
+          <FormLabel htmlFor="finding-additional-detail">Additional clinical detail</FormLabel>
+          <FormSelect
+            className="mb-3"
+            disabled={!props.canDocument}
+            id="finding-additional-detail"
+            onChange={(event) => props.onFindingAdditionalDetailChange(event.currentTarget.value)}
+            value={props.findingAdditionalDetail}
+          >
+            {props.selectedFinding.additionalDetailOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </FormSelect>
+        </>
       )}
 
       {props.selectedAct?.target === 'arch' && (

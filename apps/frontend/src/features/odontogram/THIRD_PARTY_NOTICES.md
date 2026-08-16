@@ -101,3 +101,21 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
   adapt only the reviewed calculus, periodontal-involvement, mucositis, and
   peri-implant bone-loss layer composition. Probing and index records remain
   Treatment-owned record data and are not inferred from SVG state.
+
+### PARITY-03 Adapted Files
+
+- `apps/frontend/src/features/odontogram/model/odontogram.ts` adds semantic
+  clinical visual conditions for advanced restorative detail, endodontic
+  variants, diagnosis, wear, discoloration, and orthodontic states without
+  exposing legacy SVG IDs to Treatment.
+- `apps/frontend/src/features/odontogram/rendering/tooth-layer-registry.ts`
+  adapts the reviewed layer compositions for the PARITY-03 axes, including
+  posts requiring endodontic filling composition, diagnostic shared artwork,
+  view-safe root layers, surface defects, and orthodontic direction layers.
+- `apps/frontend/src/features/odontogram/rendering/apply-tooth-visuals.ts`
+  scopes discoloration tinting to each cloned SVG and restores the asset base
+  fill on every render so tinting cannot leak between instances or replace
+  restoration material appearance.
+- `apps/frontend/src/features/treatment/model/treatment-odontogram.mapper.ts`
+  keeps diagnosis separate from treatment acts and maps supported clinical
+  subtypes into semantic visual conditions with lifecycle appearance.

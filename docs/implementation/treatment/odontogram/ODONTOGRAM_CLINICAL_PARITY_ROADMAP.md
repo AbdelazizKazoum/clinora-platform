@@ -1066,10 +1066,8 @@ Reviewed and implemented on 2026-08-16:
   compositions are represented with stable prosthesis group IDs. Fixed and
   removable prostheses report conflicts instead of silently overwriting each
   other, and adjacent bridge groups retain their independent IDs.
-- Renderer normalization now retains only the reviewed PARITY-02 layer set.
-  Performance measurements were re-baselined to 416,455 copied asset bytes,
-  11,224 projected side-view runtime nodes, and 16,356 projected side-plus-
-  occlusal runtime nodes.
+- Renderer normalization now retains only the reviewed PARITY-02 layer set at
+  this checkpoint. The later PARITY-03 expansion is measured separately below.
 - Added structural, primary-numbering, implant-lifecycle, prosthesis, conflict,
   layer-fixture, visual-model, capability-applicability, and editor accessibility
   tests.
@@ -1101,3 +1099,30 @@ Implemented on 2026-08-16:
 PARITY-04 remains pending the clinical approval gate for classification formulas
 and terminology, plus the later full arch-curve/overlay and lazy-loading release
 performance review. No PARITY-05 workflow or backend handoff was implemented.
+
+## 18. PARITY-03 Progress Evidence
+
+Implemented on 2026-08-16:
+
+- Added semantic visual conditions for fissure sealing, root/subcrown caries,
+  filling defects, contact defects, crown leakage, endodontic medication,
+  incomplete filling, glass-fiber/metal posts, apicoectomy, parapulpal pin,
+  AAE pulp/apical diagnosis, periapical lesions, root resorption, wear,
+  discoloration, and orthodontic states.
+- Added reviewed layer compositions and stale-layer reset coverage for the
+  corresponding legacy SVG artwork. Shared diagnostic artwork remains distinct
+  in Treatment data through semantic concept/subtype values.
+- Added scoped discoloration tint restoration for cloned SVG instances.
+- Added typed optional caries/filling detail inputs for subcrown and defect
+  records; radiographic depth remains structured record-only data without an
+  invented symbol.
+- Added endodontic lifecycle mapping and kept diagnoses independent from acts.
+- The current approved six-template runtime measurement after PARITY-03 is
+  416,455 asset bytes, 14,280 projected side-view nodes, and 20,096 projected
+  side-plus-occlusal nodes. This increase is explicit and must be revisited
+  before release rather than hidden by restoring the entire legacy layer set.
+
+PARITY-03 still requires the complete editor panel extraction, full clinical
+family accessibility review, and final clinical approval of diagnostic and
+orthodontic terminology before release sign-off. PARITY-04 and PARITY-05 remain
+separate roadmap tasks.

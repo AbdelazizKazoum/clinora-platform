@@ -71,7 +71,7 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   TreatmentActCode,
   TreatmentCapability
 > = {
-  APICOECTOMY: plannedAct(),
+  APICOECTOMY: plannedAct('existing-and-planned', { svgLayers: ['endo-resection'] }),
   BAR_ATTACHMENT: plannedAct('existing-and-planned', {
     applicability: ['existing implant fixture'],
     bases: ['implant'],
@@ -106,8 +106,8 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
     applicability: ['natural tooth'],
     svgLayers: ['extraction-plan', 'missing tooth base'],
   }),
-  FISSURE_SEALING: plannedAct(),
-  GLASS_FIBER_POST: plannedAct(),
+  FISSURE_SEALING: plannedAct('existing-and-planned', { svgLayers: ['fissure-sealing'] }),
+  GLASS_FIBER_POST: plannedAct('existing-and-planned', { svgLayers: ['endo-filling', 'endo-glass-pin'] }),
   HEALING_ABUTMENT: plannedAct('existing-and-planned', {
     applicability: ['existing implant fixture'],
     bases: ['implant'],
@@ -132,13 +132,13 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
     bases: ['implant'],
     svgLayers: ['prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'],
   }),
-  METAL_POST: plannedAct(),
+  METAL_POST: plannedAct('existing-and-planned', { svgLayers: ['endo-filling', 'endo-metal-pin'] }),
   ONLAY: plannedAct('existing-and-planned', {
     applicability: ['posterior tooth and occlusal view'],
     svgLayers: ['restoration onlay'],
   }),
   ORTHODONTIC_APPLIANCE: plannedAct(),
-  PARAPULPAL_PIN: plannedAct(),
+  PARAPULPAL_PIN: plannedAct('existing-and-planned', { svgLayers: ['parapulpal-pin'] }),
   PARTIAL_REMOVABLE_DENTURE: plannedAct('existing-and-planned', {
     applicability: ['arch/gap prosthesis group'],
     bases: ['missing'],
@@ -148,8 +148,8 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
     applicability: ['natural tooth; side view'],
     svgLayers: ['endo-filling'],
   }),
-  ROOT_CANAL_MEDICATION: plannedAct(),
-  ROOT_CANAL_REPAIR: plannedAct(),
+  ROOT_CANAL_MEDICATION: plannedAct('existing-and-planned', { svgLayers: ['endo-medical-filling'] }),
+  ROOT_CANAL_REPAIR: plannedAct('existing-and-planned', { svgLayers: ['endo-filling-incomplete'] }),
   VENEER: plannedAct('existing-and-planned', {
     applicability: ['natural tooth and supported material'],
     svgLayers: ['restoration veneer'],
@@ -160,7 +160,7 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   ClinicalFindingCode,
   TreatmentCapability
 > = {
-  APICAL_DIAGNOSIS: existingFinding(),
+  APICAL_DIAGNOSIS: existingFinding({ projection: 'existing-only', svgLayers: ['inflammation', 'granuloma', 'cysta', 'abscess'] }),
   CALCULUS: existingFinding({
     bases: ['natural'],
     projection: 'existing-only',
@@ -170,9 +170,9 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     projection: 'existing-only',
     svgLayers: ['caries surface'],
   }),
-  CONTACT_POINT_DEFECT: existingFinding(),
-  CROWN_LEAKAGE: existingFinding(),
-  DISCOLORATION: existingFinding(),
+  CONTACT_POINT_DEFECT: existingFinding({ projection: 'existing-only', svgLayers: ['mesial-no-contact-point', 'distal-no-contact-point'] }),
+  CROWN_LEAKAGE: existingFinding({ projection: 'existing-only', svgLayers: ['crown-leakage'] }),
+  DISCOLORATION: existingFinding({ projection: 'existing-only', svgLayers: ['natural crown tint'] }),
   EXISTING_ENDODONTIC_STATE: existingFinding({
     projection: 'existing-only',
     applicability: ['root-canal-filling subtype only in the current renderer'],
@@ -214,8 +214,8 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   FURCATION_INVOLVEMENT: existingFinding(),
   GINGIVAL_FINDING: existingFinding(),
   MOBILITY: existingFinding(),
-  ORTHODONTIC_STATE: existingFinding(),
-  PERIAPICAL_LESION: existingFinding(),
+  ORTHODONTIC_STATE: existingFinding({ projection: 'existing-only', svgLayers: ['ortho-bracket', 'ortho-ring', 'arrow-mesial', 'arrow-distal', 'arrow-up', 'arrow-down', 'arrow-rotation'] }),
+  PERIAPICAL_LESION: existingFinding({ projection: 'existing-only', svgLayers: ['inflammation', 'granuloma', 'cysta', 'abscess'] }),
   PERI_IMPLANT_STATUS: existingFinding({
     bases: ['implant'],
     projection: 'existing-only',
@@ -235,9 +235,9 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   }),
   PERIODONTAL_MEASUREMENT: existingFinding(),
   PLAQUE_FINDING: existingFinding(),
-  PULP_DIAGNOSIS: existingFinding(),
-  ROOT_CARIES: existingFinding(),
-  ROOT_RESORPTION: existingFinding(),
+  PULP_DIAGNOSIS: existingFinding({ projection: 'existing-only', svgLayers: ['tooth-inflam-pulp'] }),
+  ROOT_CARIES: existingFinding({ projection: 'existing-only', svgLayers: ['caries-root'] }),
+  ROOT_RESORPTION: existingFinding({ projection: 'existing-only', svgLayers: ['endo-resorption'] }),
   TOOTH_FRACTURE: existingFinding({
     bases: ['natural'],
     dentitions: ['permanent'],
@@ -264,7 +264,7 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     projection: 'existing-only',
     svgLayers: ['tooth-under-gum', 'tooth-radix', 'tooth-broken-*', 'tooth-crownprep'],
   }),
-  TOOTH_WEAR: existingFinding(),
+  TOOTH_WEAR: existingFinding({ projection: 'existing-only', svgLayers: ['tooth-bruxism-wear', 'tooth-bruxism-neck-wear'] }),
 };
 
 export interface OdontogramAxisCapability {

@@ -211,6 +211,8 @@ export interface ClinicalFindingOption {
   readonly target: TreatmentCatalogueTarget;
   readonly detailKey?: string;
   readonly detailOptions?: readonly TreatmentDetailOption[];
+  readonly additionalDetailKey?: string;
+  readonly additionalDetailOptions?: readonly TreatmentDetailOption[];
   readonly numericDetail?: {
     readonly key: string;
     readonly label: string;
@@ -229,8 +231,9 @@ export interface TreatmentDetailOption {
 const options = (...values: readonly [string, string][]) =>
   values.map(([value, label]) => ({ label, value }));
 
-type ClinicalFindingOptionDraft = Omit<ClinicalFindingOption, 'capability' | 'detailOptions'> & {
+type ClinicalFindingOptionDraft = Omit<ClinicalFindingOption, 'capability' | 'detailOptions' | 'additionalDetailOptions'> & {
   readonly detailOptions?: readonly Omit<TreatmentDetailOption, 'capability'>[];
+  readonly additionalDetailOptions?: readonly Omit<TreatmentDetailOption, 'capability'>[];
 };
 
 const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
@@ -273,6 +276,11 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       min: 1,
       max: 6,
     },
+    additionalDetailKey: 'CARIES_TYPE',
+    additionalDetailOptions: options(
+      ['PRIMARY', 'Primary caries'],
+      ['SUBCROWN', 'Subcrown caries'],
+    ),
   },
   {
     code: 'ROOT_CARIES',
@@ -297,6 +305,12 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       ['COMPOSITE', 'Composite'],
       ['GIC', 'Glass ionomer'],
       ['TEMPORARY', 'Temporary'],
+    ),
+    additionalDetailKey: 'FILLING_DEFECT',
+    additionalDetailOptions: options(
+      ['MARGINAL', 'Marginal defect'],
+      ['FRACTURE', 'Fracture / chip'],
+      ['WEAR', 'Wear'],
     ),
   },
   {
@@ -554,6 +568,10 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] =
               detail.value
             ] ?? CLINICAL_FINDING_CAPABILITIES[option.code].projection,
         },
+      })),
+      additionalDetailOptions: option.additionalDetailOptions?.map((detail) => ({
+        ...detail,
+        capability: CLINICAL_FINDING_CAPABILITIES[option.code],
       })),
     }),
   );

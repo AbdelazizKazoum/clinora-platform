@@ -36,11 +36,40 @@ export function applyToothVisuals({
   for (const layer of result.layers) {
     activateVisualLayer(svg, layerIdByOriginalId, layer);
   }
+  applyDiscolorationTint(svg, tooth);
 
   return {
     activeLayerIds: result.layers.map((layer) => layer.id),
     unsupportedVisuals: result.unsupportedVisuals,
   };
+}
+
+function applyDiscolorationTint(
+  svg: SVGSVGElement,
+  tooth: OdontogramTooth,
+): void {
+  const condition = tooth.conditions.find(
+    (candidate) =>
+      candidate.kind === 'clinical' && candidate.concept === 'discoloration',
+  );
+  const tintBySubtype: Readonly<Record<string, string>> = {
+    EXTRINSIC: '#b88758',
+    FLUOROSIS: '#d9e6c4',
+    NONVITAL: '#8f786c',
+    OTHER: '#b9a38c',
+    TETRACYCLINE: '#c7a455',
+  };
+  const tint = condition?.kind === 'clinical'
+    ? tintBySubtype[condition.subtype ?? '']
+    : undefined;
+  const activeBase = tooth.dentition === 'primary' ? 'milktooth-base' : 'tooth-base';
+  for (const id of ['tooth-base', 'milktooth-base']) {
+    const element = findLayerElement(svg, new Map(), id);
+    if (element === null) continue;
+    const baseFill = element.getAttribute('data-odontogram-base-fill') ?? element.style.fill;
+    element.setAttribute('data-odontogram-base-fill', baseFill);
+    element.style.fill = id === activeBase && tint !== undefined ? tint : baseFill;
+  }
 }
 
 function resetWholeToothLayers(

@@ -163,7 +163,7 @@ describe('Treatment odontogram projection', () => {
     expect(validateOdontogramData(projection.data).valid).toBe(true);
   });
 
-  it('retains unsupported detail as an explicit projection issue', () => {
+  it('projects an AAE pulp diagnosis as a distinct clinical visual condition', () => {
     const base = createMockTreatmentVisit();
     const finding: ClinicalFinding = {
       ...base.findings[0],
@@ -171,16 +171,13 @@ describe('Treatment odontogram projection', () => {
       details: [{ key: 'PULP_DIAGNOSIS', value: 'IRREVERSIBLE_PULPITIS' }],
       id: 'finding-pulp-16',
     };
-    const projection = mapTreatmentVisitToOdontogram({
-      ...base,
-      findings: [...base.findings, finding],
-    });
-
-    expect(projection.issues).toContainEqual({
-      recordId: finding.id,
-      reason:
-        'This clinical detail is recorded but not visualized in the current odontogram.',
-    });
+    expect(tooth({ ...base, findings: [...base.findings, finding] }, 16)?.conditions).toContainEqual(
+      expect.objectContaining({
+        concept: 'pulp-diagnosis',
+        kind: 'clinical',
+        subtype: 'IRREVERSIBLE_PULPITIS',
+      }),
+    );
   });
 
   it('does not silently render unsupported restoration combinations', () => {

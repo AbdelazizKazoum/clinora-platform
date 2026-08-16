@@ -356,6 +356,22 @@ describe('tooth layer registry', () => {
     ]));
   });
 
+  it('composes advanced endodontic, diagnostic, restorative-detail, and orthodontic layers', () => {
+    const conditions = [
+      { kind: 'endodontic' as const, state: 'medication' as const, appearance: 'existing' as const },
+      { kind: 'clinical' as const, concept: 'filling-defect' as const, surface: 'mesial' as const, subtype: 'FRACTURE', appearance: 'existing' as const },
+      { kind: 'clinical' as const, concept: 'root-resorption' as const, subtype: 'INTERNAL', appearance: 'existing' as const },
+      { kind: 'clinical' as const, concept: 'ortho-drift' as const, subtype: 'DISTAL', appearance: 'existing' as const },
+    ];
+    const ids = deriveWholeToothVisualLayers(tooth(16, conditions), 'side').layers.map((layer) => layer.id);
+    expect(ids).toEqual(expect.arrayContaining([
+      'endo-medical-filling',
+      'defect-mesial',
+      'endo-resorption',
+      'arrow-distal',
+    ]));
+  });
+
   it('reports onlay as unsupported in side roots and renderable in occlusal roots', () => {
     const sideResult = deriveToothVisualLayers(
       tooth(16, [
@@ -546,6 +562,33 @@ describe('tooth layer registry', () => {
       'calculus',
       'parodontal',
       'peri-implant-bone-loss',
+      'endo-medical-filling',
+      'endo-filling-incomplete',
+      'endo-glass-pin',
+      'endo-metal-pin',
+      'endo-resection',
+      'parapulpal-pin',
+      'endo-resorption',
+      'fissure-sealing',
+      'caries-root',
+      'caries-subcrown',
+      'defect-buccal',
+      'defect-lingual',
+      'defect-mesial',
+      'defect-distal',
+      'defect-occlusal',
+      'mesial-no-contact-point',
+      'distal-no-contact-point',
+      'crown-leakage',
+      'tooth-bruxism-wear',
+      'tooth-bruxism-neck-wear',
+      'ortho-bracket',
+      'ortho-ring',
+      'arrow-mesial',
+      'arrow-distal',
+      'arrow-up',
+      'arrow-down',
+      'arrow-rotation',
     ]);
   });
 });

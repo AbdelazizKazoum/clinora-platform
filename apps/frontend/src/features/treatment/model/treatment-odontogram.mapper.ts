@@ -1,5 +1,6 @@
 import {
   TOOTH_POSITIONS,
+  type ClinicalVisualConcept,
   type FillingMaterial,
   type ImplantProsthesisType,
   type OdontogramAppearance,
@@ -249,6 +250,10 @@ const projectFinding = (
   }
 
   if (finding.code === 'CARIES') {
+    if (detailString(finding.details, 'CARIES_TYPE') === 'SUBCROWN') {
+      addClinicalToothCondition(finding, targets, teeth, issues, { concept: 'subcrown-caries' });
+      return;
+    }
     const severity = detailNumber(finding.details, 'ICDAS_CARS_SEVERITY');
     const mappedSeverity =
       severity && severity >= 1 && severity <= 6
@@ -280,6 +285,16 @@ const projectFinding = (
       material,
       surface,
     }));
+    const defect = detailString(finding.details, 'FILLING_DEFECT');
+    if (defect) {
+      for (const surface of finding.target.surfaces) {
+        addClinicalToothCondition(finding, targets, teeth, issues, {
+          concept: 'filling-defect',
+          subtype: defect,
+          surface: SURFACES[surface],
+        });
+      }
+    }
     return;
   }
 
@@ -318,26 +333,115 @@ const projectFinding = (
     return;
   }
 
-  if (
-    finding.code === 'EXISTING_ENDODONTIC_STATE' &&
-    detailString(finding.details, 'ENDODONTIC_STATE') === 'ROOT_CANAL_FILLING'
-  ) {
+  if (finding.code === 'EXISTING_ENDODONTIC_STATE') {
+    const stateMap: Record<string, 'root-canal' | 'medication' | 'incomplete' | 'glass-fiber-post' | 'metal-post' | undefined> = {
+      GLASS_FIBER_POST: 'glass-fiber-post',
+      INCOMPLETE: 'incomplete',
+      MEDICATION: 'medication',
+      METAL_POST: 'metal-post',
+      ROOT_CANAL_FILLING: 'root-canal',
+    };
+    const endodonticState = stateMap[detailString(finding.details, 'ENDODONTIC_STATE') ?? ''];
+    if (!endodonticState) return addIssue(issues, finding.id, 'Unsupported endodontic state.');
     for (const position of targets) {
       const tooth = getProjectionTooth(teeth, position);
       if (tooth.base !== 'natural') {
         addIssue(
           issues,
           finding.id,
-          `Root-canal state skipped on tooth ${position} because it is ${tooth.base}.`,
+          `Endodontic state skipped on tooth ${position} because it is ${tooth.base}.`,
         );
         continue;
       }
       addUniqueCondition(tooth, {
         appearance: 'existing',
         kind: 'endodontic',
-        state: 'root-canal',
+        state: endodonticState,
       });
     }
+    return;
+  }
+
+  if (finding.code === 'ROOT_CARIES') {
+    addClinicalToothCondition(finding, targets, teeth, issues, {
+      concept: 'root-caries',
+      subtype: detailString(finding.details, 'ROOT_CARIES_STATE'),
+    });
+    return;
+  }
+
+  if (finding.code === 'CONTACT_POINT_DEFECT') {
+    for (const surface of finding.target.surfaces) {
+      if (surface === 'MESIAL' || surface === 'DISTAL') {
+        addClinicalToothCondition(finding, targets, teeth, issues, {
+          concept: surface === 'MESIAL' ? 'contact-mesial' : 'contact-distal',
+          surface: SURFACES[surface],
+        });
+      }
+    }
+    return;
+  }
+
+  if (finding.code === 'CROWN_LEAKAGE') {
+    addClinicalToothCondition(finding, targets, teeth, issues, { concept: 'crown-leakage' });
+    return;
+  }
+
+  if (finding.code === 'PULP_DIAGNOSIS' || finding.code === 'APICAL_DIAGNOSIS' || finding.code === 'PERIAPICAL_LESION') {
+    addClinicalToothCondition(finding, targets, teeth, issues, {
+      concept:
+        finding.code === 'PULP_DIAGNOSIS'
+          ? 'pulp-diagnosis'
+          : finding.code === 'APICAL_DIAGNOSIS'
+            ? 'apical-diagnosis'
+            : 'periapical-lesion',
+      subtype: detailString(
+        finding.details,
+        finding.code === 'PULP_DIAGNOSIS'
+          ? 'PULP_DIAGNOSIS'
+          : finding.code === 'APICAL_DIAGNOSIS'
+            ? 'APICAL_DIAGNOSIS'
+            : 'PERIAPICAL_LESION_TYPE',
+      ),
+    });
+    return;
+  }
+
+  if (finding.code === 'ROOT_RESORPTION') {
+    addClinicalToothCondition(finding, targets, teeth, issues, {
+      concept: 'root-resorption',
+      subtype: detailString(finding.details, 'ROOT_RESORPTION_TYPE'),
+    });
+    return;
+  }
+
+  if (finding.code === 'TOOTH_WEAR') {
+    const subtype = detailString(finding.details, 'WEAR_TYPE');
+    addClinicalToothCondition(finding, targets, teeth, issues, {
+      concept: subtype === 'ABRASION' || subtype === 'ABFRACTION' ? 'wear-cervical' : 'wear-edge',
+      subtype,
+    });
+    return;
+  }
+
+  if (finding.code === 'DISCOLORATION') {
+    addClinicalToothCondition(finding, targets, teeth, issues, {
+      concept: 'discoloration',
+      subtype: detailString(finding.details, 'DISCOLORATION_TYPE'),
+    });
+    return;
+  }
+
+  if (finding.code === 'ORTHODONTIC_STATE') {
+    const subtype = detailString(finding.details, 'ORTHODONTIC_STATE');
+    const concept = subtype === 'BRACKET' || subtype === 'BAND'
+      ? 'ortho-appliance'
+      : subtype === 'MESIAL_DRIFT' || subtype === 'DISTAL_DRIFT'
+        ? 'ortho-drift'
+        : subtype === 'EXTRUSION' || subtype === 'INTRUSION'
+          ? 'ortho-vertical'
+          : 'ortho-rotation';
+    addClinicalToothCondition(finding, targets, teeth, issues, { concept, subtype });
     return;
   }
 
@@ -442,6 +546,17 @@ const projectAct = (
     return;
   }
 
+  if (act.code === 'FISSURE_SEALING') {
+    for (const position of targets) {
+      if (![14, 15, 16, 17, 18, 24, 25, 26, 27, 28, 34, 35, 36, 37, 38, 44, 45, 46, 47, 48].includes(position)) {
+        addIssue(issues, act.id, `Fissure sealing is not applicable to tooth ${position}.`);
+        continue;
+      }
+      addClinicalActCondition(act, [position], teeth, issues, { appearance, concept: 'fissure-sealing' });
+    }
+    return;
+  }
+
   if (['CROWN', 'INLAY', 'ONLAY', 'VENEER'].includes(act.code)) {
     const restoration = RESTORATION_TYPES[act.code];
     const material = restorationMaterial(act.details);
@@ -473,23 +588,40 @@ const projectAct = (
     return;
   }
 
-  if (act.code === 'ROOT_CANAL_FILLING') {
+  if (['ROOT_CANAL_MEDICATION', 'ROOT_CANAL_FILLING', 'ROOT_CANAL_REPAIR', 'GLASS_FIBER_POST', 'METAL_POST'].includes(act.code)) {
+    const state = act.code === 'ROOT_CANAL_MEDICATION'
+      ? 'medication'
+      : act.code === 'ROOT_CANAL_REPAIR'
+        ? 'incomplete'
+        : act.code === 'GLASS_FIBER_POST'
+          ? 'glass-fiber-post'
+          : act.code === 'METAL_POST'
+            ? 'metal-post'
+            : 'root-canal';
     for (const position of targets) {
       const tooth = getProjectionTooth(teeth, position);
       if (tooth.base !== 'natural') {
         addIssue(
           issues,
           act.id,
-          `Root-canal treatment skipped on tooth ${position} because it is ${tooth.base}.`,
+          `Endodontic treatment skipped on tooth ${position} because it is ${tooth.base}.`,
         );
         continue;
       }
       addUniqueCondition(tooth, {
         appearance,
         kind: 'endodontic',
-        state: 'root-canal',
+        state,
       });
     }
+    return;
+  }
+
+  if (act.code === 'APICOECTOMY' || act.code === 'PARAPULPAL_PIN') {
+    addClinicalActCondition(act, targets, teeth, issues, {
+      appearance,
+      concept: act.code === 'APICOECTOMY' ? 'apicoectomy' : 'parapulpal-pin',
+    });
     return;
   }
 
@@ -711,6 +843,48 @@ const addUniqueCondition = (
     (candidate) => conditionKey(candidate) !== key,
   );
   tooth.conditions.push(condition);
+};
+
+const addClinicalToothCondition = (
+  record: Pick<ClinicalFinding, 'id'>,
+  targets: readonly ToothPosition[],
+  teeth: Map<ToothPosition, MutableTooth>,
+  issues: TreatmentOdontogramProjectionIssue[],
+  condition: {
+    readonly concept: ClinicalVisualConcept;
+    readonly subtype?: string;
+    readonly surface?: OdontogramSurface;
+    readonly appearance?: OdontogramAppearance;
+  },
+): void => {
+  for (const position of targets) {
+    const tooth = getProjectionTooth(teeth, position);
+    if (tooth.base === 'missing') {
+      addIssue(issues, record.id, `Clinical visual skipped on missing tooth ${position}.`);
+      continue;
+    }
+    addUniqueCondition(tooth, {
+      appearance: condition.appearance ?? 'existing',
+      concept: condition.concept,
+      ...(condition.subtype === undefined ? {} : { subtype: condition.subtype }),
+      ...(condition.surface === undefined ? {} : { surface: condition.surface }),
+      kind: 'clinical',
+    });
+  }
+};
+
+const addClinicalActCondition = (
+  record: Pick<TreatmentAct, 'id'>,
+  targets: readonly ToothPosition[],
+  teeth: Map<ToothPosition, MutableTooth>,
+  issues: TreatmentOdontogramProjectionIssue[],
+  condition: {
+    readonly concept: ClinicalVisualConcept;
+    readonly appearance: OdontogramAppearance;
+    readonly subtype?: string;
+  },
+): void => {
+  addClinicalToothCondition(record, targets, teeth, issues, condition);
 };
 
 const clearStructuralState = (tooth: MutableTooth): void => {

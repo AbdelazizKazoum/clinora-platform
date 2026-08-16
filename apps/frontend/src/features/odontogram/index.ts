@@ -19,6 +19,7 @@ export type {
 export type { ToothSurfaceSelectorProps } from './components/tooth-surface-selector';
 export type {
   FillingMaterial,
+  ClinicalVisualConcept,
   ImplantProsthesisType,
   OdontogramAppearance,
   OdontogramCondition,
