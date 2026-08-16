@@ -44,6 +44,10 @@ import {
 } from '../model/treatment-catalogue';
 import { mapTreatmentVisitToOdontogram } from '../model/treatment-odontogram.mapper';
 import {
+  createTreatmentActInput,
+  createTreatmentFindingInput,
+} from '../model/treatment-inputs';
+import {
   approveWorkspaceAct,
   approveWorkspaceFinding,
   assignWorkspaceDocumentation,
@@ -135,9 +139,11 @@ export function TreatmentWorkspacePage({
   const [actor, setActor] = useState<MockTreatmentActor>(demoDentist);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('chart');
   const [findingCode, setFindingCode] = useState<ClinicalFindingCode>('CARIES');
+  const [findingSearch, setFindingSearch] = useState('');
   const [findingDetail, setFindingDetail] = useState('4');
   const [periodontalSite, setPeriodontalSite] = useState<PeriodontalSite>('B');
   const [actCode, setActCode] = useState<TreatmentActCode>('DIRECT_FILLING');
+  const [actSearch, setActSearch] = useState('');
   const [fillingMaterial, setFillingMaterial] = useState('COMPOSITE');
   const [restorationMaterial, setRestorationMaterial] = useState('ZIRCON');
   const [note, setNote] = useState('');
@@ -222,18 +228,18 @@ export function TreatmentWorkspacePage({
         recordWorkspaceFinding(
           visit,
           actor,
-          {
-            code: findingCode,
-            details,
-            id: nextId('finding'),
-            note: note.trim() || null,
-            target: buildTarget(
-              selectedFinding.target,
-              [activeTooth],
-              surfaces,
-              periodontalSite,
-            ),
-          },
+            createTreatmentFindingInput({
+              code: findingCode,
+              details,
+              id: nextId('finding'),
+              note: note.trim() || null,
+              target: buildTarget(
+                selectedFinding.target,
+                [activeTooth],
+                surfaces,
+                periodontalSite,
+              ),
+            }),
           new Date(),
         ),
       actor.role === 'doctor'
@@ -278,18 +284,18 @@ export function TreatmentWorkspacePage({
         recordWorkspaceAct(
           visit,
           actor,
-          {
-            code: actCode,
-            details,
-            id: nextId('act'),
-            note: note.trim() || null,
-            target: buildTarget(
-              selectedAct.target,
-              selection.selectedToothPositions,
-              surfaces,
-              periodontalSite,
-            ),
-          },
+            createTreatmentActInput({
+              code: actCode,
+              details,
+              id: nextId('act'),
+              note: note.trim() || null,
+              target: buildTarget(
+                selectedAct.target,
+                selection.selectedToothPositions,
+                surfaces,
+                periodontalSite,
+              ),
+            }),
           new Date(),
         ),
       actor.role === 'doctor'
@@ -301,6 +307,7 @@ export function TreatmentWorkspacePage({
 
   const selectFindingCode = (code: ClinicalFindingCode) => {
     setFindingCode(code);
+    setFindingSearch('');
     const option = getClinicalFindingOption(code);
     setFindingDetail(
       option?.numericDetail
@@ -322,6 +329,7 @@ export function TreatmentWorkspacePage({
 
   const selectActCode = (code: TreatmentActCode) => {
     setActCode(code);
+    setActSearch('');
     if (
       isPartialRestoration(code) &&
       !isPartialRestorationMaterial(restorationMaterial)
@@ -441,6 +449,7 @@ export function TreatmentWorkspacePage({
               fillingMaterial={fillingMaterial}
               findingCode={findingCode}
               findingDetail={findingDetail}
+              findingSearch={findingSearch}
               findings={activeToothFindings}
               note={note}
               onActCodeChange={selectActCode}
@@ -467,6 +476,8 @@ export function TreatmentWorkspacePage({
               onFillingMaterialChange={setFillingMaterial}
               onFindingCodeChange={selectFindingCode}
               onFindingDetailChange={selectFindingDetail}
+              onFindingSearchChange={setFindingSearch}
+              onActSearchChange={setActSearch}
               onNoteChange={setNote}
               onPeriodontalSiteChange={setPeriodontalSite}
               onRestorationMaterialChange={setRestorationMaterial}
@@ -488,6 +499,7 @@ export function TreatmentWorkspacePage({
               restorationMaterial={restorationMaterial}
               selectedAct={selectedAct}
               selectedFinding={selectedFinding}
+              actSearch={actSearch}
               selectedToothCount={selection.selectedToothPositions.length}
               surfaces={surfaces}
             />
@@ -607,8 +619,10 @@ interface ToothDetailsPanelProps {
   readonly canDocument: boolean;
   readonly findingCode: ClinicalFindingCode;
   readonly findingDetail: string;
+  readonly findingSearch: string;
   readonly selectedFinding: ReturnType<typeof getClinicalFindingOption>;
   readonly actCode: TreatmentActCode;
+  readonly actSearch: string;
   readonly selectedAct: ReturnType<typeof getTreatmentActOption>;
   readonly fillingMaterial: string;
   readonly restorationMaterial: string;
@@ -617,6 +631,8 @@ interface ToothDetailsPanelProps {
   readonly onSurfacesChange: (surfaces: readonly ToothSurface[]) => void;
   readonly onFindingCodeChange: (code: ClinicalFindingCode) => void;
   readonly onFindingDetailChange: (value: string) => void;
+  readonly onFindingSearchChange: (value: string) => void;
+  readonly onActSearchChange: (value: string) => void;
   readonly onActCodeChange: (code: TreatmentActCode) => void;
   readonly onFillingMaterialChange: (value: string) => void;
   readonly onRestorationMaterialChange: (value: string) => void;
@@ -763,6 +779,14 @@ function FindingFormFields(props: ToothDetailsPanelProps) {
   return (
     <>
       <FormLabel htmlFor="finding-type">Finding</FormLabel>
+      <FormControl
+        aria-label="Search findings"
+        className="mb-2"
+        disabled={!props.canDocument}
+        onChange={(event) => props.onFindingSearchChange(event.currentTarget.value)}
+        placeholder="Search clinical families"
+        value={props.findingSearch}
+      />
       <FormSelect
         className="mb-3"
         disabled={!props.canDocument}
@@ -774,7 +798,7 @@ function FindingFormFields(props: ToothDetailsPanelProps) {
         }
         value={props.findingCode}
       >
-        {groupFindingOptions().map(([group, options]) => (
+        {groupFindingOptions(props.findingSearch).map(([group, options]) => (
           <optgroup key={group} label={group}>
             {options.map((option) => (
               <option key={option.code} value={option.code}>
@@ -865,6 +889,14 @@ function ActFormFields(props: ToothDetailsPanelProps) {
   return (
     <>
       <FormLabel htmlFor="act-type">Treatment act</FormLabel>
+      <FormControl
+        aria-label="Search treatment acts"
+        className="mb-2"
+        disabled={!props.canDocument}
+        onChange={(event) => props.onActSearchChange(event.currentTarget.value)}
+        placeholder="Search treatment families"
+        value={props.actSearch}
+      />
       <FormSelect
         className="mb-3"
         disabled={!props.canDocument}
@@ -874,7 +906,7 @@ function ActFormFields(props: ToothDetailsPanelProps) {
         }
         value={props.actCode}
       >
-        {groupActOptions().map(([group, options]) => (
+        {groupActOptions(props.actSearch).map(([group, options]) => (
           <optgroup key={group} label={group}>
             {options.map((option) => (
               <option key={option.code} value={option.code}>
@@ -910,7 +942,7 @@ function ActFormFields(props: ToothDetailsPanelProps) {
           value={props.restorationMaterial}
         />
       )}
-      {props.selectedAct && !props.selectedAct.visualized && (
+      {props.selectedAct?.capability.projection === 'record-only' && (
         <small className="text-muted d-block mb-3">
           This act is stored in the clinical record; the current renderer has no
           dedicated symbol for it yet.
@@ -1371,6 +1403,8 @@ const buildTarget = (
   kind:
     target === 'surface'
       ? ('TOOTH_SURFACE' as const)
+      : target === 'index-surface'
+        ? ('INDEX_SURFACE' as const)
       : target === 'bridge'
         ? ('BRIDGE_SPAN' as const)
         : target === 'arch'
@@ -1386,7 +1420,7 @@ const buildTarget = (
 });
 
 const requiresSurface = (target?: TreatmentCatalogueTarget) =>
-  target === 'surface';
+  target === 'surface' || target === 'index-surface';
 
 const isPartialRestoration = (code: string) =>
   code === 'INLAY' || code === 'ONLAY' || code === 'VENEER';
@@ -1441,17 +1475,35 @@ const validateBridgeSelection = (
     : 'Select a span containing at least one missing tooth for the pontic.';
 };
 
-const groupFindingOptions = () => {
+const groupFindingOptions = (search = '') => {
+  const query = search.trim().toLocaleLowerCase();
   const groups = new Map<string, typeof CLINICAL_FINDING_OPTIONS>();
   for (const option of CLINICAL_FINDING_OPTIONS) {
+    if (
+      query &&
+      !`${option.label} ${option.code} ${option.group}`
+        .toLocaleLowerCase()
+        .includes(query)
+    ) {
+      continue;
+    }
     groups.set(option.group, [...(groups.get(option.group) ?? []), option]);
   }
   return [...groups.entries()];
 };
 
-const groupActOptions = () => {
+const groupActOptions = (search = '') => {
+  const query = search.trim().toLocaleLowerCase();
   const groups = new Map<string, typeof TREATMENT_ACT_OPTIONS>();
   for (const option of TREATMENT_ACT_OPTIONS) {
+    if (
+      query &&
+      !`${option.label} ${option.code} ${option.category}`
+        .toLocaleLowerCase()
+        .includes(query)
+    ) {
+      continue;
+    }
     groups.set(option.category, [
       ...(groups.get(option.category) ?? []),
       option,

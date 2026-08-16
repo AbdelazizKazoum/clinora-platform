@@ -1020,3 +1020,28 @@ Frontend clinical parity is complete only when:
 Only after this definition passes should the team execute a final release
 audit equivalent to ODONTO-16 and begin the backend bounded-context
 implementation plan.
+
+## 15. PARITY-01 Progress Evidence
+
+Reviewed and implemented on 2026-08-16:
+
+- Checkpoint A foundation: all 25 acts and 27 findings now expose structured
+  capability metadata; planned implant placement remains `existing-only` until
+  PARITY-02 adds planned artwork; existing endodontic support identifies the
+  root-canal subtype instead of claiming family parity; the legacy axis and
+  special per-surface fields are represented in an executable inventory.
+- Checkpoint B foundation: Treatment creation paths use discriminated typed input
+  contracts for finding/act code, closed detail keys, restorative surfaces,
+  periodontal sites, index surfaces, furcation entrances, bridge spans, arches,
+  and teeth. A runtime boundary validator rejects mismatched target geometry and
+  out-of-range numeric values without consulting renderer capability.
+- Checkpoint C foundation: the existing Treatment editor now uses grouped,
+  searchable act/finding catalogues and reports record-only act support through
+  capability metadata. Assistant drafts still remain non-authoritative until
+  dentist approval.
+- Added focused catalogue/input tests covering metadata completeness, legacy
+  inventory coverage, target-geometry separation, and typed validation.
+
+PARITY-01 remains open for the remaining editor accessibility/error-association
+coverage and full clinical-family panel extraction. No PARITY-02 through
+PARITY-05 capability was implemented in this step.

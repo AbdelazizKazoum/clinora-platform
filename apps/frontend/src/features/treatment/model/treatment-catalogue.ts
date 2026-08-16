@@ -1,3 +1,8 @@
+import {
+  CLINICAL_FINDING_CAPABILITIES,
+  TREATMENT_ACT_CAPABILITIES,
+  type TreatmentCapability,
+} from './treatment-capabilities';
 import type { ClinicalFindingCode, TreatmentActCode } from './treatment';
 
 export type TreatmentCatalogueTarget =
@@ -5,7 +10,10 @@ export type TreatmentCatalogueTarget =
   | 'surface'
   | 'arch'
   | 'bridge'
-  | 'periodontal';
+  | 'periodontal'
+  | 'index-surface'
+  | 'furcation'
+  | 'tooth-region';
 
 export interface TreatmentActOption {
   readonly code: TreatmentActCode;
@@ -20,16 +28,17 @@ export interface TreatmentActOption {
     | 'Orthodontic';
   readonly target: TreatmentCatalogueTarget;
   readonly requiresMaterial?: 'filling' | 'restoration';
-  readonly visualized: boolean;
+  readonly capability: TreatmentCapability;
 }
 
-export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
+type TreatmentActOptionDraft = Omit<TreatmentActOption, 'capability'>;
+
+const TREATMENT_ACT_OPTION_DRAFTS: readonly TreatmentActOptionDraft[] = [
   {
     code: 'FISSURE_SEALING',
     label: 'Fissure sealing',
     category: 'Preventive',
     target: 'surface',
-    visualized: false,
   },
   {
     code: 'DIRECT_FILLING',
@@ -37,7 +46,6 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Restorative',
     target: 'surface',
     requiresMaterial: 'filling',
-    visualized: true,
   },
   {
     code: 'CROWN',
@@ -45,7 +53,6 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Restorative',
     target: 'tooth',
     requiresMaterial: 'restoration',
-    visualized: true,
   },
   {
     code: 'INLAY',
@@ -53,7 +60,6 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Restorative',
     target: 'tooth',
     requiresMaterial: 'restoration',
-    visualized: true,
   },
   {
     code: 'ONLAY',
@@ -61,7 +67,6 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Restorative',
     target: 'surface',
     requiresMaterial: 'restoration',
-    visualized: true,
   },
   {
     code: 'VENEER',
@@ -69,7 +74,6 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Restorative',
     target: 'tooth',
     requiresMaterial: 'restoration',
-    visualized: true,
   },
   {
     code: 'CROWN_REPLACEMENT',
@@ -77,77 +81,66 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Restorative',
     target: 'tooth',
     requiresMaterial: 'restoration',
-    visualized: false,
   },
   {
     code: 'ROOT_CANAL_MEDICATION',
     label: 'Root canal medication',
     category: 'Endodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'ROOT_CANAL_FILLING',
     label: 'Root canal filling',
     category: 'Endodontic',
     target: 'tooth',
-    visualized: true,
   },
   {
     code: 'ROOT_CANAL_REPAIR',
     label: 'Incomplete root canal correction',
     category: 'Endodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'GLASS_FIBER_POST',
     label: 'Glass fiber post',
     category: 'Endodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'METAL_POST',
     label: 'Metal post',
     category: 'Endodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'APICOECTOMY',
     label: 'Apicoectomy / root resection',
     category: 'Endodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'PARAPULPAL_PIN',
     label: 'Parapulpal pin',
     category: 'Restorative',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'EXTRACTION',
     label: 'Extraction',
     category: 'Surgery',
     target: 'tooth',
-    visualized: true,
   },
   {
     code: 'IMPLANT_PLACEMENT',
     label: 'Implant placement',
     category: 'Implant',
     target: 'tooth',
-    visualized: true,
   },
   {
     code: 'HEALING_ABUTMENT',
     label: 'Healing abutment',
     category: 'Implant',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'BRIDGE',
@@ -155,58 +148,56 @@ export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] = [
     category: 'Prosthodontic',
     target: 'bridge',
     requiresMaterial: 'restoration',
-    visualized: true,
   },
   {
     code: 'LOCATOR_ATTACHMENT',
     label: 'Locator attachment',
     category: 'Prosthodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'LOCATOR_OVERDENTURE',
     label: 'Locator overdenture',
     category: 'Prosthodontic',
     target: 'arch',
-    visualized: false,
   },
   {
     code: 'BAR_ATTACHMENT',
     label: 'Bar attachment',
     category: 'Prosthodontic',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'BAR_OVERDENTURE',
     label: 'Bar overdenture',
     category: 'Prosthodontic',
     target: 'arch',
-    visualized: false,
   },
   {
     code: 'PARTIAL_REMOVABLE_DENTURE',
     label: 'Partial removable denture',
     category: 'Prosthodontic',
     target: 'arch',
-    visualized: false,
   },
   {
     code: 'COMPLETE_REMOVABLE_DENTURE',
     label: 'Complete removable denture',
     category: 'Prosthodontic',
     target: 'arch',
-    visualized: false,
   },
   {
     code: 'ORTHODONTIC_APPLIANCE',
     label: 'Orthodontic appliance',
     category: 'Orthodontic',
     target: 'tooth',
-    visualized: false,
   },
 ];
+
+export const TREATMENT_ACT_OPTIONS: readonly TreatmentActOption[] =
+  TREATMENT_ACT_OPTION_DRAFTS.map((option) => ({
+    ...option,
+    capability: TREATMENT_ACT_CAPABILITIES[option.code],
+  }));
 
 export interface ClinicalFindingOption {
   readonly code: ClinicalFindingCode;
@@ -219,23 +210,30 @@ export interface ClinicalFindingOption {
     | 'Other';
   readonly target: TreatmentCatalogueTarget;
   readonly detailKey?: string;
-  readonly detailOptions?: readonly {
-    readonly label: string;
-    readonly value: string;
-  }[];
+  readonly detailOptions?: readonly TreatmentDetailOption[];
   readonly numericDetail?: {
     readonly key: string;
     readonly label: string;
     readonly min: number;
     readonly max: number;
   };
-  readonly visualized: boolean;
+  readonly capability: TreatmentCapability;
+}
+
+export interface TreatmentDetailOption {
+  readonly label: string;
+  readonly value: string;
+  readonly capability: TreatmentCapability;
 }
 
 const options = (...values: readonly [string, string][]) =>
   values.map(([value, label]) => ({ label, value }));
 
-export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
+type ClinicalFindingOptionDraft = Omit<ClinicalFindingOption, 'capability' | 'detailOptions'> & {
+  readonly detailOptions?: readonly Omit<TreatmentDetailOption, 'capability'>[];
+};
+
+const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
   {
     code: 'TOOTH_STATE',
     label: 'Tooth state',
@@ -247,7 +245,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['MISSING', 'Missing tooth'],
       ['IMPLANT', 'Implant'],
     ),
-    visualized: true,
   },
   {
     code: 'TOOTH_SUBSTRATE',
@@ -261,7 +258,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['BROKEN', 'Broken tooth'],
       ['CROWNPREP', 'Crown preparation'],
     ),
-    visualized: false,
   },
   {
     code: 'CARIES',
@@ -274,7 +270,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       min: 1,
       max: 6,
     },
-    visualized: true,
   },
   {
     code: 'ROOT_CARIES',
@@ -287,7 +282,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['ARRESTED', 'Arrested'],
       ['ACTIVE_CAVITATED', 'Active cavitated'],
     ),
-    visualized: false,
   },
   {
     code: 'EXISTING_FILLING',
@@ -301,7 +295,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['GIC', 'Glass ionomer'],
       ['TEMPORARY', 'Temporary'],
     ),
-    visualized: true,
   },
   {
     code: 'EXISTING_FIXED_RESTORATION',
@@ -315,14 +308,12 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['ONLAY', 'Onlay'],
       ['VENEER', 'Veneer'],
     ),
-    visualized: true,
   },
   {
     code: 'CROWN_LEAKAGE',
     label: 'Crown marginal leakage',
     group: 'Caries & restorations',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'EXISTING_ENDODONTIC_STATE',
@@ -337,7 +328,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['GLASS_FIBER_POST', 'Glass fiber post'],
       ['METAL_POST', 'Metal post'],
     ),
-    visualized: true,
   },
   {
     code: 'PULP_DIAGNOSIS',
@@ -351,7 +341,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['IRREVERSIBLE_PULPITIS', 'Irreversible pulpitis'],
       ['NECROSIS', 'Pulp necrosis'],
     ),
-    visualized: false,
   },
   {
     code: 'APICAL_DIAGNOSIS',
@@ -370,7 +359,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['CHRONIC_APICAL_ABSCESS', 'Chronic apical abscess'],
       ['CONDENSING_OSTEITIS', 'Condensing osteitis'],
     ),
-    visualized: false,
   },
   {
     code: 'PERIAPICAL_LESION',
@@ -383,7 +371,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['CYST', 'Cyst'],
       ['ABSCESS', 'Abscess'],
     ),
-    visualized: false,
   },
   {
     code: 'ROOT_RESORPTION',
@@ -395,14 +382,12 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['INTERNAL', 'Internal'],
       ['EXTERNAL_CERVICAL', 'External cervical'],
     ),
-    visualized: false,
   },
   {
     code: 'CALCULUS',
     label: 'Calculus',
     group: 'Periodontal',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'MOBILITY',
@@ -415,14 +400,12 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['2', 'Grade II'],
       ['3', 'Grade III'],
     ),
-    visualized: false,
   },
   {
     code: 'PERIODONTAL_INVOLVEMENT',
     label: 'Periodontal involvement',
     group: 'Periodontal',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'PERIODONTAL_MEASUREMENT',
@@ -435,7 +418,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       min: 1,
       max: 15,
     },
-    visualized: false,
   },
   {
     code: 'FURCATION_INVOLVEMENT',
@@ -449,21 +431,18 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['3', 'Grade III'],
       ['4', 'Grade IV'],
     ),
-    visualized: false,
   },
   {
     code: 'PLAQUE_FINDING',
     label: 'Plaque',
     group: 'Periodontal',
     target: 'surface',
-    visualized: false,
   },
   {
     code: 'GINGIVAL_FINDING',
     label: 'Gingival finding',
     group: 'Periodontal',
     target: 'surface',
-    visualized: false,
   },
   {
     code: 'EXISTING_PROSTHESIS',
@@ -480,28 +459,24 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['REMOVABLE_PARTIAL', 'Partial removable denture'],
       ['REMOVABLE_FULL', 'Complete removable denture'],
     ),
-    visualized: false,
   },
   {
     code: 'CONTACT_POINT_DEFECT',
     label: 'Contact point defect',
     group: 'Other',
     target: 'surface',
-    visualized: false,
   },
   {
     code: 'TOOTH_FRACTURE',
     label: 'Tooth fracture',
     group: 'Other',
     target: 'surface',
-    visualized: false,
   },
   {
     code: 'EXTRACTION_WOUND',
     label: 'Extraction wound',
     group: 'Other',
     target: 'tooth',
-    visualized: false,
   },
   {
     code: 'TOOTH_WEAR',
@@ -515,7 +490,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['ABFRACTION', 'Abfraction'],
       ['EROSION', 'Erosion'],
     ),
-    visualized: false,
   },
   {
     code: 'DISCOLORATION',
@@ -530,7 +504,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['EXTRINSIC', 'Extrinsic'],
       ['OTHER', 'Other'],
     ),
-    visualized: false,
   },
   {
     code: 'ORTHODONTIC_STATE',
@@ -547,7 +520,6 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['INTRUSION', 'Intrusion'],
       ['ROTATION', 'Rotation'],
     ),
-    visualized: false,
   },
   {
     code: 'PERI_IMPLANT_STATUS',
@@ -562,9 +534,26 @@ export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] = [
       ['MODERATE', 'Peri-implantitis — moderate'],
       ['SEVERE', 'Peri-implantitis — severe'],
     ),
-    visualized: false,
   },
 ];
+
+export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] =
+  CLINICAL_FINDING_OPTION_DRAFTS.map(
+    (option) => ({
+      ...option,
+      capability: CLINICAL_FINDING_CAPABILITIES[option.code],
+      detailOptions: option.detailOptions?.map((detail) => ({
+        ...detail,
+        capability: {
+          ...CLINICAL_FINDING_CAPABILITIES[option.code],
+          projection:
+            CLINICAL_FINDING_CAPABILITIES[option.code].subtypeSupport?.[
+              detail.value
+            ] ?? CLINICAL_FINDING_CAPABILITIES[option.code].projection,
+        },
+      })),
+    }),
+  );
 
 export const getTreatmentActOption = (code: TreatmentActCode) =>
   TREATMENT_ACT_OPTIONS.find((option) => option.code === code);

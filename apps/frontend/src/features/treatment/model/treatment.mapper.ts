@@ -19,6 +19,7 @@ import {
   type ClinicalTarget,
   type DentalArch,
   type DocumentationHandoff,
+  type FurcationEntrance,
   type PeriodontalSite,
   type ToothSurface,
   type TreatmentAct,
@@ -53,13 +54,22 @@ const mapTarget = (dto: ClinicalTargetResponseDto): ClinicalTarget => ({
       'surface',
     ),
   ) as ToothSurface[],
-  periodontalSites: dto.periodontalSites.map((value) =>
-    enumValue(
-      value,
-      ['MB', 'B', 'DB', 'ML', 'L', 'DL'] as const,
-      'periodontal site',
-    ),
-  ) as PeriodontalSite[],
+  periodontalSites:
+    dto.kind === 'FURCATION_ENTRANCE'
+      ? dto.periodontalSites.map((value) =>
+          enumValue(
+            value,
+            ['MESIAL', 'DISTAL', 'BUCCAL', 'LINGUAL'] as const,
+            'furcation entrance',
+          ),
+        ) as FurcationEntrance[]
+      : dto.periodontalSites.map((value) =>
+          enumValue(
+            value,
+            ['MB', 'B', 'DB', 'ML', 'L', 'DL'] as const,
+            'periodontal site',
+          ),
+        ) as PeriodontalSite[],
 });
 
 const mapDetail = (dto: ClinicalDetailResponseDto): ClinicalDetail => {

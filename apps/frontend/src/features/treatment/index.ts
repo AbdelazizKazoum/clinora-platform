@@ -10,6 +10,23 @@ export {
   treatmentVisitStatusLabels,
 } from './model/treatment';
 export {
+  CLINICAL_FINDING_CAPABILITIES,
+  ODONTOGRAM_AXIS_CAPABILITIES,
+  ODONTOGRAM_AXIS_CAPABILITY_BY_ID,
+  ODONTOGRAM_PERIODONTAL_RECORD_CAPABILITIES,
+  ODONTOGRAM_UPSTREAM_LAYER_IDS,
+  TREATMENT_ACT_CAPABILITIES,
+} from './model/treatment-capabilities';
+export {
+  createTreatmentActInput,
+  createTreatmentFindingInput,
+  FURCATION_ENTRANCES,
+  INDEX_SURFACES,
+  PERIODONTAL_SITES,
+  RESTORATIVE_SURFACES,
+  validateTreatmentInput,
+} from './model/treatment-inputs';
+export {
   canApproveTreatmentDocumentation,
   canEditTreatmentDraft,
   parseTreatmentLaunchContext,
@@ -27,6 +44,18 @@ export type {
   DocumentationHandoff,
   DocumentationHandoffStatus,
   PeriodontalSite,
+  FurcationEntrance,
+  IndexSurface,
+  TypedTreatmentTarget,
+  ToothTarget,
+  RestorativeSurfaceTarget,
+  ToothRegionTarget,
+  IndexSurfaceTarget,
+  PeriodontalSiteTarget,
+  FurcationEntranceTarget,
+  BridgeSpanTarget,
+  ArchTarget,
+  MouthTarget,
   ToothSurface,
   TreatmentAct,
   TreatmentActCode,
@@ -36,6 +65,21 @@ export type {
   TreatmentVisit,
   TreatmentVisitStatus,
 } from './model/treatment';
+export type {
+  OdontogramAxisCapability,
+  OdontogramRecordCapability,
+  OdontogramProjectionSupport,
+  OdontogramViewSupport,
+  TreatmentCapability,
+} from './model/treatment-capabilities';
+export type { TreatmentDetailOption } from './model/treatment-catalogue';
+export type {
+  TypedClinicalDetail,
+  TypedClinicalFindingInput,
+  TypedDetail,
+  TypedTreatmentActInput,
+  TreatmentInputDraft,
+} from './model/treatment-inputs';
 export type { TreatmentWorkspaceRole } from './model/treatment.rules';
 export type {
   TreatmentOdontogramProjection,

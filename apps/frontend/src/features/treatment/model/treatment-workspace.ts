@@ -1,14 +1,15 @@
 import type {
-  ClinicalDetail,
   ClinicalFinding,
-  ClinicalFindingCode,
-  ClinicalTarget,
   DocumentationHandoff,
   TreatmentAct,
-  TreatmentActCode,
   TreatmentActStatus,
   TreatmentVisit,
 } from './treatment';
+import {
+  validateTreatmentInput,
+  type TypedClinicalFindingInput,
+  type TypedTreatmentActInput,
+} from './treatment-inputs';
 import type { TreatmentWorkspaceRole } from './treatment.rules';
 
 export interface MockTreatmentActor {
@@ -17,21 +18,8 @@ export interface MockTreatmentActor {
   readonly role: Extract<TreatmentWorkspaceRole, 'doctor' | 'dental_assistant'>;
 }
 
-export interface RecordWorkspaceFindingInput {
-  readonly id: string;
-  readonly code: ClinicalFindingCode;
-  readonly target: ClinicalTarget;
-  readonly details?: readonly ClinicalDetail[];
-  readonly note?: string | null;
-}
-
-export interface RecordWorkspaceActInput {
-  readonly id: string;
-  readonly code: TreatmentActCode;
-  readonly target: ClinicalTarget;
-  readonly details?: readonly ClinicalDetail[];
-  readonly note?: string | null;
-}
+export type RecordWorkspaceFindingInput = TypedClinicalFindingInput;
+export type RecordWorkspaceActInput = TypedTreatmentActInput;
 
 const ACT_TRANSITIONS: Readonly<
   Record<TreatmentActStatus, readonly TreatmentActStatus[]>
@@ -51,6 +39,7 @@ export const recordWorkspaceFinding = (
   now: Date,
 ): TreatmentVisit => {
   assertCanDocument(visit, actor);
+  validateTreatmentInput(input);
   const dentistEntry = actor.role === 'doctor';
   const finding: ClinicalFinding = {
     code: input.code,
@@ -79,6 +68,7 @@ export const recordWorkspaceAct = (
   now: Date,
 ): TreatmentVisit => {
   assertCanDocument(visit, actor);
+  validateTreatmentInput(input);
   const dentistEntry = actor.role === 'doctor';
   const act: TreatmentAct = {
     approvedByDentistId: dentistEntry ? actor.userId : null,

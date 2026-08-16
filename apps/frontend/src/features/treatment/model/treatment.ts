@@ -37,7 +37,10 @@ export const TREATMENT_TARGET_KINDS = [
   'ARCH',
   'TOOTH',
   'TOOTH_SURFACE',
+  'TOOTH_REGION',
+  'INDEX_SURFACE',
   'PERIODONTAL_SITE',
+  'FURCATION_ENTRANCE',
   'BRIDGE_SPAN',
 ] as const;
 
@@ -114,15 +117,71 @@ export type ToothSurface =
   | 'MESIAL'
   | 'DISTAL'
   | 'OCCLUSAL';
+export type IndexSurface = Exclude<ToothSurface, 'OCCLUSAL'>;
 export type PeriodontalSite = 'MB' | 'B' | 'DB' | 'ML' | 'L' | 'DL';
+export type FurcationEntrance = 'MESIAL' | 'DISTAL' | 'BUCCAL' | 'LINGUAL';
 
 export interface ClinicalTarget {
   kind: TreatmentTargetKind;
   arch: DentalArch | null;
   toothNumbers: readonly number[];
   surfaces: readonly ToothSurface[];
-  periodontalSites: readonly PeriodontalSite[];
+  periodontalSites: readonly (PeriodontalSite | FurcationEntrance)[];
 }
+
+/** Target geometries used by typed Treatment creation paths. */
+export interface ToothTarget extends ClinicalTarget {
+  readonly kind: 'TOOTH';
+}
+
+export interface RestorativeSurfaceTarget extends ClinicalTarget {
+  readonly kind: 'TOOTH_SURFACE';
+  readonly surfaces: readonly ToothSurface[];
+}
+
+export interface ToothRegionTarget extends ClinicalTarget {
+  readonly kind: 'TOOTH_REGION';
+  readonly surfaces: readonly ('MESIAL' | 'DISTAL' | 'OCCLUSAL')[];
+}
+
+export interface IndexSurfaceTarget extends ClinicalTarget {
+  readonly kind: 'INDEX_SURFACE';
+  readonly surfaces: readonly IndexSurface[];
+}
+
+export interface PeriodontalSiteTarget extends ClinicalTarget {
+  readonly kind: 'PERIODONTAL_SITE';
+  readonly periodontalSites: readonly PeriodontalSite[];
+}
+
+export interface FurcationEntranceTarget extends ClinicalTarget {
+  readonly kind: 'FURCATION_ENTRANCE';
+  readonly periodontalSites: readonly FurcationEntrance[];
+}
+
+export interface BridgeSpanTarget extends ClinicalTarget {
+  readonly kind: 'BRIDGE_SPAN';
+}
+
+export interface ArchTarget extends ClinicalTarget {
+  readonly kind: 'ARCH';
+  readonly arch: DentalArch;
+}
+
+export interface MouthTarget extends ClinicalTarget {
+  readonly kind: 'MOUTH';
+}
+
+export type TypedTreatmentTarget =
+  | MouthTarget
+  | ArchTarget
+  | ToothTarget
+  | RestorativeSurfaceTarget
+  | ToothRegionTarget
+  | IndexSurfaceTarget
+  | PeriodontalSiteTarget
+  | FurcationEntranceTarget
+  | BridgeSpanTarget;
 
 export interface ClinicalDetail {
   key: string;
