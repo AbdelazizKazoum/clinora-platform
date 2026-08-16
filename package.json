@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev:frontend:low-memory": "NODE_OPTIONS=--max-old-space-size=2048 NEXT_TELEMETRY_DISABLED=1 pnpm --dir apps/frontend exec next dev --webpack --disable-source-maps"
+    "dev:frontend:low-memory": "cross-env NODE_OPTIONS=--max-old-space-size=2048 NEXT_TELEMETRY_DISABLED=1 pnpm --dir apps/frontend exec next dev --webpack --disable-source-maps"
   },
   "private": true,
   "devDependencies": {
@@ -28,6 +28,7 @@
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
     "@swc/jest": "~0.2.38",
+    "cross-env": "^10.0.0",
     "@testing-library/dom": "10.4.0",
     "@testing-library/react": "16.3.0",
     "@types/jest": "~30.0.0",
