@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { TreatmentWorkspacePage } from './treatment-workspace-page';
 
@@ -75,13 +75,15 @@ describe('Treatment workspace page', () => {
     );
   });
 
-  it('opens the separate periodontal workspace with six-site controls and empty-state summary', () => {
+  it('opens the separate periodontal workspace with six-site controls and empty-state summary', async () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Periodontal chart' }));
 
-    expect(screen.getByText('Periodontal examination')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('Periodontal examination')).toBeTruthy());
     expect(screen.getByRole('spinbutton', { name: 'MB probing depth' })).toBeTruthy();
     expect(screen.getByRole('spinbutton', { name: 'DL probing depth' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'buccal periodontal arch' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'lingual periodontal arch' })).toBeTruthy();
     expect(screen.getByText('Whole-mouth summary')).toBeTruthy();
     expect(screen.getByText('Charted sites')).toBeTruthy();
   });

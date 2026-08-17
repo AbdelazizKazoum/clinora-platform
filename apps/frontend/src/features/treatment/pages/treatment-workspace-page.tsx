@@ -11,6 +11,7 @@ import {
   type ToothSurface,
 } from '@/features/odontogram';
 import { useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Alert,
   Badge,
@@ -80,7 +81,17 @@ import {
   type TreatmentVisit,
 } from '../model/treatment';
 import styles from '../components/treatment-workspace.module.scss';
-import { PeriodontalWorkspace } from '../components/periodontal-workspace';
+
+const PeriodontalWorkspace = dynamic(
+  () =>
+    import('../components/periodontal-workspace').then(
+      ({ PeriodontalWorkspace: component }) => component,
+    ),
+  {
+    loading: () => <div role="status">Loading periodontal workspace...</div>,
+    ssr: false,
+  },
+);
 
 export interface TreatmentWorkspacePageProps {
   readonly launchContext?: TreatmentLaunchContext | null;

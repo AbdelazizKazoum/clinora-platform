@@ -1095,10 +1095,14 @@ Implemented on 2026-08-16:
 - Added calculus, periodontal-involvement, mucositis, and severity-scaled
   peri-implant bone-loss visual layers with stale-layer reset tests.
 - Added focused model, mapper, renderer, lifecycle, and workspace coverage.
+- Added pure responsive periodontal arch layout/curve utilities and buccal plus
+  lingual/palatal SVG chart bands. The periodontal workspace is now loaded
+  through a lazy client boundary so the default odontogram path does not import
+  it eagerly.
 
 PARITY-04 remains pending the clinical approval gate for classification formulas
-and terminology, plus the later full arch-curve/overlay and lazy-loading release
-performance review. No PARITY-05 workflow or backend handoff was implemented.
+and terminology and final release performance review. No PARITY-05 workflow or
+backend handoff was implemented.
 
 ## 18. PARITY-03 Progress Evidence
 

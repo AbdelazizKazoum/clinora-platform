@@ -101,6 +101,10 @@ No logo, toolbar icon, screenshot, translated README, generated documentation as
   adapt only the reviewed calculus, periodontal-involvement, mucositis, and
   peri-implant bone-loss layer composition. Probing and index records remain
   Treatment-owned record data and are not inferred from SVG state.
+- `apps/frontend/src/features/odontogram/rendering/periodontal-arch-layout.ts`
+  adapts the legacy periodontal arch ordering and curve geometry as a pure
+  responsive utility. It has no dependency on the legacy DOM, singleton store,
+  or periodontal React shell.
 
 ### PARITY-03 Adapted Files
 

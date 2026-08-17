@@ -11,6 +11,15 @@ export {
   getToothSurfaceLabel,
   getToothSurfaceNotation,
 } from './utils/surface-notation';
+export {
+  buildPeriodontalArchLayout,
+  buildPeriodontalCurvePoints,
+} from './rendering/periodontal-arch-layout';
+export type {
+  PeriodontalArch,
+  PeriodontalArchToothLayout,
+  PeriodontalAspect,
+} from './rendering/periodontal-arch-layout';
 export type {
   OdontogramInteractionMode,
   OdontogramProps,

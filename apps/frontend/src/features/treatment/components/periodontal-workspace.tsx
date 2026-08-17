@@ -6,6 +6,10 @@ import { Alert, Badge, Button, Card, CardBody, CardHeader, Col, FormControl, For
 import type { MockTreatmentActor } from '../model/treatment-workspace';
 import type { TreatmentVisit } from '../model/treatment';
 import {
+  buildPeriodontalArchLayout,
+  buildPeriodontalCurvePoints,
+} from '@/features/odontogram';
+import {
   CEJ_VISIBILITY_VALUES,
   FURCATION_GRADES,
   GINGIVAL_PHENOTYPES,
@@ -27,6 +31,7 @@ import {
   type GingivalPhenotype,
   type MillerClass,
   type PeriodontalGrade,
+  type PeriodontalExamination,
   type PeriodontalSummary,
 } from '../model/periodontal';
 import {
@@ -157,6 +162,8 @@ export function PeriodontalWorkspace({
               onUpdate={apply}
             />
 
+            <PeriodontalArchChart examination={examination} />
+
             {actor.role === 'doctor' && examination?.status === 'DRAFT' && (
               <Button className="mt-3" onClick={approve} variant="success">Confirm periodontal examination</Button>
             )}
@@ -167,6 +174,45 @@ export function PeriodontalWorkspace({
         <PeriodontalSummaryCard summary={summary} classification={examination ? 'NOT_CLINICALLY_APPROVED' : 'EMPTY'} />
       </Col>
     </Row>
+  );
+}
+
+function PeriodontalArchChart({
+  examination,
+}: {
+  readonly examination: PeriodontalExamination | null | undefined;
+}) {
+  const values = new Map(
+    (examination?.teeth ?? []).map((tooth) => [
+      tooth.toothNumber,
+      Math.max(...Object.values(tooth.sites).map(({ pd }) => pd), 0),
+    ]),
+  );
+  return (
+    <div aria-label="Periodontal arch charts" className="border rounded p-2 mt-3">
+      <div className="small text-muted mb-1">Buccal and lingual/palatal probing profile</div>
+      {(['buccal', 'lingual'] as const).map((aspect) => (
+        <svg aria-label={`${aspect} periodontal arch`} className="w-100 d-block" key={aspect} role="img" viewBox="0 0 640 160">
+          <line stroke="currentColor" strokeOpacity="0.2" x1="24" x2="616" y1="48" y2="48" />
+          <line stroke="currentColor" strokeOpacity="0.2" x1="24" x2="616" y1="112" y2="112" />
+          {(['upper', 'lower'] as const).map((arch) => {
+            const layout = buildPeriodontalArchLayout(arch, aspect);
+            const points = buildPeriodontalCurvePoints(layout, values, 0);
+            return (
+              <g key={arch}>
+                {points.length > 0 && <polyline fill="none" points={points} stroke="var(--bs-primary)" strokeWidth="2" />}
+                {layout.map(({ toothNumber, x, y }) => (
+                  <g key={toothNumber}>
+                    <circle cx={x} cy={y} fill="var(--bs-body-bg)" r="8" stroke="currentColor" strokeOpacity="0.45" />
+                    <text dominantBaseline="middle" fontSize="8" textAnchor="middle" x={x} y={y}>{toothNumber}</text>
+                  </g>
+                ))}
+              </g>
+            );
+          })}
+        </svg>
+      ))}
+    </div>
   );
 }
 

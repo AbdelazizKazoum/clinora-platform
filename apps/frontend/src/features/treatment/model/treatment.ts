@@ -1,3 +1,5 @@
+import type { PeriodontalExamination } from './periodontal';
+
 export const TREATMENT_VISIT_STATUSES = [
   'DRAFT',
   'IN_PROGRESS',
@@ -276,4 +278,3 @@ export const documentationHandoffStatusLabels = {
   ACCEPTED: 'Accepted by dentist',
   CANCELLED: 'Cancelled',
 } satisfies Record<DocumentationHandoffStatus, string>;
-import type { PeriodontalExamination } from './periodontal';
