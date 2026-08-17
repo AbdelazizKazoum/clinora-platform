@@ -1101,8 +1101,29 @@ Implemented on 2026-08-16:
   it eagerly.
 
 PARITY-04 remains pending the clinical approval gate for classification formulas
-and terminology and final release performance review. No PARITY-05 workflow or
-backend handoff was implemented.
+and terminology and final release performance review. PARITY-05 work is tracked
+separately in section 19.
+
+## 19. PARITY-05 Progress Evidence
+
+Implemented on 2026-08-16:
+
+- Added independent confirmed-status, active-plan, and combined Treatment
+  projections with explicit projection modes.
+- Added semantic planned deltas, shared-condition tracking, deterministic active
+  plan conflicts, and structured per-tooth summaries.
+- Added append-only in-memory audit attribution for recording, approval,
+  lifecycle, periodontal confirmation, and documentation review transitions.
+- Added structured summary presentation in the Clinical Record workspace while
+  keeping accessible data derived from Treatment/public visual data rather than
+  raw SVG internals.
+- Added `docs/implementation/treatment/TREATMENT_BACKEND_REQUIREMENTS_PLAN.md`
+  as a separate requirements handoff. It contains no backend implementation and
+  no SVG-layer contract.
+
+PARITY-05 still requires the full capability-matrix fixture gate, clinician
+visual review, production performance/e2e validation, and resolution of the
+repository-wide build blocker before release sign-off.
 
 ## 18. PARITY-03 Progress Evidence
 

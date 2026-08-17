@@ -1,6 +1,8 @@
 import type {
   ClinicalFinding,
   DocumentationHandoff,
+  TreatmentAuditAction,
+  TreatmentAuditEntry,
   TreatmentAct,
   TreatmentActStatus,
   TreatmentVisit,
@@ -62,11 +64,11 @@ export const recordWorkspaceFinding = (
     verifiedByUserId: dentistEntry ? actor.userId : null,
   };
 
-  return {
+  return withAudit({
     ...visit,
     findings: [...visit.findings, finding],
     updatedAt: now,
-  };
+  }, 'FINDING_RECORDED', actor.userId, finding.id, now);
 };
 
 export const recordWorkspaceAct = (
@@ -92,7 +94,7 @@ export const recordWorkspaceAct = (
     updatedAt: now,
   };
 
-  return { ...visit, acts: [...visit.acts, act], updatedAt: now };
+  return withAudit({ ...visit, acts: [...visit.acts, act], updatedAt: now }, 'ACT_RECORDED', actor.userId, act.id, now);
 };
 
 export const approveWorkspaceFinding = (
@@ -102,7 +104,7 @@ export const approveWorkspaceFinding = (
   now: Date,
 ): TreatmentVisit => {
   assertResponsibleDentist(visit, dentist);
-  return {
+  return withAudit({
     ...visit,
     findings: visit.findings.map((finding) =>
       finding.id === findingId
@@ -115,7 +117,7 @@ export const approveWorkspaceFinding = (
         : finding,
     ),
     updatedAt: now,
-  };
+  }, 'FINDING_CONFIRMED', dentist.userId, findingId, now);
 };
 
 export const approveWorkspaceAct = (
@@ -152,7 +154,7 @@ export const updateWorkspacePeriodontalExamination = (
     visit.periodontalExamination ??
     createEmptyPeriodontalExamination(actor.userId, now);
   const next = update(current);
-  return {
+  return withAudit({
     ...visit,
     periodontalExamination: {
       ...next,
@@ -163,7 +165,7 @@ export const updateWorkspacePeriodontalExamination = (
         actor.role === 'doctor' ? actor.userId : current.verifiedByDentistId,
     },
     updatedAt: now,
-  };
+  }, 'PERIODONTAL_UPDATED', actor.userId, null, now);
 };
 
 export const approveWorkspacePeriodontalExamination = (
@@ -176,7 +178,7 @@ export const approveWorkspacePeriodontalExamination = (
   if (examination === null || examination === undefined) {
     throw new Error('No periodontal examination is available for approval.');
   }
-  return {
+  return withAudit({
     ...visit,
     periodontalExamination: {
       ...examination,
@@ -185,7 +187,7 @@ export const approveWorkspacePeriodontalExamination = (
       verifiedByDentistId: dentist.userId,
     },
     updatedAt: now,
-  };
+  }, 'PERIODONTAL_CONFIRMED', dentist.userId, null, now);
 };
 
 export const transitionWorkspaceAct = (
@@ -214,13 +216,13 @@ export const transitionWorkspaceAct = (
     updatedAt: now,
   };
 
-  return {
+  return withAudit({
     ...visit,
     acts: visit.acts.map((candidate) =>
       candidate.id === actId ? updatedAct : candidate,
     ),
     updatedAt: now,
-  };
+  }, 'ACT_STATUS_CHANGED', dentist.userId, actId, now);
 };
 
 export const assignWorkspaceDocumentation = (
@@ -243,12 +245,12 @@ export const assignWorkspaceDocumentation = (
     status: 'ASSIGNED',
     submittedAt: null,
   };
-  return {
+  return withAudit({
     ...visit,
     documentationHandoff: handoff,
     status: 'IN_PROGRESS',
     updatedAt: now,
-  };
+  }, 'DOCUMENTATION_ASSIGNED', dentist.userId, handoffId, now);
 };
 
 export const startWorkspaceDocumentation = (
@@ -300,21 +302,21 @@ export const reviewWorkspaceDocumentation = (
   if (handoff?.status !== 'SUBMITTED') {
     throw new Error('Only submitted documentation can be reviewed.');
   }
-  return {
+  const reviewNote = decision === 'RETURN'
+    ? 'Please review the selected teeth and clinical details.'
+    : null;
+  return withAudit({
     ...visit,
     documentationHandoff: {
       ...handoff,
-      reviewNote:
-        decision === 'RETURN'
-          ? 'Please review the selected teeth and clinical details.'
-          : null,
+      reviewNote,
       reviewedAt: now,
       revision: decision === 'RETURN' ? handoff.revision + 1 : handoff.revision,
       status: decision === 'ACCEPT' ? 'ACCEPTED' : 'RETURNED',
     },
     status: decision === 'ACCEPT' ? 'READY_FOR_COMPLETION' : 'IN_PROGRESS',
     updatedAt: now,
-  };
+  }, decision === 'ACCEPT' ? 'DOCUMENTATION_ACCEPTED' : 'DOCUMENTATION_RETURNED', dentist.userId, null, now, reviewNote);
 };
 
 export const completeWorkspaceVisit = (
@@ -335,7 +337,13 @@ export const completeWorkspaceVisit = (
   ) {
     throw new Error('Approve or resolve all draft clinical entries first.');
   }
-  return { ...visit, completedAt: now, status: 'COMPLETED', updatedAt: now };
+  return withAudit(
+    { ...visit, completedAt: now, status: 'COMPLETED', updatedAt: now },
+    'DOCUMENTATION_ACCEPTED',
+    dentist.userId,
+    null,
+    now,
+  );
 };
 
 const assertCanDocument = (
@@ -356,6 +364,28 @@ const assertCanDocument = (
   ) {
     throw new Error('An active assistant assignment is required.');
   }
+};
+
+const withAudit = (
+  visit: TreatmentVisit,
+  action: TreatmentAuditAction,
+  actorUserId: string,
+  recordId: string | null,
+  occurredAt: Date,
+  reason: string | null = null,
+): TreatmentVisit => {
+  const entry: TreatmentAuditEntry = {
+    action,
+    actorUserId,
+    id: `${action}-${recordId ?? 'visit'}-${occurredAt.getTime()}`,
+    occurredAt,
+    reason,
+    recordId,
+  };
+  return {
+    ...visit,
+    auditHistory: [...(visit.auditHistory ?? []), entry],
+  };
 };
 
 const assertVisitEditable = (visit: TreatmentVisit): void => {

@@ -230,6 +230,27 @@ export interface DocumentationHandoff {
   reviewedAt: Date | null;
 }
 
+export type TreatmentAuditAction =
+  | 'FINDING_RECORDED'
+  | 'ACT_RECORDED'
+  | 'FINDING_CONFIRMED'
+  | 'ACT_APPROVED'
+  | 'ACT_STATUS_CHANGED'
+  | 'DOCUMENTATION_ASSIGNED'
+  | 'DOCUMENTATION_RETURNED'
+  | 'DOCUMENTATION_ACCEPTED'
+  | 'PERIODONTAL_UPDATED'
+  | 'PERIODONTAL_CONFIRMED';
+
+export interface TreatmentAuditEntry {
+  readonly id: string;
+  readonly action: TreatmentAuditAction;
+  readonly actorUserId: string;
+  readonly recordId: string | null;
+  readonly reason: string | null;
+  readonly occurredAt: Date;
+}
+
 export interface TreatmentVisit {
   id: string;
   clinicId: string;
@@ -244,6 +265,7 @@ export interface TreatmentVisit {
   findings: readonly ClinicalFinding[];
   acts: readonly TreatmentAct[];
   readonly periodontalExamination?: PeriodontalExamination | null;
+  readonly auditHistory?: readonly TreatmentAuditEntry[];
   documentationHandoff: DocumentationHandoff | null;
   startedAt: Date | null;
   completedAt: Date | null;

@@ -7,6 +7,7 @@ import {
   ToothSurfaceSelector,
   TOOTH_POSITIONS,
   type OdontogramSelection,
+  type OdontogramData,
   type ToothPosition,
   type ToothSurface,
 } from '@/features/odontogram';
@@ -48,7 +49,10 @@ import {
   type TreatmentCapabilityContext,
   type TreatmentCapabilityPresentation,
 } from '../model/treatment-capabilities';
-import { mapTreatmentVisitToOdontogram } from '../model/treatment-odontogram.mapper';
+import {
+  buildTreatmentWorkflowProjection,
+  type TreatmentProjectionMode,
+} from '../model/treatment-workflow';
 import {
   createTreatmentActInput,
   createTreatmentFindingInput,
@@ -155,6 +159,7 @@ export function TreatmentWorkspacePage({
   ]);
   const [actor, setActor] = useState<MockTreatmentActor>(demoDentist);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('chart');
+  const [projectionMode, setProjectionMode] = useState<TreatmentProjectionMode>('combined');
   const [findingCode, setFindingCode] = useState<ClinicalFindingCode>('CARIES');
   const [findingSearch, setFindingSearch] = useState('');
   const [findingDetail, setFindingDetail] = useState('4');
@@ -175,10 +180,11 @@ export function TreatmentWorkspacePage({
   });
   const idCounter = useRef(1);
 
-  const projection = useMemo(
-    () => mapTreatmentVisitToOdontogram(visit),
-    [visit],
+  const workflowProjection = useMemo(
+    () => buildTreatmentWorkflowProjection(visit, projectionMode),
+    [projectionMode, visit],
   );
+  const projection = workflowProjection.projections[projectionMode];
   const activeTooth = selection.activeToothPosition;
   const activeToothVisual = projection.data.teeth.find(
     (tooth) => tooth.position === activeTooth,
@@ -419,6 +425,23 @@ export function TreatmentWorkspacePage({
                   </p>
                 </div>
                 <Stack direction="horizontal" gap={2}>
+                  <ButtonGroup aria-label="Treatment projection mode" size="sm">
+                    {(
+                      [
+                        ['combined', 'Combined'],
+                        ['status-only', 'Status'],
+                        ['plan-only', 'Plan'],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <Button
+                        key={mode}
+                        onClick={() => setProjectionMode(mode)}
+                        variant={projectionMode === mode ? 'primary' : 'outline-primary'}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </ButtonGroup>
                   <div
                     aria-label="Odontogram visual legend"
                     className={styles.chartLegend}
@@ -460,6 +483,18 @@ export function TreatmentWorkspacePage({
                       current renderer has no matching symbol.
                     </span>
                   </div>
+                )}
+                {workflowProjection.plannedDelta.length > 0 && (
+                  <Alert className="mt-3 mb-0 py-2" variant="light">
+                    {workflowProjection.plannedDelta.length} tooth plan delta(s) are
+                    shown separately from confirmed status.
+                  </Alert>
+                )}
+                {workflowProjection.conflicts.length > 0 && (
+                  <Alert className="mt-2 mb-0 py-2" variant="warning">
+                    {workflowProjection.conflicts.length} overlapping active plan
+                    conflict(s) require deterministic dentist resolution.
+                  </Alert>
                 )}
               </CardBody>
             </Card>
@@ -564,6 +599,7 @@ export function TreatmentWorkspacePage({
           projectionIssueIds={
             new Set(projection.issues.map(({ recordId }) => recordId))
           }
+          toothSummaries={workflowProjection.toothSummaries}
           visit={visit}
         />
       )}
@@ -1156,6 +1192,7 @@ function ClinicalRecord({
   onApproveFinding,
   onTransitionAct,
   projectionIssueIds,
+  toothSummaries,
   visit,
 }: {
   readonly actor: MockTreatmentActor;
@@ -1163,6 +1200,7 @@ function ClinicalRecord({
   readonly onApproveFinding: (id: string) => void;
   readonly onTransitionAct: (id: string, status: TreatmentActStatus) => void;
   readonly projectionIssueIds: ReadonlySet<string>;
+  readonly toothSummaries: readonly import('../model/treatment-workflow').TreatmentToothSummary[];
   readonly visit: TreatmentVisit;
 }) {
   return (
@@ -1177,6 +1215,14 @@ function ClinicalRecord({
           records={visit.findings}
           title="Clinical findings"
         />
+      </Col>
+      <Col lg={12}>
+        <Card>
+          <CardHeader><h5 className="mb-0">Structured per-tooth summaries</h5></CardHeader>
+          <CardBody>
+            {toothSummaries.length === 0 ? <p className="text-muted mb-0">No tooth summaries available.</p> : <div className="recordList">{toothSummaries.map((summary) => <div className="recordRow" key={summary.toothNumber}><strong>Tooth {summary.toothNumber}</strong><span className="text-muted">Existing: {summary.existingFindings.join(', ') || 'none'}; Planned: {summary.plannedActs.join(', ') || 'none'}; Completed: {summary.completedActs.join(', ') || 'none'}; Record-only: {summary.recordOnlyDetails.join(', ') || 'none'}</span></div>)}</div>}
+          </CardBody>
+        </Card>
       </Col>
       <Col lg={6}>
         <RecordCard
@@ -1573,7 +1619,7 @@ const canCurrentActorDocument = (
 
 const validateBridgeSelection = (
   positions: readonly ToothPosition[],
-  data: ReturnType<typeof mapTreatmentVisitToOdontogram>['data'],
+  data: OdontogramData,
 ): string | null => {
   if (positions.length < 2) return 'Select at least two teeth for a bridge.';
   const indices = positions

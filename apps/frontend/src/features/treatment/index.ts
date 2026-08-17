@@ -61,6 +61,15 @@ export {
   approveWorkspacePeriodontalExamination,
   updateWorkspacePeriodontalExamination,
 } from './model/treatment-workspace';
+export {
+  buildTreatmentToothSummaries,
+  buildTreatmentWorkflowProjection,
+  type TreatmentPlanConflict,
+  type TreatmentPlanDelta,
+  type TreatmentProjectionMode,
+  type TreatmentToothSummary,
+  type TreatmentWorkflowProjection,
+} from './model/treatment-workflow';
 export type {
   ClinicalDetail,
   ClinicalFinding,
@@ -91,6 +100,8 @@ export type {
   TreatmentTargetKind,
   TreatmentVisit,
   TreatmentVisitStatus,
+  TreatmentAuditAction,
+  TreatmentAuditEntry,
 } from './model/treatment';
 export type {
   CairoRecessionType,
