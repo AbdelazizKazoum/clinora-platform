@@ -1,5 +1,8 @@
 {
   "name": "frontend-e2e",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "next-auth": "5.0.0-beta.32"
+  }
 }

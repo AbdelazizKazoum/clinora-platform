@@ -563,10 +563,10 @@ importers:
         version: 4.18.1
       next:
         specifier: 16.2.3
-        version: 16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.7)
+        version: 16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2)
       next-auth:
         specifier: 5.0.0-beta.32
-        version: 5.0.0-beta.32(next@16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.7))(react@19.2.8)
+        version: 5.0.0-beta.32(next@16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2))(react@19.2.8)
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -596,7 +596,11 @@ importers:
         specifier: ^4.17.24
         version: 4.17.24
 
-  apps/frontend-e2e: {}
+  apps/frontend-e2e:
+    devDependencies:
+      next-auth:
+        specifier: 5.0.0-beta.32
+        version: 5.0.0-beta.32(next@16.1.7(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2))(react@19.2.8)
 
   libs/contracts/appointment:
     dependencies:
@@ -8019,11 +8023,6 @@ packages:
 
   sass@1.100.0:
     resolution: {integrity: sha512-B5j0rYMlinhhOo9tjQebMVVn0TfyXAF+wB3b2ggZUuJ/is/Y+7+JGjirAMxHZ9Z3hIP98NPfamlAkBHa1lAaXQ==}
-    engines: {node: '>=20.19.0'}
-    hasBin: true
-
-  sass@1.101.7:
-    resolution: {integrity: sha512-cDeUYU0dhwKVbpYg/ppsjyuoddxYhWlJOkRoI7+/iZsaSp7iowWDfm+tL2HcUafedWBDvbf/+hx0QRgKG4JSHA==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -16943,10 +16942,16 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-auth@5.0.0-beta.32(next@16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.7))(react@19.2.8):
+  next-auth@5.0.0-beta.32(next@16.1.7(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2))(react@19.2.8):
     dependencies:
       '@auth/core': 0.41.3
-      next: 16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.7)
+      next: 16.1.7(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2)
+      react: 19.2.8
+
+  next-auth@5.0.0-beta.32(next@16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2))(react@19.2.8):
+    dependencies:
+      '@auth/core': 0.41.3
+      next: 16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2)
       react: 19.2.8
 
   next@16.1.7(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2):
@@ -16975,7 +16980,33 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.7):
+  next@16.1.7(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2):
+    dependencies:
+      '@next/env': 16.1.7
+      '@swc/helpers': 0.5.15
+      baseline-browser-mapping: 2.11.1
+      caniuse-lite: 1.0.30001806
+      postcss: 8.4.31
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+      styled-jsx: 5.1.6(@babel/core@7.29.7(supports-color@8.1.1))(babel-plugin-macros@3.1.0)(react@19.2.8)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 16.1.7
+      '@next/swc-darwin-x64': 16.1.7
+      '@next/swc-linux-arm64-gnu': 16.1.7
+      '@next/swc-linux-arm64-musl': 16.1.7
+      '@next/swc-linux-x64-gnu': 16.1.7
+      '@next/swc-linux-x64-musl': 16.1.7
+      '@next/swc-win32-arm64-msvc': 16.1.7
+      '@next/swc-win32-x64-msvc': 16.1.7
+      '@playwright/test': 1.61.1
+      sass: 1.97.2
+      sharp: 0.34.5
+    transitivePeerDependencies:
+      - '@babel/core'
+      - babel-plugin-macros
+
+  next@16.2.3(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.61.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.97.2):
     dependencies:
       '@next/env': 16.2.3
       '@swc/helpers': 0.5.15
@@ -16995,7 +17026,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 16.2.3
       '@next/swc-win32-x64-msvc': 16.2.3
       '@playwright/test': 1.61.1
-      sass: 1.101.7
+      sass: 1.97.2
       sharp: 0.34.5
     transitivePeerDependencies:
       - '@babel/core'
@@ -18195,15 +18226,6 @@ snapshots:
       webpack: 5.105.2(@swc/core@1.15.46(@swc/helpers@0.5.23))(cssnano@7.1.9(postcss@8.5.23))(csso@5.0.5)(lightningcss@1.33.0)(postcss@8.5.23)(uglify-js@3.19.3)(webpack-cli@7.2.1)
 
   sass@1.100.0:
-    dependencies:
-      chokidar: 5.0.0
-      immutable: 5.1.9
-      source-map-js: 1.2.1
-    optionalDependencies:
-      '@parcel/watcher': 2.6.0
-    optional: true
-
-  sass@1.101.7:
     dependencies:
       chokidar: 5.0.0
       immutable: 5.1.9

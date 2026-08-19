@@ -122,3 +122,61 @@ profiles for:
 
 If those browser profiles show a material regression from this baseline, resolve
 or explicitly approve it before integrating Treatment persistence.
+
+## Integrated /visits/new route delta (ODONTO-16)
+
+Measured on 2026-08-19 against the integrated Treatment workspace
+(`/visits/new`) from commit `cb75dfb`. The renderer baselines above remain the
+approved contract; this section records the integrated route cost and is part
+of the ODONTO-16 acceptance evidence.
+
+### Production route chunks
+
+From `pnpm nx build frontend --skip-nx-cache` (Next.js 16.2.3 production build,
+uncompressed bytes and gzip transfer size):
+
+| Chunk role | Raw bytes | gzip bytes |
+| ---------- | --------: | ---------: |
+| `/visits/new` route page chunk | 60,739 | 14,485 |
+| Treatment workspace chunk (workspace page, periodontal, odontogram usage) | 53,009 | 14,944 |
+| Odontogram feature chunk (arch, tooth, layer rendering, styles) | 88,167 | 24,841 |
+| Odontogram-related total on the route | 141,176 | 39,785 |
+
+The odontogram contributes two code-split chunks totaling approximately
+141 KiB raw / 40 KiB gzip. The public SVG assets remain 413,445 bytes across
+six cacheable static files and are not embedded in JavaScript. The legacy
+full-package experiment's roughly 1.31 MiB distribution JavaScript is not
+comparable scope; the integrated route loads only the feature chunks listed
+above.
+
+### Browser load profile
+
+Playwright chromium against the local dev server (warm server, second
+navigation, desktop Chrome profile, `next dev`). Dev chunks are unminified, so
+these timings are an upper bound for the route; production numbers are the
+chunk table above.
+
+| Metric | Value |
+| ------ | ----: |
+| `domContentLoaded` | 130 ms |
+| `load` | 504 ms |
+| Largest Contentful Paint | 900 ms |
+| Tooth SVG template roots in DOM | 52 (32 side + 20 occlusal) |
+| Total SVG elements in the page | 74 (odontogram roots plus app icons) |
+| SVG descendant elements in the page | 20,145 |
+| Odontogram SVG fetches | 6 (4 side + 2 occlusal, exactly the approved set) |
+
+The 52 rendered roots and the 6 fetched URLs match the ODONTO-13
+side-and-occlusal contract: occlusal assets are fetched only because the
+integrated workspace uses `view="side-and-occlusal"`; side-only consumers
+request none of them. One-tooth updates remain covered by the renderer-level
+tests (no template refetch, no unrelated root replacement).
+
+### Accepted result
+
+The integrated route stays within the ODONTO-13 approved baseline: no new
+production dependency, public asset transfer unchanged at 413,445 bytes,
+conditional occlusal loading verified in the real route, and the route chunk
+delta above is recorded and accepted for this release gate. Future parity
+roadmap work must re-run this profile when new visual conditions or periodontal
+rendering are added.

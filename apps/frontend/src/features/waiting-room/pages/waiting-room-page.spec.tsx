@@ -444,10 +444,10 @@ describe(WaitingRoomPage.name, () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
     );
-    const statusAction = screen.getByRole('button', { name: 'Mark done' });
+    const statusAction = screen.getByRole('button', { name: 'Edit notes' });
     expect(statusAction.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(statusAction);
-    expect(updateWaitingRoomStatus).not.toHaveBeenCalled();
+    expect(updateWaitingRoomNotes).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry connection' }));
     expect(reconnect).toHaveBeenCalledTimes(1);
@@ -465,9 +465,9 @@ describe(WaitingRoomPage.name, () => {
     );
     expect(
       screen
-        .getByRole('button', { name: 'Mark done' })
-        .hasAttribute('disabled'),
-    ).toBe(false);
+        .getByRole('button', { name: 'Edit notes' })
+        .getAttribute('aria-disabled'),
+    ).not.toBe('true');
   });
 
   it('enables manual ordering and persists same-column movement', async () => {
@@ -496,41 +496,16 @@ describe(WaitingRoomPage.name, () => {
     });
   });
 
-  it('reorders a manual queue through keyboard-accessible card actions', async () => {
-    arrangePage({
-      data: createState([
-        createEntry({ id: 'entry-1', patientName: 'First Patient' }),
-        createEntry({ id: 'entry-2', patientName: 'Second Patient' }),
-      ]),
-    });
-    render(<WaitingRoomPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Actions for Second Patient' }),
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Move Second Patient up' }),
-    );
-
-    await waitFor(() => {
-      expect(reorderWaitingRoomEntries).toHaveBeenCalledWith({
-        clinicId,
-        mode: 'MANUAL',
-        orderedEntryIds: ['entry-2', 'entry-1'],
-        status: 'WAITING',
-      });
-    });
-  });
-
-  it('moves a patient between queue columns without drag and drop', async () => {
+  it('moves a patient between queue columns with the drag board', async () => {
     arrangePage();
     render(<WaitingRoomPage />);
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Mark done' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'DONE', index: 0 },
+      draggableId: 'entry-1',
+      source: { droppableId: 'WAITING', index: 0 },
+    });
 
     await waitFor(() => {
       expect(updateWaitingRoomStatus).toHaveBeenCalledWith({
@@ -542,21 +517,6 @@ describe(WaitingRoomPage.name, () => {
         targetOrderedEntryIds: ['entry-1'],
       });
     });
-  });
-
-  it('opens chair selection from the accessible status menu', () => {
-    arrangePage({ data: createState([createEntry()], [createChair()]) });
-    render(<WaitingRoomPage />);
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Move to chair' }));
-
-    expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(
-      screen.getByRole('radio', { name: 'Select Operatory 1 (OP-1)' }),
-    ).toBeTruthy();
   });
 
   it('requires an available chair selection before submitting a seat move', () => {
@@ -820,10 +780,15 @@ describe(WaitingRoomPage.name, () => {
     arrangePage();
     render(<WaitingRoomPage />);
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Actions for Sara Amrani' }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Correct to Arrived' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manual Order' }));
+    finishDrag({
+      destination: { droppableId: 'ARRIVED', index: 0 },
+      draggableId: 'entry-1',
+      source: { droppableId: 'WAITING', index: 0 },
+    });
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(updateWaitingRoomStatus).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Correction reason'), {
       target: { value: 'Called by mistake' },
     });

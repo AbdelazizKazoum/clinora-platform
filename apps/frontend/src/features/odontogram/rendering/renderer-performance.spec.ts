@@ -34,9 +34,10 @@ describe('odontogram renderer performance budget', () => {
           totalBytes + readTemplateMeasurement(templateId).bytes,
         0,
       ),
-    // PARITY-02 re-baseline: the copied upstream assets currently measure
-    // 416,455 bytes across the six approved templates.
-    ).toBe(416_455);
+    // ODONTO-16 re-baseline: the audited byte-identical upstream copies
+    // measure 413,445 bytes across the six approved templates (matches the
+    // integration plan and the recorded source/copy SHA-256 hashes).
+    ).toBe(413_445);
   });
 
   it('keeps normalized runtime SVG node counts below the approved ODONTO-13 baseline', () => {

@@ -12,6 +12,7 @@ import {
   getWaitingRoomPatientInitials,
   queuePriorityBadgeClassNames,
   queuePriorityLabels,
+  type QueueStatus,
   type WaitingRoomEntry,
 } from '../model';
 import styles from './waiting-room-board.module.scss';
