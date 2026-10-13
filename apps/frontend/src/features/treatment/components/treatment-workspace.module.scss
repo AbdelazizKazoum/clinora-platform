@@ -28,6 +28,58 @@
   white-space: nowrap;
 }
 
+.modernTabs {
+  background: #ffffff;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.modernTab {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6c757d;
+  cursor: pointer;
+  display: flex;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  text-transform: none;
+  transition: all 0.2s;
+}
+
+.modernTab:hover {
+  color: #4a81d4;
+}
+
+.modernTab.active {
+  border-bottom-color: #4a81d4;
+  color: #4a81d4;
+}
+
+.tabBadge {
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 0.25rem;
+  color: #6c757d;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 700;
+  height: 1.125rem;
+  justify-content: center;
+  padding: 0 0.375rem;
+}
+
+.modernTab.active .tabBadge {
+  background: #e8f0f9;
+  color: #4a81d4;
+}
+
 .chartCard,
 .detailsCard,
 .recordCard {

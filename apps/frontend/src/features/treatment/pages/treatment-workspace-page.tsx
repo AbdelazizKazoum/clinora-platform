@@ -26,7 +26,6 @@ import {
   FormControl,
   FormLabel,
   FormSelect,
-  Nav,
   Row,
   Stack,
 } from 'react-bootstrap';
@@ -159,7 +158,8 @@ export function TreatmentWorkspacePage({
   ]);
   const [actor, setActor] = useState<MockTreatmentActor>(demoDentist);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('chart');
-  const [projectionMode, setProjectionMode] = useState<TreatmentProjectionMode>('combined');
+  const [projectionMode, setProjectionMode] =
+    useState<TreatmentProjectionMode>('combined');
   const [findingCode, setFindingCode] = useState<ClinicalFindingCode>('CARIES');
   const [findingSearch, setFindingSearch] = useState('');
   const [findingDetail, setFindingDetail] = useState('4');
@@ -250,7 +250,10 @@ export function TreatmentWorkspacePage({
       details.push({ key: 'RESTORATION_MATERIAL', value: restorationMaterial });
     }
     if (selectedFinding.additionalDetailKey && findingAdditionalDetail) {
-      details.push({ key: selectedFinding.additionalDetailKey, value: findingAdditionalDetail });
+      details.push({
+        key: selectedFinding.additionalDetailKey,
+        value: findingAdditionalDetail,
+      });
     }
 
     runAction(
@@ -258,18 +261,18 @@ export function TreatmentWorkspacePage({
         recordWorkspaceFinding(
           visit,
           actor,
-            createTreatmentFindingInput({
-              code: findingCode,
-              details,
-              id: nextId('finding'),
-              note: note.trim() || null,
-              target: buildTarget(
-                selectedFinding.target,
-                [activeTooth],
-                surfaces,
-                periodontalSite,
-              ),
-            }),
+          createTreatmentFindingInput({
+            code: findingCode,
+            details,
+            id: nextId('finding'),
+            note: note.trim() || null,
+            target: buildTarget(
+              selectedFinding.target,
+              [activeTooth],
+              surfaces,
+              periodontalSite,
+            ),
+          }),
           new Date(),
         ),
       actor.role === 'doctor'
@@ -314,18 +317,18 @@ export function TreatmentWorkspacePage({
         recordWorkspaceAct(
           visit,
           actor,
-            createTreatmentActInput({
-              code: actCode,
-              details,
-              id: nextId('act'),
-              note: note.trim() || null,
-              target: buildTarget(
-                selectedAct.target,
-                selection.selectedToothPositions,
-                surfaces,
-                periodontalSite,
-              ),
-            }),
+          createTreatmentActInput({
+            code: actCode,
+            details,
+            id: nextId('act'),
+            note: note.trim() || null,
+            target: buildTarget(
+              selectedAct.target,
+              selection.selectedToothPositions,
+              surfaces,
+              periodontalSite,
+            ),
+          }),
           new Date(),
         ),
       actor.role === 'doctor'
@@ -344,7 +347,9 @@ export function TreatmentWorkspacePage({
         ? String(option.numericDetail.min)
         : (option?.detailOptions?.[0]?.value ?? ''),
     );
-    setFindingAdditionalDetail(option?.additionalDetailOptions?.[0]?.value ?? '');
+    setFindingAdditionalDetail(
+      option?.additionalDetailOptions?.[0]?.value ?? '',
+    );
   };
 
   const selectFindingDetail = (value: string) => {
@@ -391,26 +396,31 @@ export function TreatmentWorkspacePage({
         </Alert>
       )}
 
-      <Nav className={`${styles.workspaceTabs} nav-tabs mb-3`}>
-        {(
-          [
-            ['chart', 'Odontogram & tooth details', 'scan-line'],
-            ['periodontal', 'Periodontal chart', 'activity'],
-            ['record', 'Clinical record', 'clipboard-list'],
-            ['handoff', 'Documentation handoff', 'users-round'],
-          ] as const
-        ).map(([tab, label, icon]) => (
-          <Nav.Item key={tab}>
-            <Nav.Link
-              active={activeTab === tab}
-              as="button"
+      <Card className={`${styles.modernTabs} mb-3`}>
+        <div className="d-flex gap-1" role="tablist" aria-label="Treatment workspace sections">
+          {([
+            ['chart', 'Odontogram & tooth details', 'smile', visit.findings.length + visit.acts.length],
+            ['periodontal', 'Periodontal chart', 'activity', visit.findings.filter(f => f.target.toothNumbers.length === 0).length],
+            ['record', 'Clinical record', 'file-text', visit.findings.length + visit.acts.length],
+            ['handoff', 'Documentation handoff', 'users', visit.documentationHandoff ? 1 : 0],
+          ] as const).map(([tab, label, icon, count]) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={`${styles.modernTab} ${activeTab === tab ? styles.active : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              <Icon className="me-1" icon={icon} /> {label}
-            </Nav.Link>
-          </Nav.Item>
-        ))}
-      </Nav>
+              <Icon icon={icon} />
+              <span>{label}</span>
+              {count > 0 && (
+                <span className={styles.tabBadge}>{count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </Card>
 
       {activeTab === 'chart' && (
         <Row className="g-3">
@@ -436,7 +446,11 @@ export function TreatmentWorkspacePage({
                       <Button
                         key={mode}
                         onClick={() => setProjectionMode(mode)}
-                        variant={projectionMode === mode ? 'primary' : 'outline-primary'}
+                        variant={
+                          projectionMode === mode
+                            ? 'primary'
+                            : 'outline-primary'
+                        }
                       >
                         {label}
                       </Button>
@@ -486,14 +500,14 @@ export function TreatmentWorkspacePage({
                 )}
                 {workflowProjection.plannedDelta.length > 0 && (
                   <Alert className="mt-3 mb-0 py-2" variant="light">
-                    {workflowProjection.plannedDelta.length} tooth plan delta(s) are
-                    shown separately from confirmed status.
+                    {workflowProjection.plannedDelta.length} tooth plan delta(s)
+                    are shown separately from confirmed status.
                   </Alert>
                 )}
                 {workflowProjection.conflicts.length > 0 && (
                   <Alert className="mt-2 mb-0 py-2" variant="warning">
-                    {workflowProjection.conflicts.length} overlapping active plan
-                    conflict(s) require deterministic dentist resolution.
+                    {workflowProjection.conflicts.length} overlapping active
+                    plan conflict(s) require deterministic dentist resolution.
                   </Alert>
                 )}
               </CardBody>
@@ -732,13 +746,10 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
       ? props.selectedFinding?.capability
       : props.selectedAct?.capability;
   const capabilityPresentation = selectedCapability
-    ? getTreatmentCapabilityPresentation(
-        selectedCapability,
-        {
-          ...props.capabilityContext,
-          subtype: mode === 'finding' ? props.findingDetail : undefined,
-        },
-      )
+    ? getTreatmentCapabilityPresentation(selectedCapability, {
+        ...props.capabilityContext,
+        subtype: mode === 'finding' ? props.findingDetail : undefined,
+      })
     : 'not-available';
   const needsSurface =
     mode === 'finding'
@@ -835,7 +846,8 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
                 <Button
                   className="w-100 mt-3"
                   disabled={
-                    !props.canDocument || capabilityPresentation === 'not-available'
+                    !props.canDocument ||
+                    capabilityPresentation === 'not-available'
                   }
                   onClick={
                     mode === 'finding' ? props.onAddFinding : props.onAddAct
@@ -856,8 +868,8 @@ function ToothDetailsPanel(props: ToothDetailsPanelProps) {
                 </Button>
                 {capabilityPresentation === 'not-available' ? (
                   <small className="text-warning d-block text-center mt-2">
-                    This clinical concept is not available for the selected tooth
-                    base or dentition.
+                    This clinical concept is not available for the selected
+                    tooth base or dentition.
                   </small>
                 ) : !props.canDocument ? (
                   <small className="text-muted d-block text-center mt-2">
@@ -916,7 +928,9 @@ function FindingFormFields(props: ToothDetailsPanelProps) {
         aria-label="Search findings"
         className="mb-2"
         disabled={!props.canDocument}
-        onChange={(event) => props.onFindingSearchChange(event.currentTarget.value)}
+        onChange={(event) =>
+          props.onFindingSearchChange(event.currentTarget.value)
+        }
         placeholder="Search clinical families"
         value={props.findingSearch}
       />
@@ -1058,16 +1072,22 @@ function ActFormFields(props: ToothDetailsPanelProps) {
 
       {props.selectedFinding?.additionalDetailOptions && (
         <>
-          <FormLabel htmlFor="finding-additional-detail">Additional clinical detail</FormLabel>
+          <FormLabel htmlFor="finding-additional-detail">
+            Additional clinical detail
+          </FormLabel>
           <FormSelect
             className="mb-3"
             disabled={!props.canDocument}
             id="finding-additional-detail"
-            onChange={(event) => props.onFindingAdditionalDetailChange(event.currentTarget.value)}
+            onChange={(event) =>
+              props.onFindingAdditionalDetailChange(event.currentTarget.value)
+            }
             value={props.findingAdditionalDetail}
           >
             {props.selectedFinding.additionalDetailOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </FormSelect>
         </>
@@ -1218,9 +1238,28 @@ function ClinicalRecord({
       </Col>
       <Col lg={12}>
         <Card>
-          <CardHeader><h5 className="mb-0">Structured per-tooth summaries</h5></CardHeader>
+          <CardHeader>
+            <h5 className="mb-0">Structured per-tooth summaries</h5>
+          </CardHeader>
           <CardBody>
-            {toothSummaries.length === 0 ? <p className="text-muted mb-0">No tooth summaries available.</p> : <div className="recordList">{toothSummaries.map((summary) => <div className="recordRow" key={summary.toothNumber}><strong>Tooth {summary.toothNumber}</strong><span className="text-muted">Existing: {summary.existingFindings.join(', ') || 'none'}; Planned: {summary.plannedActs.join(', ') || 'none'}; Completed: {summary.completedActs.join(', ') || 'none'}; Record-only: {summary.recordOnlyDetails.join(', ') || 'none'}</span></div>)}</div>}
+            {toothSummaries.length === 0 ? (
+              <p className="text-muted mb-0">No tooth summaries available.</p>
+            ) : (
+              <div className="recordList">
+                {toothSummaries.map((summary) => (
+                  <div className="recordRow" key={summary.toothNumber}>
+                    <strong>Tooth {summary.toothNumber}</strong>
+                    <span className="text-muted">
+                      Existing: {summary.existingFindings.join(', ') || 'none'};
+                      Planned: {summary.plannedActs.join(', ') || 'none'};
+                      Completed: {summary.completedActs.join(', ') || 'none'};
+                      Record-only:{' '}
+                      {summary.recordOnlyDetails.join(', ') || 'none'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardBody>
         </Card>
       </Col>
@@ -1574,13 +1613,13 @@ const buildTarget = (
         ? ('INDEX_SURFACE' as const)
         : target === 'tooth-region'
           ? ('TOOTH_REGION' as const)
-      : target === 'bridge'
-        ? ('BRIDGE_SPAN' as const)
-        : target === 'arch'
-          ? ('ARCH' as const)
-          : target === 'periodontal'
-            ? ('PERIODONTAL_SITE' as const)
-            : ('TOOTH' as const),
+          : target === 'bridge'
+            ? ('BRIDGE_SPAN' as const)
+            : target === 'arch'
+              ? ('ARCH' as const)
+              : target === 'periodontal'
+                ? ('PERIODONTAL_SITE' as const)
+                : ('TOOTH' as const),
   periodontalSites: target === 'periodontal' ? [periodontalSite] : [],
   surfaces: (target === 'surface' || target === 'tooth-region'
     ? surfaces.map((surface) => surface.toUpperCase())
