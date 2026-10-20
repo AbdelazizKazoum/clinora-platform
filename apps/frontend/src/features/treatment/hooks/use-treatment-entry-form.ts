@@ -140,6 +140,12 @@ export function useTreatmentEntryForm({
       });
     }
     if (selectedAct.target === 'bridge') {
+      if (selection.selectedToothPositions.length < 2) {
+        return showFeedback({
+          message: 'Select at least two teeth for a bridge span.',
+          variant: 'warning',
+        });
+      }
       const bridgeError = validateBridgeSelection(
         selection.selectedToothPositions,
         data,

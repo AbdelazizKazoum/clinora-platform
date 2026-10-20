@@ -18,10 +18,8 @@ import {
 import styles from './waiting-room-board.module.scss';
 
 const timeFormatter = new Intl.DateTimeFormat('en', {
-  day: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
-  month: 'short',
 });
 
 const priorityCardClassNames = {
