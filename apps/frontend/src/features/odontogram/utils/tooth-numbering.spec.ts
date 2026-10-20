@@ -102,6 +102,12 @@ describe('tooth-numbering', () => {
     expect(formatToothNumber(15, 'universal', 'primary')).toBe('E');
     expect(formatToothNumber(15, 'palmer', 'primary')).toBe('UR-5');
   });
+
+  it('rejects non-existent primary molar labels', () => {
+    expect(() => formatToothNumber(16, 'fdi', 'primary')).toThrow(
+      'Primary dentition has no tooth',
+    );
+  });
 });
 
 function formatAll(

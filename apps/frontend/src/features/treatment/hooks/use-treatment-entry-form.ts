@@ -7,6 +7,7 @@ import type {
 } from '@/features/odontogram';
 import {
   getClinicalFindingOption,
+  getClinicalFindingTarget,
   getTreatmentActOption,
 } from '../model/treatment-catalogue';
 import type {
@@ -50,6 +51,10 @@ export function useTreatmentEntryForm({
   const [findingSearch, setFindingSearch] = useState('');
   const [findingDetail, setFindingDetail] = useState('4');
   const [findingAdditionalDetail, setFindingAdditionalDetail] = useState('');
+  const [findingOptionalDetails, setFindingOptionalDetails] = useState<
+    Readonly<Record<string, string>>
+  >({});
+  const [actDetail, setActDetail] = useState('BRACKET');
   const [periodontalSite, setPeriodontalSite] = useState<PeriodontalSite>('B');
   const [actCode, setActCode] = useState<TreatmentActCode>('DIRECT_FILLING');
   const [actSearch, setActSearch] = useState('');
@@ -66,7 +71,8 @@ export function useTreatmentEntryForm({
         variant: 'warning',
       });
     }
-    if (requiresSurface(selectedFinding.target) && surfaces.length === 0) {
+    const findingTarget = getClinicalFindingTarget(findingCode, findingDetail);
+    if (requiresSurface(findingTarget) && surfaces.length === 0) {
       return showFeedback({
         message: 'Select at least one tooth surface.',
         variant: 'warning',
@@ -74,6 +80,10 @@ export function useTreatmentEntryForm({
     }
 
     const details: ClinicalDetail[] = [];
+    for (const field of selectedFinding.optionalFields ?? []) {
+      const value = findingOptionalDetails[field.key];
+      if (value) details.push({ key: field.key, value });
+    }
     if (selectedFinding.detailKey && findingDetail) {
       details.push({ key: selectedFinding.detailKey, value: findingDetail });
     }
@@ -93,13 +103,22 @@ export function useTreatmentEntryForm({
       });
     }
 
+    if (findingTarget === 'bridge') {
+      const error = validateBridgeSelection(
+        selection.selectedToothPositions,
+        data,
+      );
+      if (error) return showFeedback({ message: error, variant: 'warning' });
+    }
     actions.recordFinding({
       code: findingCode,
       details,
       note: note.trim() || null,
       target: buildTarget(
-        selectedFinding.target,
-        [activeTooth],
+        findingTarget,
+        findingTarget === 'bridge'
+          ? selection.selectedToothPositions
+          : [activeTooth],
         surfaces,
         periodontalSite,
       ),
@@ -130,6 +149,8 @@ export function useTreatmentEntryForm({
     }
 
     const details: ClinicalDetail[] = [];
+    if (selectedAct.detailKey)
+      details.push({ key: selectedAct.detailKey, value: actDetail });
     if (selectedAct.requiresMaterial === 'filling') {
       details.push({ key: 'FILLING_MATERIAL', value: fillingMaterial });
     }
@@ -152,6 +173,7 @@ export function useTreatmentEntryForm({
   };
 
   const selectFindingCode = (code: ClinicalFindingCode) => {
+    setFindingOptionalDetails({});
     setFindingCode(code);
     setFindingSearch('');
     const option = getClinicalFindingOption(code);
@@ -167,6 +189,7 @@ export function useTreatmentEntryForm({
 
   const selectFindingDetail = (value: string) => {
     setFindingDetail(value);
+    setFindingOptionalDetails({});
     if (
       findingCode === 'EXISTING_FIXED_RESTORATION' &&
       value !== 'CROWN' &&
@@ -179,6 +202,7 @@ export function useTreatmentEntryForm({
   const selectActCode = (code: TreatmentActCode) => {
     setActCode(code);
     setActSearch('');
+    setActDetail(getTreatmentActOption(code)?.detailOptions?.[0]?.value ?? '');
     if (
       isPartialRestoration(code) &&
       !isPartialRestorationMaterial(restorationMaterial)
@@ -196,6 +220,11 @@ export function useTreatmentEntryForm({
     findingCode,
     findingDetail,
     findingAdditionalDetail,
+    findingOptionalDetails,
+    actDetail,
+    onActDetailChange: setActDetail,
+    onFindingOptionalDetailChange: (key: string, value: string) =>
+      setFindingOptionalDetails((current) => ({ ...current, [key]: value })),
     findingSearch,
     note,
     onActCodeChange: selectActCode,

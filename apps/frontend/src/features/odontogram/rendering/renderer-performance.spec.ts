@@ -34,9 +34,9 @@ describe('odontogram renderer performance budget', () => {
           totalBytes + readTemplateMeasurement(templateId).bytes,
         0,
       ),
-    // ODONTO-16 re-baseline: the audited byte-identical upstream copies
-    // measure 413,445 bytes across the six approved templates (matches the
-    // integration plan and the recorded source/copy SHA-256 hashes).
+      // ODONTO-16 re-baseline: the audited byte-identical upstream copies
+      // measure 413,445 bytes across the six approved templates (matches the
+      // integration plan and the recorded source/copy SHA-256 hashes).
     ).toBe(413_445);
   });
 
@@ -46,11 +46,10 @@ describe('odontogram renderer performance budget', () => {
       projectRuntimeNodeCount(ALL_TEMPLATE_IDS);
     const sideAndOcclusalSourceNodes = projectSourceNodeCount(ALL_TEMPLATE_IDS);
 
-    // Structural, dentition, implant, and prosthesis layers are now retained
-    // deliberately. Keep the measured PARITY-02 budget explicit rather than
-    // restoring the entire legacy layer set.
-    expect(sideRuntimeNodes).toBeLessThanOrEqual(14_500);
-    expect(sideAndOcclusalRuntimeNodes).toBeLessThanOrEqual(20_200);
+    // With mobility and periapical lesions retained, the measured chart has
+    // 14,664 side-view nodes and 20,480 side-plus-occlusal nodes.
+    expect(sideRuntimeNodes).toBeLessThanOrEqual(14_700);
+    expect(sideAndOcclusalRuntimeNodes).toBeLessThanOrEqual(20_600);
     expect(sideAndOcclusalRuntimeNodes).toBeLessThan(
       sideAndOcclusalSourceNodes,
     );

@@ -1,7 +1,4 @@
-import type {
-  ClinicalFindingCode,
-  TreatmentActCode,
-} from './treatment';
+import type { ClinicalFindingCode, TreatmentActCode } from './treatment';
 
 /**
  * Describes what the current Clinora renderer can honestly project. This is
@@ -71,15 +68,17 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   TreatmentActCode,
   TreatmentCapability
 > = {
-  APICOECTOMY: plannedAct('existing-and-planned', { svgLayers: ['endo-resection'] }),
+  APICOECTOMY: plannedAct('existing-and-planned', {
+    svgLayers: ['endo-resection'],
+  }),
   BAR_ATTACHMENT: plannedAct('existing-and-planned', {
     applicability: ['existing implant fixture'],
-    bases: ['implant'],
+    bases: ['implant', 'missing'],
     svgLayers: ['implant-connector', 'implant-locator-screw', 'implant-bar'],
   }),
   BAR_OVERDENTURE: plannedAct('existing-and-planned', {
     applicability: ['implant-supported prosthesis group'],
-    bases: ['implant'],
+    bases: ['implant', 'missing'],
     svgLayers: ['implant-bar', 'prosthesis-implant'],
   }),
   BRIDGE: plannedAct('existing-and-planned', {
@@ -94,7 +93,7 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   CROWN: plannedAct('existing-and-planned', {
     svgLayers: ['restoration crown'],
   }),
-  CROWN_REPLACEMENT: plannedAct('planned-only', {
+  CROWN_REPLACEMENT: plannedAct('existing-and-planned', {
     applicability: ['tooth with a compatible existing restoration'],
     svgLayers: ['crown-replace'],
   }),
@@ -106,15 +105,21 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
     applicability: ['natural tooth'],
     svgLayers: ['extraction-plan', 'missing tooth base'],
   }),
-  FISSURE_SEALING: plannedAct('existing-and-planned', { svgLayers: ['fissure-sealing'] }),
-  GLASS_FIBER_POST: plannedAct('existing-and-planned', { svgLayers: ['endo-filling', 'endo-glass-pin'] }),
+  FISSURE_SEALING: plannedAct('existing-and-planned', {
+    svgLayers: ['fissure-sealing'],
+  }),
+  GLASS_FIBER_POST: plannedAct('existing-and-planned', {
+    svgLayers: ['endo-filling', 'endo-glass-pin'],
+  }),
   HEALING_ABUTMENT: plannedAct('existing-and-planned', {
     applicability: ['existing implant fixture'],
     bases: ['implant'],
     svgLayers: ['implant-healing-abutment'],
   }),
   IMPLANT_PLACEMENT: plannedAct('existing-and-planned', {
-    applicability: ['natural or missing tooth; completed becomes existing implant'],
+    applicability: [
+      'natural or missing tooth; completed becomes existing implant',
+    ],
     bases: ['natural', 'missing', 'implant'],
     svgLayers: ['implant', 'implant-base'],
   }),
@@ -130,15 +135,26 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
   LOCATOR_OVERDENTURE: plannedAct('existing-and-planned', {
     applicability: ['implant-supported prosthesis group'],
     bases: ['implant'],
-    svgLayers: ['prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'],
+    svgLayers: [
+      'prosthesis-implant',
+      'prosthesis-implant-crown',
+      'prosthesis-implant-gum',
+    ],
   }),
-  METAL_POST: plannedAct('existing-and-planned', { svgLayers: ['endo-filling', 'endo-metal-pin'] }),
+  METAL_POST: plannedAct('existing-and-planned', {
+    svgLayers: ['endo-filling', 'endo-metal-pin'],
+  }),
   ONLAY: plannedAct('existing-and-planned', {
     applicability: ['posterior tooth and occlusal view'],
     svgLayers: ['restoration onlay'],
   }),
-  ORTHODONTIC_APPLIANCE: plannedAct(),
-  PARAPULPAL_PIN: plannedAct('existing-and-planned', { svgLayers: ['parapulpal-pin'] }),
+  ORTHODONTIC_APPLIANCE: plannedAct('existing-and-planned', {
+    bases: ['natural'],
+    svgLayers: ['ortho-bracket', 'ortho-ring'],
+  }),
+  PARAPULPAL_PIN: plannedAct('existing-and-planned', {
+    svgLayers: ['parapulpal-pin'],
+  }),
   PARTIAL_REMOVABLE_DENTURE: plannedAct('existing-and-planned', {
     applicability: ['arch/gap prosthesis group'],
     bases: ['missing'],
@@ -148,8 +164,12 @@ export const TREATMENT_ACT_CAPABILITIES: Record<
     applicability: ['natural tooth; side view'],
     svgLayers: ['endo-filling'],
   }),
-  ROOT_CANAL_MEDICATION: plannedAct('existing-and-planned', { svgLayers: ['endo-medical-filling'] }),
-  ROOT_CANAL_REPAIR: plannedAct('existing-and-planned', { svgLayers: ['endo-filling-incomplete'] }),
+  ROOT_CANAL_MEDICATION: plannedAct('existing-and-planned', {
+    svgLayers: ['endo-medical-filling'],
+  }),
+  ROOT_CANAL_REPAIR: plannedAct('existing-and-planned', {
+    svgLayers: ['endo-filling-incomplete'],
+  }),
   VENEER: plannedAct('existing-and-planned', {
     applicability: ['natural tooth and supported material'],
     svgLayers: ['restoration veneer'],
@@ -160,7 +180,10 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   ClinicalFindingCode,
   TreatmentCapability
 > = {
-  APICAL_DIAGNOSIS: existingFinding({ projection: 'existing-only', svgLayers: ['inflammation', 'granuloma', 'cysta', 'abscess'] }),
+  APICAL_DIAGNOSIS: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['inflammation', 'granuloma', 'cysta', 'abscess'],
+  }),
   CALCULUS: existingFinding({
     bases: ['natural'],
     projection: 'existing-only',
@@ -170,17 +193,27 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     projection: 'existing-only',
     svgLayers: ['caries surface'],
   }),
-  CONTACT_POINT_DEFECT: existingFinding({ projection: 'existing-only', svgLayers: ['mesial-no-contact-point', 'distal-no-contact-point'] }),
-  CROWN_LEAKAGE: existingFinding({ projection: 'existing-only', svgLayers: ['crown-leakage'] }),
-  DISCOLORATION: existingFinding({ projection: 'existing-only', svgLayers: ['natural crown tint'] }),
+  CONTACT_POINT_DEFECT: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['mesial-no-contact-point', 'distal-no-contact-point'],
+  }),
+  CROWN_LEAKAGE: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['crown-leakage'],
+  }),
+  DISCOLORATION: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['natural crown tint'],
+  }),
   EXISTING_ENDODONTIC_STATE: existingFinding({
     projection: 'existing-only',
-    applicability: ['root-canal-filling subtype only in the current renderer'],
+    applicability: ['natural tooth; side view'],
+    bases: ['natural'],
     subtypeSupport: {
-      GLASS_FIBER_POST: 'record-only',
-      INCOMPLETE: 'record-only',
-      MEDICATION: 'record-only',
-      METAL_POST: 'record-only',
+      GLASS_FIBER_POST: 'existing-only',
+      INCOMPLETE: 'existing-only',
+      MEDICATION: 'existing-only',
+      METAL_POST: 'existing-only',
       ROOT_CANAL_FILLING: 'existing-only',
     },
     svgLayers: ['endo-filling'],
@@ -197,8 +230,8 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     bases: ['implant', 'missing'],
     projection: 'existing-only',
     subtypeBases: {
-      BAR: ['implant'],
-      BAR_DENTURE: ['implant'],
+      BAR: ['implant', 'missing'],
+      BAR_DENTURE: ['implant', 'missing'],
       HEALING_ABUTMENT: ['implant'],
       LOCATOR: ['implant'],
       LOCATOR_DENTURE: ['implant'],
@@ -213,9 +246,27 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   }),
   FURCATION_INVOLVEMENT: existingFinding(),
   GINGIVAL_FINDING: existingFinding(),
-  MOBILITY: existingFinding(),
-  ORTHODONTIC_STATE: existingFinding({ projection: 'existing-only', svgLayers: ['ortho-bracket', 'ortho-ring', 'arrow-mesial', 'arrow-distal', 'arrow-up', 'arrow-down', 'arrow-rotation'] }),
-  PERIAPICAL_LESION: existingFinding({ projection: 'existing-only', svgLayers: ['inflammation', 'granuloma', 'cysta', 'abscess'] }),
+  MOBILITY: existingFinding({
+    bases: ['natural'],
+    projection: 'existing-only',
+    svgLayers: ['mobility'],
+  }),
+  ORTHODONTIC_STATE: existingFinding({
+    projection: 'existing-only',
+    svgLayers: [
+      'ortho-bracket',
+      'ortho-ring',
+      'arrow-mesial',
+      'arrow-distal',
+      'arrow-up',
+      'arrow-down',
+      'arrow-rotation',
+    ],
+  }),
+  PERIAPICAL_LESION: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['inflammation', 'granuloma', 'cysta', 'abscess'],
+  }),
   PERI_IMPLANT_STATUS: existingFinding({
     bases: ['implant'],
     projection: 'existing-only',
@@ -235,9 +286,18 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
   }),
   PERIODONTAL_MEASUREMENT: existingFinding(),
   PLAQUE_FINDING: existingFinding(),
-  PULP_DIAGNOSIS: existingFinding({ projection: 'existing-only', svgLayers: ['tooth-inflam-pulp'] }),
-  ROOT_CARIES: existingFinding({ projection: 'existing-only', svgLayers: ['caries-root'] }),
-  ROOT_RESORPTION: existingFinding({ projection: 'existing-only', svgLayers: ['endo-resorption'] }),
+  PULP_DIAGNOSIS: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['tooth-inflam-pulp'],
+  }),
+  ROOT_CARIES: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['caries-root'],
+  }),
+  ROOT_RESORPTION: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['endo-resorption'],
+  }),
   TOOTH_FRACTURE: existingFinding({
     bases: ['natural'],
     dentitions: ['permanent'],
@@ -248,13 +308,14 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     applicability: ['confirmed structural tooth status'],
     bases: ['natural', 'missing', 'implant', 'primary'],
     projection: 'existing-only',
-      subtypeSupport: {
-        IMPLANT: 'existing-only',
-        MISSING: 'existing-only',
-        MISSING_AFTER_EXTRACTION: 'existing-only',
-        NATURAL: 'existing-only',
-        PRIMARY: 'existing-only',
-        UNDER_GUM: 'existing-only',
+    subtypeSupport: {
+      IMPLANT: 'existing-only',
+      MISSING: 'existing-only',
+      MISSING_AFTER_EXTRACTION: 'existing-only',
+      MISSING_CLOSED: 'existing-only',
+      NATURAL: 'existing-only',
+      PRIMARY: 'existing-only',
+      UNDER_GUM: 'existing-only',
     },
     svgLayers: ['natural base', 'missing base', 'implant-base'],
   }),
@@ -262,20 +323,23 @@ export const CLINICAL_FINDING_CAPABILITIES: Record<
     bases: ['natural'],
     dentitions: ['permanent'],
     projection: 'existing-only',
-    svgLayers: ['tooth-under-gum', 'tooth-radix', 'tooth-broken-*', 'tooth-crownprep'],
+    svgLayers: [
+      'tooth-under-gum',
+      'tooth-radix',
+      'tooth-broken-*',
+      'tooth-crownprep',
+    ],
   }),
-  TOOTH_WEAR: existingFinding({ projection: 'existing-only', svgLayers: ['tooth-bruxism-wear', 'tooth-bruxism-neck-wear'] }),
+  TOOTH_WEAR: existingFinding({
+    projection: 'existing-only',
+    svgLayers: ['tooth-bruxism-wear', 'tooth-bruxism-neck-wear'],
+  }),
 };
 
 export interface OdontogramAxisCapability {
   readonly id: string;
   readonly source: 'legacy-axis' | 'legacy-special-field';
-  readonly kind:
-    | 'enum'
-    | 'boolean'
-    | 'set'
-    | 'surface-map'
-    | 'derived';
+  readonly kind: 'enum' | 'boolean' | 'set' | 'surface-map' | 'derived';
   readonly projection: OdontogramProjectionSupport;
   readonly svgLayers: readonly string[];
   readonly applicability: readonly string[];
@@ -299,79 +363,130 @@ const axis = (
 });
 
 /** Reviewed inventory of `registry/axes.ts` before Clinora parity work. */
-export const ODONTOGRAM_AXIS_CAPABILITIES: readonly OdontogramAxisCapability[] = [
-  axis('toothSelection', 'enum', 'existing-only', ['implant', 'milktooth', 'tooth-under-gum', 'no-tooth-after-extraction']),
-  axis('endo', 'enum', 'record-only', ['endo-medical-filling', 'endo-filling', 'endo-filling-incomplete', 'endo-glass-pin', 'endo-metal-pin']),
-  axis('toothSubstrate', 'enum', 'record-only', ['tooth-radix', 'tooth-under-gum', 'tooth-crownprep']),
-  axis('restorationType', 'enum', 'record-only'),
-  axis('restorationMaterial', 'enum', 'record-only'),
-  axis('prosthesis', 'enum', 'record-only'),
-  axis('mobility', 'enum', 'record-only', ['mobility'], ['not an implant']),
-  axis('caries', 'set', 'existing-only', ['caries-*', 'caries-subcrown']),
-  axis('mods', 'set', 'record-only', ['inflammation', 'parodontal', 'mobility']),
-  axis('calculus', 'boolean', 'record-only', ['calculus'], ['present natural tooth']),
-  axis('periapicalType', 'enum', 'record-only', ['granuloma', 'cysta', 'abscess']),
-  axis('fillingMaterial', 'surface-map', 'existing-only', ['filling-{material}-{surface}']),
-  axis('endoResection', 'boolean', 'record-only', ['endo-resection']),
-  axis('fissureSealing', 'boolean', 'record-only', ['fissure-sealing']),
-  axis('contactMesial', 'boolean', 'record-only', ['mesial-no-contact-point']),
-  axis('contactDistal', 'boolean', 'record-only', ['distal-no-contact-point']),
-  axis('brokenMesial', 'boolean', 'record-only', ['tooth-broken-mesial*']),
-  axis('brokenIncisal', 'boolean', 'record-only', ['tooth-broken-incisal*']),
-  axis('brokenDistal', 'boolean', 'record-only', ['tooth-broken-distal*']),
-  axis('parapulpalPin', 'boolean', 'record-only', ['parapulpal-pin']),
-  axis('bridgePillar', 'boolean', 'record-only', ['bridge connector']),
-  axis('extractionWound', 'boolean', 'record-only', ['extraction-wound']),
-  axis('extractionPlan', 'boolean', 'record-only', ['extraction-plan']),
-  axis('crownReplace', 'boolean', 'planned-only', ['crown-replace']),
-  axis('crownNeeded', 'boolean', 'planned-only', ['crown-needed']),
-  axis('missingClosed', 'boolean', 'record-only', ['missing-closed']),
-  axis('crownLeakage', 'boolean', 'record-only', ['crown-leakage'], ['crown or bridge restoration']),
-  axis('pulpDx', 'enum', 'record-only', ['tooth-inflam-pulp']),
-  axis('pulpLatin', 'enum', 'record-only'),
-  axis('apicalDx', 'enum', 'record-only', ['granuloma', 'cysta', 'abscess']),
-  axis('resorptionType', 'enum', 'record-only', ['endo-resorption']),
-  axis('wearEdge', 'enum', 'record-only', ['tooth-bruxism-wear']),
-  axis('wearCervical', 'enum', 'record-only', ['tooth-bruxism-neck-wear']),
-  axis('discoloration', 'enum', 'record-only'),
-  axis('orthoAppliance', 'enum', 'record-only', ['ortho-bracket', 'ortho-ring']),
-  axis('orthoDrift', 'enum', 'record-only', ['arrow-mesial', 'arrow-distal']),
-  axis('orthoVertical', 'enum', 'record-only', ['arrow-up', 'arrow-down']),
-  axis('orthoRotation', 'boolean', 'record-only', ['arrow-rotation']),
-  axis('rootCaries', 'enum', 'record-only', ['caries-root']),
-  axis('cejVisibility', 'enum', 'record-only'),
-  axis('rootConcavity', 'enum', 'record-only'),
-  axis('gingivalThickness', 'enum', 'record-only'),
-  axis('millerClass', 'enum', 'record-only'),
-  axis('periImplant', 'enum', 'record-only', ['peri-implant-bone-loss'], ['implant only']),
-  {
-    applicability: ['one or more restorative surfaces'],
-    id: 'secondaryCaries',
-    kind: 'surface-map',
-    projection: 'record-only',
-    recordOnly: true,
-    source: 'legacy-special-field',
-    svgLayers: ['subcaries-{surface}'],
-  },
-  {
-    applicability: ['one or more restorative surfaces'],
-    id: 'radiographicDepth',
-    kind: 'surface-map',
-    projection: 'record-only',
-    recordOnly: true,
-    source: 'legacy-special-field',
-    svgLayers: [],
-  },
-  {
-    applicability: ['one or more filled surfaces'],
-    id: 'fillingDefect',
-    kind: 'surface-map',
-    projection: 'record-only',
-    recordOnly: true,
-    source: 'legacy-special-field',
-    svgLayers: ['defect-{surface}'],
-  },
-];
+export const ODONTOGRAM_AXIS_CAPABILITIES: readonly OdontogramAxisCapability[] =
+  [
+    axis('toothSelection', 'enum', 'existing-only', [
+      'implant',
+      'milktooth',
+      'tooth-under-gum',
+      'no-tooth-after-extraction',
+    ]),
+    axis('endo', 'enum', 'record-only', [
+      'endo-medical-filling',
+      'endo-filling',
+      'endo-filling-incomplete',
+      'endo-glass-pin',
+      'endo-metal-pin',
+    ]),
+    axis('toothSubstrate', 'enum', 'record-only', [
+      'tooth-radix',
+      'tooth-under-gum',
+      'tooth-crownprep',
+    ]),
+    axis('restorationType', 'enum', 'record-only'),
+    axis('restorationMaterial', 'enum', 'record-only'),
+    axis('prosthesis', 'enum', 'record-only'),
+    axis('mobility', 'enum', 'record-only', ['mobility'], ['not an implant']),
+    axis('caries', 'set', 'existing-only', ['caries-*', 'caries-subcrown']),
+    axis('mods', 'set', 'record-only', [
+      'inflammation',
+      'parodontal',
+      'mobility',
+    ]),
+    axis(
+      'calculus',
+      'boolean',
+      'record-only',
+      ['calculus'],
+      ['present natural tooth'],
+    ),
+    axis('periapicalType', 'enum', 'record-only', [
+      'granuloma',
+      'cysta',
+      'abscess',
+    ]),
+    axis('fillingMaterial', 'surface-map', 'existing-only', [
+      'filling-{material}-{surface}',
+    ]),
+    axis('endoResection', 'boolean', 'record-only', ['endo-resection']),
+    axis('fissureSealing', 'boolean', 'record-only', ['fissure-sealing']),
+    axis('contactMesial', 'boolean', 'record-only', [
+      'mesial-no-contact-point',
+    ]),
+    axis('contactDistal', 'boolean', 'record-only', [
+      'distal-no-contact-point',
+    ]),
+    axis('brokenMesial', 'boolean', 'record-only', ['tooth-broken-mesial*']),
+    axis('brokenIncisal', 'boolean', 'record-only', ['tooth-broken-incisal*']),
+    axis('brokenDistal', 'boolean', 'record-only', ['tooth-broken-distal*']),
+    axis('parapulpalPin', 'boolean', 'record-only', ['parapulpal-pin']),
+    axis('bridgePillar', 'boolean', 'record-only', ['bridge connector']),
+    axis('extractionWound', 'boolean', 'record-only', ['extraction-wound']),
+    axis('extractionPlan', 'boolean', 'record-only', ['extraction-plan']),
+    axis('crownReplace', 'boolean', 'planned-only', ['crown-replace']),
+    axis('crownNeeded', 'boolean', 'planned-only', ['crown-needed']),
+    axis('missingClosed', 'boolean', 'record-only', ['missing-closed']),
+    axis(
+      'crownLeakage',
+      'boolean',
+      'record-only',
+      ['crown-leakage'],
+      ['crown or bridge restoration'],
+    ),
+    axis('pulpDx', 'enum', 'record-only', ['tooth-inflam-pulp']),
+    axis('pulpLatin', 'enum', 'record-only'),
+    axis('apicalDx', 'enum', 'record-only', ['granuloma', 'cysta', 'abscess']),
+    axis('resorptionType', 'enum', 'record-only', ['endo-resorption']),
+    axis('wearEdge', 'enum', 'record-only', ['tooth-bruxism-wear']),
+    axis('wearCervical', 'enum', 'record-only', ['tooth-bruxism-neck-wear']),
+    axis('discoloration', 'enum', 'record-only'),
+    axis('orthoAppliance', 'enum', 'record-only', [
+      'ortho-bracket',
+      'ortho-ring',
+    ]),
+    axis('orthoDrift', 'enum', 'record-only', ['arrow-mesial', 'arrow-distal']),
+    axis('orthoVertical', 'enum', 'record-only', ['arrow-up', 'arrow-down']),
+    axis('orthoRotation', 'boolean', 'record-only', ['arrow-rotation']),
+    axis('rootCaries', 'enum', 'record-only', ['caries-root']),
+    axis('cejVisibility', 'enum', 'record-only'),
+    axis('rootConcavity', 'enum', 'record-only'),
+    axis('gingivalThickness', 'enum', 'record-only'),
+    axis('millerClass', 'enum', 'record-only'),
+    axis(
+      'periImplant',
+      'enum',
+      'record-only',
+      ['peri-implant-bone-loss'],
+      ['implant only'],
+    ),
+    {
+      applicability: ['one or more restorative surfaces'],
+      id: 'secondaryCaries',
+      kind: 'surface-map',
+      projection: 'record-only',
+      recordOnly: true,
+      source: 'legacy-special-field',
+      svgLayers: ['subcaries-{surface}'],
+    },
+    {
+      applicability: ['one or more restorative surfaces'],
+      id: 'radiographicDepth',
+      kind: 'surface-map',
+      projection: 'record-only',
+      recordOnly: true,
+      source: 'legacy-special-field',
+      svgLayers: [],
+    },
+    {
+      applicability: ['one or more filled surfaces'],
+      id: 'fillingDefect',
+      kind: 'surface-map',
+      projection: 'record-only',
+      recordOnly: true,
+      source: 'legacy-special-field',
+      svgLayers: ['defect-{surface}'],
+    },
+  ];
 
 export const ODONTOGRAM_AXIS_CAPABILITY_BY_ID = Object.fromEntries(
   ODONTOGRAM_AXIS_CAPABILITIES.map((item) => [item.id, item]),
@@ -379,65 +494,259 @@ export const ODONTOGRAM_AXIS_CAPABILITY_BY_ID = Object.fromEntries(
 
 export interface OdontogramRecordCapability {
   readonly id: string;
-  readonly geometry: 'tooth' | 'surface' | 'periodontal-site' | 'furcation' | 'mouth';
+  readonly geometry:
+    | 'tooth'
+    | 'surface'
+    | 'periodontal-site'
+    | 'furcation'
+    | 'mouth';
   readonly projection: 'record-only' | 'none';
   readonly applicability: readonly string[];
   readonly derived: boolean;
 }
 
 /** Periodontal and record-only concepts reviewed from the upstream chart. */
-export const ODONTOGRAM_PERIODONTAL_RECORD_CAPABILITIES: readonly OdontogramRecordCapability[] = [
-  { id: 'periodontal.pd', geometry: 'periodontal-site', projection: 'record-only', applicability: ['MB/B/DB/ML/L/DL'], derived: false },
-  { id: 'periodontal.gingival-margin', geometry: 'periodontal-site', projection: 'record-only', applicability: ['MB/B/DB/ML/L/DL'], derived: false },
-  { id: 'periodontal.cal', geometry: 'periodontal-site', projection: 'record-only', applicability: ['derived from pd + gingival margin'], derived: true },
-  { id: 'periodontal.bop', geometry: 'periodontal-site', projection: 'record-only', applicability: ['charted probing sites'], derived: false },
-  { id: 'periodontal.suppuration', geometry: 'periodontal-site', projection: 'record-only', applicability: ['charted probing sites'], derived: false },
-  { id: 'periodontal.mobility', geometry: 'tooth', projection: 'record-only', applicability: ['present natural tooth'], derived: false },
-  { id: 'periodontal.furcation', geometry: 'furcation', projection: 'record-only', applicability: ['position-aware entrances'], derived: false },
-  { id: 'periodontal.plaque', geometry: 'surface', projection: 'record-only', applicability: ["four O'Leary surfaces"], derived: false },
-  { id: 'periodontal.pi', geometry: 'surface', projection: 'record-only', applicability: ['four index surfaces'], derived: false },
-  { id: 'periodontal.gi', geometry: 'surface', projection: 'record-only', applicability: ['four index surfaces'], derived: false },
-  { id: 'periodontal.mpi', geometry: 'surface', projection: 'record-only', applicability: ['four surfaces; implant only'], derived: false },
-  { id: 'periodontal.mbi', geometry: 'surface', projection: 'record-only', applicability: ['four surfaces; implant only'], derived: false },
-  { id: 'periodontal.keratinized-gingiva', geometry: 'tooth', projection: 'record-only', applicability: ['buccal width 0-15 mm'], derived: false },
-  { id: 'periodontal.cej-visibility', geometry: 'tooth', projection: 'record-only', applicability: ['categorical detail'], derived: false },
-  { id: 'periodontal.root-concavity', geometry: 'tooth', projection: 'record-only', applicability: ['categorical detail'], derived: false },
-  { id: 'periodontal.gingival-phenotype', geometry: 'tooth', projection: 'record-only', applicability: ['thin/medium/thick'], derived: false },
-  { id: 'periodontal.miller-class', geometry: 'tooth', projection: 'record-only', applicability: ['I-IV'], derived: false },
-  { id: 'periodontal.cairo-recession', geometry: 'tooth', projection: 'record-only', applicability: ['derived from approved probing inputs'], derived: true },
-  { id: 'periodontal.whole-mouth-summary', geometry: 'mouth', projection: 'record-only', applicability: ['derived from charted records'], derived: true },
-  { id: 'periodontal.classification', geometry: 'mouth', projection: 'none', applicability: ['clinician-approved derivation'], derived: true },
-];
+export const ODONTOGRAM_PERIODONTAL_RECORD_CAPABILITIES: readonly OdontogramRecordCapability[] =
+  [
+    {
+      id: 'periodontal.pd',
+      geometry: 'periodontal-site',
+      projection: 'record-only',
+      applicability: ['MB/B/DB/ML/L/DL'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.gingival-margin',
+      geometry: 'periodontal-site',
+      projection: 'record-only',
+      applicability: ['MB/B/DB/ML/L/DL'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.cal',
+      geometry: 'periodontal-site',
+      projection: 'record-only',
+      applicability: ['derived from pd + gingival margin'],
+      derived: true,
+    },
+    {
+      id: 'periodontal.bop',
+      geometry: 'periodontal-site',
+      projection: 'record-only',
+      applicability: ['charted probing sites'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.suppuration',
+      geometry: 'periodontal-site',
+      projection: 'record-only',
+      applicability: ['charted probing sites'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.mobility',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['present natural tooth'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.furcation',
+      geometry: 'furcation',
+      projection: 'record-only',
+      applicability: ['position-aware entrances'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.plaque',
+      geometry: 'surface',
+      projection: 'record-only',
+      applicability: ["four O'Leary surfaces"],
+      derived: false,
+    },
+    {
+      id: 'periodontal.pi',
+      geometry: 'surface',
+      projection: 'record-only',
+      applicability: ['four index surfaces'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.gi',
+      geometry: 'surface',
+      projection: 'record-only',
+      applicability: ['four index surfaces'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.mpi',
+      geometry: 'surface',
+      projection: 'record-only',
+      applicability: ['four surfaces; implant only'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.mbi',
+      geometry: 'surface',
+      projection: 'record-only',
+      applicability: ['four surfaces; implant only'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.keratinized-gingiva',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['buccal width 0-15 mm'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.cej-visibility',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['categorical detail'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.root-concavity',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['categorical detail'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.gingival-phenotype',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['thin/medium/thick'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.miller-class',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['I-IV'],
+      derived: false,
+    },
+    {
+      id: 'periodontal.cairo-recession',
+      geometry: 'tooth',
+      projection: 'record-only',
+      applicability: ['derived from approved probing inputs'],
+      derived: true,
+    },
+    {
+      id: 'periodontal.whole-mouth-summary',
+      geometry: 'mouth',
+      projection: 'record-only',
+      applicability: ['derived from charted records'],
+      derived: true,
+    },
+    {
+      id: 'periodontal.classification',
+      geometry: 'mouth',
+      projection: 'none',
+      applicability: ['clinician-approved derivation'],
+      derived: true,
+    },
+  ];
 
 /** Semantic upstream layer vocabulary, kept out of the runtime manifest. */
 export const ODONTOGRAM_UPSTREAM_LAYER_IDS: readonly string[] = [
-  'tooth-base', 'tooth-base-beauty', 'tooth-healthy-pulp', 'tooth-inflam-pulp',
-  'implant', 'implant-base', 'implant-connector', 'implant-healing-abutment',
-  'implant-locator-screw', 'implant-bar', 'prosthesis', 'prosthesis-implant',
-  'prosthesis-implant-crown', 'prosthesis-implant-gum', 'milktooth',
-  'milktooth-base', 'milktooth-beauty', 'milktooth-healthy-pulp',
-  'milktooth-inflam-pulp', 'tooth-under-gum', 'tooth-radix', 'tooth-crownprep',
-  'tooth-broken-incisal', 'tooth-broken-mesial', 'tooth-broken-distal',
-  'tooth-broken-mesial-distal', 'tooth-broken-distal-incisal',
-  'tooth-broken-mesial-incisal', 'tooth-broken-mesial-distal-incisal',
-  'no-tooth-after-extraction', 'extraction-plan', 'extraction-wound',
-  'missing-closed', 'crown-needed', 'crown-replace', 'fissure-sealing',
-  'mesial-no-contact-point', 'distal-no-contact-point', 'crown-leakage',
-  'endo-medical-filling', 'endo-filling', 'endo-filling-incomplete',
-  'endo-glass-pin', 'endo-metal-pin', 'endo-resection', 'parapulpal-pin',
-  'endo-resorption', 'granuloma', 'cysta', 'abscess', 'inflammation',
-  'parodontal', 'mobility', 'calculus', 'caries-root', 'caries-subcrown',
-  'subcaries-{surface}', 'caries-{surface}', 'defect-{surface}',
-  'filling-{material}-{surface}', 'temporary-restorations',
-  'ortho-bracket', 'ortho-ring', 'arrow-mesial', 'arrow-distal', 'arrow-up',
-  'arrow-down', 'arrow-rotation', 'peri-implant-bone-loss',
-  'telescope-crown', 'zircon-crown', 'metal-crown', 'temporary-crown',
-  'emax-inlay', 'gold-inlay', 'gradia-inlay', 'zircon-inlay', 'temporary-inlay',
-  'emax-onlay', 'gold-onlay', 'gradia-onlay', 'zircon-onlay', 'temporary-onlay',
-  'emax-veneer', 'gold-veneer', 'gradia-veneer', 'zircon-veneer', 'temporary-veneer',
-  'emax-bridge-connector', 'gold-bridge-connector', 'gradia-bridge-connector',
-  'metal-ceramic-bridge-connector', 'zircon-bridge-connector',
-  'metal-bridge-connector', 'temporary-bridge-connector',
+  'tooth-base',
+  'tooth-base-beauty',
+  'tooth-healthy-pulp',
+  'tooth-inflam-pulp',
+  'implant',
+  'implant-base',
+  'implant-connector',
+  'implant-healing-abutment',
+  'implant-locator-screw',
+  'implant-bar',
+  'prosthesis',
+  'prosthesis-implant',
+  'prosthesis-implant-crown',
+  'prosthesis-implant-gum',
+  'milktooth',
+  'milktooth-base',
+  'milktooth-beauty',
+  'milktooth-healthy-pulp',
+  'milktooth-inflam-pulp',
+  'tooth-under-gum',
+  'tooth-radix',
+  'tooth-crownprep',
+  'tooth-broken-incisal',
+  'tooth-broken-mesial',
+  'tooth-broken-distal',
+  'tooth-broken-mesial-distal',
+  'tooth-broken-distal-incisal',
+  'tooth-broken-mesial-incisal',
+  'tooth-broken-mesial-distal-incisal',
+  'no-tooth-after-extraction',
+  'extraction-plan',
+  'extraction-wound',
+  'missing-closed',
+  'crown-needed',
+  'crown-replace',
+  'fissure-sealing',
+  'mesial-no-contact-point',
+  'distal-no-contact-point',
+  'crown-leakage',
+  'endo-medical-filling',
+  'endo-filling',
+  'endo-filling-incomplete',
+  'endo-glass-pin',
+  'endo-metal-pin',
+  'endo-resection',
+  'parapulpal-pin',
+  'endo-resorption',
+  'granuloma',
+  'cysta',
+  'abscess',
+  'inflammation',
+  'parodontal',
+  'mobility',
+  'calculus',
+  'caries-root',
+  'caries-subcrown',
+  'subcaries-{surface}',
+  'caries-{surface}',
+  'defect-{surface}',
+  'filling-{material}-{surface}',
+  'temporary-restorations',
+  'ortho-bracket',
+  'ortho-ring',
+  'arrow-mesial',
+  'arrow-distal',
+  'arrow-up',
+  'arrow-down',
+  'arrow-rotation',
+  'peri-implant-bone-loss',
+  'telescope-crown',
+  'zircon-crown',
+  'metal-crown',
+  'temporary-crown',
+  'emax-inlay',
+  'gold-inlay',
+  'gradia-inlay',
+  'zircon-inlay',
+  'temporary-inlay',
+  'emax-onlay',
+  'gold-onlay',
+  'gradia-onlay',
+  'zircon-onlay',
+  'temporary-onlay',
+  'emax-veneer',
+  'gold-veneer',
+  'gradia-veneer',
+  'zircon-veneer',
+  'temporary-veneer',
+  'emax-bridge-connector',
+  'gold-bridge-connector',
+  'gradia-bridge-connector',
+  'metal-ceramic-bridge-connector',
+  'zircon-bridge-connector',
+  'metal-bridge-connector',
+  'temporary-bridge-connector',
   'telescope-bridge-connector',
 ];
 
@@ -472,7 +781,7 @@ export const getTreatmentCapabilityPresentation = (
 ): TreatmentCapabilityPresentation => {
   const projection =
     context.subtype !== undefined
-      ? capability.subtypeSupport?.[context.subtype] ?? capability.projection
+      ? (capability.subtypeSupport?.[context.subtype] ?? capability.projection)
       : capability.projection;
   if (
     !capability.bases.includes(context.base) ||

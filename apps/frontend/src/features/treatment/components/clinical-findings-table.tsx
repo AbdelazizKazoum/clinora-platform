@@ -8,6 +8,7 @@ import type { MockTreatmentActor } from '../model/treatment-workspace';
 import { getClinicalFindingOption } from '../model/treatment-catalogue';
 import { formatTarget, recordStatusVariant } from './treatment-presentation';
 import { TreatmentRecordsTable } from './treatment-records-table';
+import { ClinicalRecordDetails } from './clinical-record-details';
 
 export function ClinicalFindingsTable({
   actor,
@@ -28,7 +29,13 @@ export function ClinicalFindingsTable({
         cell: ({ row }) => {
           const label = getClinicalFindingOption(row.original.code)?.label;
           return (
-            <div className="fw-semibold">{label ?? row.original.code}</div>
+            <div>
+              <div className="fw-semibold">{label ?? row.original.code}</div>
+              <ClinicalRecordDetails
+                code={row.original.code}
+                details={row.original.details}
+              />
+            </div>
           );
         },
       },

@@ -56,7 +56,12 @@ export interface UnsupportedToothConditionVisual {
 
 export type UnsupportedToothVisual =
   | UnsupportedToothSurfaceVisual
-  | UnsupportedToothConditionVisual;
+  | UnsupportedToothConditionVisual
+  | {
+      readonly condition: string;
+      readonly reason: 'missing-template-layer';
+      readonly layerId: string;
+    };
 
 export interface ToothSurfaceVisualLayerResult {
   readonly layers: readonly ToothSurfaceVisualLayer[];
@@ -132,6 +137,11 @@ export const TOOTH_WHOLE_LAYER_RESET_IDS = Object.freeze([
   'calculus',
   'parodontal',
   'peri-implant-bone-loss',
+  'mobility',
+  'inflammation',
+  'granuloma',
+  'cysta',
+  'abscess',
   'endo-medical-filling',
   'endo-filling-incomplete',
   'endo-glass-pin',
@@ -281,7 +291,7 @@ export function deriveWholeToothVisualLayers(
     }
 
     if (condition.kind === 'clinical') {
-      for (const layer of clinicalLayerIds(condition)) {
+      for (const layer of clinicalLayerIds(condition, tooth)) {
         layers.push({
           appearance: condition.appearance,
           id: layer.id,
@@ -295,7 +305,11 @@ export function deriveWholeToothVisualLayers(
     if (condition.kind === 'endodontic') {
       if (view === 'side') {
         for (const id of endodonticLayerIds(condition.state)) {
-          layers.push({ appearance: condition.appearance, id, kind: 'endodontic' });
+          layers.push({
+            appearance: condition.appearance,
+            id,
+            kind: 'endodontic',
+          });
         }
       } else {
         unsupportedVisuals.push({
@@ -462,6 +476,13 @@ function collectSurfaceConditions<K extends 'caries' | 'filling'>(
 }
 
 function getToothBaseLayerIds(tooth: OdontogramTooth): readonly string[] {
+  const showHealthyPulp = !tooth.conditions.some(
+    (condition) =>
+      condition.kind === 'endodontic' ||
+      (condition.kind === 'clinical' &&
+        condition.concept === 'pulp-diagnosis' &&
+        condition.subtype !== 'NORMAL'),
+  );
   const hidesNaturalBase = tooth.conditions.some(
     (condition) =>
       condition.kind === 'structure' &&
@@ -479,12 +500,16 @@ function getToothBaseLayerIds(tooth: OdontogramTooth): readonly string[] {
       'milktooth',
       'milktooth-base',
       'milktooth-beauty',
-      'milktooth-healthy-pulp',
+      ...(showHealthyPulp ? ['milktooth-healthy-pulp'] : []),
     ];
   }
 
   if (tooth.base === 'natural') {
-    return ['tooth-base', 'tooth-base-beauty', 'tooth-healthy-pulp'];
+    return [
+      'tooth-base',
+      'tooth-base-beauty',
+      ...(showHealthyPulp ? ['tooth-healthy-pulp'] : []),
+    ];
   }
 
   if (tooth.base === 'implant') {
@@ -506,31 +531,76 @@ function endodonticLayerIds(
 
 function clinicalLayerIds(
   condition: Extract<OdontogramCondition, { readonly kind: 'clinical' }>,
+  tooth: OdontogramTooth,
 ): readonly { readonly id: string; readonly opacity?: string }[] {
   switch (condition.concept) {
-    case 'fissure-sealing': return [{ id: 'fissure-sealing' }];
-    case 'root-caries': return [{ id: 'caries-root', opacity: rootCariesOpacity(condition.subtype) }];
-    case 'subcrown-caries': return [{ id: 'caries-subcrown' }];
-    case 'filling-defect': return condition.surface ? [{ id: `defect-${condition.surface}` }] : [];
-    case 'contact-mesial': return [{ id: 'mesial-no-contact-point' }];
-    case 'contact-distal': return [{ id: 'distal-no-contact-point' }];
-    case 'crown-leakage': return [{ id: 'crown-leakage' }];
-    case 'apicoectomy': return [{ id: 'endo-resection' }];
-    case 'parapulpal-pin': return [{ id: 'parapulpal-pin' }];
-    case 'root-resorption': return [{ id: 'endo-resorption' }];
-    case 'wear-edge': return [{ id: 'tooth-bruxism-wear' }];
-    case 'wear-cervical': return [{ id: 'tooth-bruxism-neck-wear' }];
-    case 'ortho-appliance': return [{ id: condition.subtype === 'BAND' ? 'ortho-ring' : 'ortho-bracket' }];
-    case 'ortho-drift': return [{ id: condition.subtype === 'DISTAL' ? 'arrow-distal' : 'arrow-mesial' }];
-    case 'ortho-vertical': return [{ id: condition.subtype === 'INTRUSION' ? 'arrow-down' : 'arrow-up' }];
-    case 'ortho-rotation': return [{ id: 'arrow-rotation' }];
-    case 'pulp-diagnosis': return condition.subtype && condition.subtype !== 'NORMAL' ? [{ id: 'tooth-inflam-pulp' }] : [];
+    case 'mobility':
+      return [{ id: 'mobility' }];
+    case 'fissure-sealing':
+      return [{ id: 'fissure-sealing' }];
+    case 'root-caries':
+      return [
+        { id: 'caries-root', opacity: rootCariesOpacity(condition.subtype) },
+      ];
+    case 'subcrown-caries':
+      return [{ id: 'caries-subcrown' }];
+    case 'filling-defect':
+      return condition.surface ? [{ id: `defect-${condition.surface}` }] : [];
+    case 'contact-mesial':
+      return [{ id: 'mesial-no-contact-point' }];
+    case 'contact-distal':
+      return [{ id: 'distal-no-contact-point' }];
+    case 'crown-leakage':
+      return [{ id: 'crown-leakage' }];
+    case 'apicoectomy':
+      return [{ id: 'endo-resection' }];
+    case 'parapulpal-pin':
+      return [{ id: 'parapulpal-pin' }];
+    case 'root-resorption':
+      return [{ id: 'endo-resorption' }];
+    case 'wear-edge':
+      return [{ id: 'tooth-bruxism-wear' }];
+    case 'wear-cervical':
+      return [{ id: 'tooth-bruxism-neck-wear' }];
+    case 'ortho-appliance':
+      return [
+        { id: condition.subtype === 'BAND' ? 'ortho-ring' : 'ortho-bracket' },
+      ];
+    case 'ortho-drift':
+      return [
+        {
+          id:
+            condition.subtype === 'DISTAL_DRIFT'
+              ? 'arrow-distal'
+              : 'arrow-mesial',
+        },
+      ];
+    case 'ortho-vertical':
+      return [
+        { id: condition.subtype === 'INTRUSION' ? 'arrow-down' : 'arrow-up' },
+      ];
+    case 'ortho-rotation':
+      return [{ id: 'arrow-rotation' }];
+    case 'pulp-diagnosis':
+      if (tooth.conditions.some((candidate) => candidate.kind === 'endodontic'))
+        return [];
+      return condition.subtype && condition.subtype !== 'NORMAL'
+        ? [
+            {
+              id:
+                tooth.dentition === 'primary'
+                  ? 'milktooth-inflam-pulp'
+                  : 'tooth-inflam-pulp',
+            },
+          ]
+        : [];
     case 'apical-diagnosis':
     case 'periapical-lesion':
       return condition.subtype && condition.subtype !== 'NORMAL'
         ? [{ id: 'inflammation' }, { id: periapicalLayerId(condition.subtype) }]
         : [];
-    case 'discoloration': return [];
+    case 'discoloration':
+      return [];
   }
 }
 
@@ -574,7 +644,8 @@ function brokenLayerId(
   const hasMesial = regions.includes('mesial');
   const hasIncisal = regions.includes('incisal');
   const hasDistal = regions.includes('distal');
-  if (hasMesial && hasIncisal && hasDistal) return 'tooth-broken-mesial-distal-incisal';
+  if (hasMesial && hasIncisal && hasDistal)
+    return 'tooth-broken-mesial-distal-incisal';
   if (hasMesial && hasIncisal) return 'tooth-broken-mesial-incisal';
   if (hasMesial && hasDistal) return 'tooth-broken-mesial-distal';
   if (hasIncisal && hasDistal) return 'tooth-broken-distal-incisal';
@@ -587,7 +658,26 @@ function prosthesisLayerIds(
   prosthesis: ImplantProsthesisType,
   base: ToothBase,
 ): readonly string[] {
-  if (base === 'missing' && (prosthesis === 'removable-partial' || prosthesis === 'removable-full')) {
+  if (
+    base === 'missing' &&
+    (prosthesis === 'bar' || prosthesis === 'bar-overdenture')
+  ) {
+    return [
+      'implant',
+      'implant-bar',
+      ...(prosthesis === 'bar-overdenture'
+        ? [
+            'prosthesis-implant',
+            'prosthesis-implant-crown',
+            'prosthesis-implant-gum',
+          ]
+        : []),
+    ];
+  }
+  if (
+    base === 'missing' &&
+    (prosthesis === 'removable-partial' || prosthesis === 'removable-full')
+  ) {
     return ['prosthesis', 'prosthesis-crown', 'prosthesis-connector'];
   }
   if (base !== 'implant') return [];
@@ -597,10 +687,21 @@ function prosthesisLayerIds(
   if (prosthesis === 'locator') return attachment;
   if (prosthesis === 'bar') return [...attachment, 'implant-bar'];
   if (prosthesis === 'locator-overdenture') {
-    return [...attachment, 'prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'];
+    return [
+      ...attachment,
+      'prosthesis-implant',
+      'prosthesis-implant-crown',
+      'prosthesis-implant-gum',
+    ];
   }
   if (prosthesis === 'bar-overdenture') {
-    return [...attachment, 'implant-bar', 'prosthesis-implant', 'prosthesis-implant-crown', 'prosthesis-implant-gum'];
+    return [
+      ...attachment,
+      'implant-bar',
+      'prosthesis-implant',
+      'prosthesis-implant-crown',
+      'prosthesis-implant-gum',
+    ];
   }
   return [];
 }

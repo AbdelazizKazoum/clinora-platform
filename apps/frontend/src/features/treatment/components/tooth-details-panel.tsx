@@ -39,6 +39,7 @@ import {
   type TreatmentEntryFieldsProps,
 } from './treatment-entry-fields';
 import { ActLifecycleButtons } from './treatment-act-actions';
+import { ClinicalRecordDetails } from './clinical-record-details';
 import styles from './treatment-workspace.module.scss';
 
 export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
@@ -255,6 +256,10 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
             <div>
               <span className="fw-semibold">{label ?? record.code}</span>
               <small className="text-muted d-block">{record.status}</small>
+              <ClinicalRecordDetails
+                code={record.code}
+                details={record.details}
+              />
             </div>
             {record.status === 'DRAFT' && props.actor.role === 'doctor' ? (
               <Button

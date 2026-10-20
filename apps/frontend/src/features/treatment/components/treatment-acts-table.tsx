@@ -12,6 +12,7 @@ import { getTreatmentActOption } from '../model/treatment-catalogue';
 import { formatTarget, recordStatusVariant } from './treatment-presentation';
 import { TreatmentRecordsTable } from './treatment-records-table';
 import { TreatmentActActions } from './treatment-act-actions';
+import { ClinicalRecordDetails } from './clinical-record-details';
 
 export const TreatmentActsTable = memo(function TreatmentActsTable({
   actor,
@@ -36,7 +37,13 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
         cell: ({ row }) => {
           const label = getTreatmentActOption(row.original.code)?.label;
           return (
-            <div className="fw-semibold">{label ?? row.original.code}</div>
+            <div>
+              <div className="fw-semibold">{label ?? row.original.code}</div>
+              <ClinicalRecordDetails
+                code={row.original.code}
+                details={row.original.details}
+              />
+            </div>
           );
         },
       },

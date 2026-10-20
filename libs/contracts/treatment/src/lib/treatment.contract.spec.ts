@@ -58,10 +58,21 @@ describe('treatment contract', () => {
       expect.arrayContaining([
         'PROBING_DEPTH_MM',
         'GINGIVAL_MARGIN_MM',
-        'BLEEDING_ON_PROBING',
+        'BOP',
         'SUPPURATION',
       ]),
     );
+    const furcation = SUPPORTED_CLINICAL_FINDING_CATALOGUE.find(
+      ({ code }) => code === 'FURCATION_INVOLVEMENT',
+    );
+    expect(furcation?.allowedTargets).toEqual(['FURCATION_ENTRANCE']);
+    const orthodonticAppliance = SUPPORTED_TREATMENT_ACT_CATALOGUE.find(
+      ({ code }) => code === 'ORTHODONTIC_APPLIANCE',
+    );
+    expect(orthodonticAppliance).toMatchObject({
+      allowedTargets: ['TOOTH'],
+      supportedDetailKeys: ['ORTHODONTIC_APPLIANCE'],
+    });
     expect(JSON.stringify(SUPPORTED_TREATMENT_ACT_CATALOGUE)).not.toContain(
       'svg',
     );

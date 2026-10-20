@@ -44,6 +44,11 @@ function formatPrimaryToothNumber(
 ): string {
   const quadrant = Math.floor(position / 10);
   const quadrantPosition = position % 10;
+  if (quadrantPosition > 5) {
+    throw new Error(
+      `Primary dentition has no tooth at permanent chart position ${position}.`,
+    );
+  }
   const primaryQuadrant = quadrant + 4;
 
   if (system === 'fdi') {

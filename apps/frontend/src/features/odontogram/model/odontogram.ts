@@ -46,6 +46,7 @@ export type ImplantProsthesisType =
   | 'removable-partial'
   | 'removable-full';
 export type ClinicalVisualConcept =
+  | 'mobility'
   | 'fissure-sealing'
   | 'root-caries'
   | 'subcrown-caries'
@@ -254,13 +255,34 @@ const PROSTHESIS_TYPES = [
   'removable-full',
 ] as const;
 const PERIODONTAL_STATES = ['calculus', 'involvement'] as const;
-const PERI_IMPLANT_STATES = ['mucositis', 'mild', 'moderate', 'severe'] as const;
+const PERI_IMPLANT_STATES = [
+  'mucositis',
+  'mild',
+  'moderate',
+  'severe',
+] as const;
 const CLINICAL_VISUAL_CONCEPTS = [
-  'fissure-sealing', 'root-caries', 'subcrown-caries', 'filling-defect',
-  'contact-mesial', 'contact-distal', 'crown-leakage', 'apicoectomy',
-  'parapulpal-pin', 'pulp-diagnosis', 'apical-diagnosis', 'periapical-lesion',
-  'root-resorption', 'wear-edge', 'wear-cervical', 'discoloration',
-  'ortho-appliance', 'ortho-drift', 'ortho-vertical', 'ortho-rotation',
+  'mobility',
+  'fissure-sealing',
+  'root-caries',
+  'subcrown-caries',
+  'filling-defect',
+  'contact-mesial',
+  'contact-distal',
+  'crown-leakage',
+  'apicoectomy',
+  'parapulpal-pin',
+  'pulp-diagnosis',
+  'apical-diagnosis',
+  'periapical-lesion',
+  'root-resorption',
+  'wear-edge',
+  'wear-cervical',
+  'discoloration',
+  'ortho-appliance',
+  'ortho-drift',
+  'ortho-vertical',
+  'ortho-rotation',
 ] as const;
 const TOOTH_POSITION_SET: ReadonlySet<number> = new Set<number>(
   TOOTH_POSITIONS,
@@ -694,29 +716,84 @@ function parseConditionByKind(
 
     case 'periodontal': {
       validateExactKeys(value, ['kind', 'state', 'appearance'], path, issues);
-      const state = readEnum(value.state, PERIODONTAL_STATES, `${path}.state`, issues);
-      const appearance = readEnum(value.appearance, ['existing'] as const, `${path}.appearance`, issues);
-      if (issues.length !== issueCount || state === undefined || appearance === undefined) return null;
+      const state = readEnum(
+        value.state,
+        PERIODONTAL_STATES,
+        `${path}.state`,
+        issues,
+      );
+      const appearance = readEnum(
+        value.appearance,
+        ['existing'] as const,
+        `${path}.appearance`,
+        issues,
+      );
+      if (
+        issues.length !== issueCount ||
+        state === undefined ||
+        appearance === undefined
+      )
+        return null;
       return { kind, state, appearance };
     }
 
     case 'peri-implant': {
       validateExactKeys(value, ['kind', 'state', 'appearance'], path, issues);
-      const state = readEnum(value.state, PERI_IMPLANT_STATES, `${path}.state`, issues);
-      const appearance = readEnum(value.appearance, ['existing'] as const, `${path}.appearance`, issues);
-      if (issues.length !== issueCount || state === undefined || appearance === undefined) return null;
+      const state = readEnum(
+        value.state,
+        PERI_IMPLANT_STATES,
+        `${path}.state`,
+        issues,
+      );
+      const appearance = readEnum(
+        value.appearance,
+        ['existing'] as const,
+        `${path}.appearance`,
+        issues,
+      );
+      if (
+        issues.length !== issueCount ||
+        state === undefined ||
+        appearance === undefined
+      )
+        return null;
       return { kind, state, appearance };
     }
 
     case 'clinical': {
-      validateExactKeys(value, ['kind', 'concept', 'subtype', 'surface', 'appearance'], path, issues);
-      const concept = readEnum(value.concept, CLINICAL_VISUAL_CONCEPTS, `${path}.concept`, issues);
-      const surface = value.surface === undefined ? undefined : readEnum(value.surface, TOOTH_SURFACES, `${path}.surface`, issues);
-      const appearance = readEnum(value.appearance, ODONTOGRAM_APPEARANCES, `${path}.appearance`, issues);
-      if (issues.length !== issueCount || concept === undefined || appearance === undefined) return null;
+      validateExactKeys(
+        value,
+        ['kind', 'concept', 'subtype', 'surface', 'appearance'],
+        path,
+        issues,
+      );
+      const concept = readEnum(
+        value.concept,
+        CLINICAL_VISUAL_CONCEPTS,
+        `${path}.concept`,
+        issues,
+      );
+      const surface =
+        value.surface === undefined
+          ? undefined
+          : readEnum(value.surface, TOOTH_SURFACES, `${path}.surface`, issues);
+      const appearance = readEnum(
+        value.appearance,
+        ODONTOGRAM_APPEARANCES,
+        `${path}.appearance`,
+        issues,
+      );
+      if (
+        issues.length !== issueCount ||
+        concept === undefined ||
+        appearance === undefined
+      )
+        return null;
       return {
         ...(surface === undefined ? {} : { surface }),
-        ...(typeof value.subtype === 'string' ? { subtype: value.subtype } : {}),
+        ...(typeof value.subtype === 'string'
+          ? { subtype: value.subtype }
+          : {}),
         appearance,
         concept,
         kind,
@@ -819,6 +896,11 @@ function parseTooth(
     return null;
   }
 
+  if (dentition === 'primary' && position % 10 > 5) {
+    addInvalidShape(issues, `${path}.dentition`);
+    return null;
+  }
+
   return dentition === undefined
     ? { position, base, conditions: parsedConditions }
     : { position, base, dentition, conditions: parsedConditions };
@@ -918,11 +1000,15 @@ function conditionIsSupportedByBase(
   if (condition.kind === 'prosthesis') {
     return base === 'implant'
       ? !condition.prosthesis.startsWith('removable-')
-      : base === 'missing' && condition.prosthesis.startsWith('removable-');
+      : base === 'missing' &&
+          (condition.prosthesis.startsWith('removable-') ||
+            condition.prosthesis === 'bar' ||
+            condition.prosthesis === 'bar-overdenture');
   }
   if (condition.kind === 'periodontal') return base === 'natural';
   if (condition.kind === 'peri-implant') return base === 'implant';
-  if (condition.kind === 'clinical') return base === 'natural' || base === 'implant';
+  if (condition.kind === 'clinical')
+    return base === 'natural' || base === 'implant';
   switch (base) {
     case 'natural':
       return condition.kind !== 'bridge' || condition.role === 'abutment';
@@ -1035,10 +1121,7 @@ function validateToothConditions(
       );
     }
 
-    if (
-      condition.kind === 'planned-implant' &&
-      tooth.base === 'implant'
-    ) {
+    if (condition.kind === 'planned-implant' && tooth.base === 'implant') {
       addConditionIssue(
         issues,
         issueKeys,
@@ -1105,7 +1188,10 @@ function validateToothConditions(
     );
   }
 
-  if (prostheses.length > 0 && (restorations.length > 0 || bridges.length > 0)) {
+  if (
+    prostheses.length > 0 &&
+    (restorations.length > 0 || bridges.length > 0)
+  ) {
     addConditionIssue(
       issues,
       issueKeys,
@@ -1114,7 +1200,10 @@ function validateToothConditions(
     );
   }
 
-  if (plannedImplants.length > 0 && (restorations.length > 0 || bridges.length > 0)) {
+  if (
+    plannedImplants.length > 0 &&
+    (restorations.length > 0 || bridges.length > 0)
+  ) {
     addConditionIssue(
       issues,
       issueKeys,

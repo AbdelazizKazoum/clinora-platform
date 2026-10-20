@@ -29,6 +29,70 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  it('records radiographic depth and displays it in the tooth record', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.change(screen.getByLabelText('Radiographic depth'), {
+      target: { value: 'D2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm finding' }));
+    expect(
+      screen.getByText('D2 — middle dentine', { selector: 'dd' }),
+    ).toBeTruthy();
+  });
+
+  it('supports a filling without inventing a marginal defect', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.change(screen.getByLabelText('Finding'), {
+      target: { value: 'EXISTING_FILLING' },
+    });
+    expect(screen.getByLabelText('Additional clinical detail')).toHaveProperty(
+      'value',
+      '',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm finding' }));
+    expect(
+      screen.getByText('Clinical finding confirmed and added to the chart.'),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('odontogram-projection').textContent,
+    ).not.toContain('filling-defect');
+  });
+
+  it('plans a band appliance and projects it immediately', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));
+    fireEvent.change(screen.getByLabelText('Treatment act'), {
+      target: { value: 'ORTHODONTIC_APPLIANCE' },
+    });
+    fireEvent.change(screen.getByLabelText('Appliance type'), {
+      target: { value: 'BAND' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment act' }));
+    expect(screen.getByTestId('odontogram-projection').textContent).toContain(
+      '"subtype":"BAND"',
+    );
+  });
+
+  it('keeps edge and cervical wear independently editable', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.change(screen.getByLabelText('Finding'), {
+      target: { value: 'TOOTH_WEAR' },
+    });
+    fireEvent.change(screen.getByLabelText('Incisal / occlusal wear'), {
+      target: { value: 'ATTRITION' },
+    });
+    fireEvent.change(screen.getByLabelText('Cervical wear'), {
+      target: { value: 'EROSION' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm finding' }));
+    expect(screen.getByTestId('odontogram-projection').textContent).toContain(
+      'wear-edge',
+    );
+    expect(screen.getByTestId('odontogram-projection').textContent).toContain(
+      'wear-cervical',
+    );
+  });
+
   it('renders a visit and immediately projects a newly planned act', () => {
     render(<TreatmentWorkspacePage />);
 

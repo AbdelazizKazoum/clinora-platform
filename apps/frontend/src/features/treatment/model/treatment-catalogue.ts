@@ -4,6 +4,10 @@ import {
   type TreatmentCapability,
 } from './treatment-capabilities';
 import type { ClinicalFindingCode, TreatmentActCode } from './treatment';
+import {
+  LATIN_PULP_OPTIONS,
+  type OptionalClinicalField,
+} from './clinical-detail-options';
 
 export type TreatmentCatalogueTarget =
   | 'tooth'
@@ -28,6 +32,11 @@ export interface TreatmentActOption {
     | 'Orthodontic';
   readonly target: TreatmentCatalogueTarget;
   readonly requiresMaterial?: 'filling' | 'restoration';
+  readonly detailKey?: string;
+  readonly detailOptions?: readonly {
+    readonly value: string;
+    readonly label: string;
+  }[];
   readonly capability: TreatmentCapability;
 }
 
@@ -190,6 +199,11 @@ const TREATMENT_ACT_OPTION_DRAFTS: readonly TreatmentActOptionDraft[] = [
     label: 'Orthodontic appliance',
     category: 'Orthodontic',
     target: 'tooth',
+    detailKey: 'ORTHODONTIC_APPLIANCE',
+    detailOptions: [
+      { value: 'BRACKET', label: 'Bracket' },
+      { value: 'BAND', label: 'Band' },
+    ],
   },
 ];
 
@@ -213,6 +227,7 @@ export interface ClinicalFindingOption {
   readonly detailOptions?: readonly TreatmentDetailOption[];
   readonly additionalDetailKey?: string;
   readonly additionalDetailOptions?: readonly TreatmentDetailOption[];
+  readonly optionalFields?: readonly OptionalClinicalField[];
   readonly numericDetail?: {
     readonly key: string;
     readonly label: string;
@@ -231,9 +246,15 @@ export interface TreatmentDetailOption {
 const options = (...values: readonly [string, string][]) =>
   values.map(([value, label]) => ({ label, value }));
 
-type ClinicalFindingOptionDraft = Omit<ClinicalFindingOption, 'capability' | 'detailOptions' | 'additionalDetailOptions'> & {
+type ClinicalFindingOptionDraft = Omit<
+  ClinicalFindingOption,
+  'capability' | 'detailOptions' | 'additionalDetailOptions'
+> & {
   readonly detailOptions?: readonly Omit<TreatmentDetailOption, 'capability'>[];
-  readonly additionalDetailOptions?: readonly Omit<TreatmentDetailOption, 'capability'>[];
+  readonly additionalDetailOptions?: readonly Omit<
+    TreatmentDetailOption,
+    'capability'
+  >[];
 };
 
 const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
@@ -250,6 +271,7 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       ['PRIMARY', 'Primary / deciduous tooth'],
       ['UNDER_GUM', 'Tooth under gum'],
       ['MISSING_AFTER_EXTRACTION', 'Missing after extraction'],
+      ['MISSING_CLOSED', 'Missing tooth — gap closed'],
     ),
   },
   {
@@ -281,6 +303,19 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       ['PRIMARY', 'Primary caries'],
       ['SUBCROWN', 'Subcrown caries'],
     ),
+    optionalFields: [
+      {
+        key: 'RADIOGRAPHIC_DEPTH',
+        label: 'Radiographic depth',
+        options: options(
+          ['E1', 'E1 — outer enamel'],
+          ['E2', 'E2 — inner enamel'],
+          ['D1', 'D1 — outer dentine'],
+          ['D2', 'D2 — middle dentine'],
+          ['D3', 'D3 — inner dentine'],
+        ),
+      },
+    ],
   },
   {
     code: 'ROOT_CARIES',
@@ -308,6 +343,7 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
     ),
     additionalDetailKey: 'FILLING_DEFECT',
     additionalDetailOptions: options(
+      ['', 'No defect recorded'],
       ['MARGINAL', 'Marginal defect'],
       ['FRACTURE', 'Fracture / chip'],
       ['WEAR', 'Wear'],
@@ -324,6 +360,7 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       ['INLAY', 'Inlay'],
       ['ONLAY', 'Onlay'],
       ['VENEER', 'Veneer'],
+      ['BRIDGE', 'Bridge (select the complete span)'],
     ),
   },
   {
@@ -358,6 +395,13 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
       ['IRREVERSIBLE_PULPITIS', 'Irreversible pulpitis'],
       ['NECROSIS', 'Pulp necrosis'],
     ),
+    optionalFields: [
+      {
+        key: 'PULP_LATIN',
+        label: 'Latin pulp detail',
+        options: LATIN_PULP_OPTIONS,
+      },
+    ],
   },
   {
     code: 'APICAL_DIAGNOSIS',
@@ -500,13 +544,22 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
     label: 'Tooth wear',
     group: 'Other',
     target: 'surface',
-    detailKey: 'WEAR_TYPE',
-    detailOptions: options(
-      ['ATTRITION', 'Attrition'],
-      ['ABRASION', 'Abrasion'],
-      ['ABFRACTION', 'Abfraction'],
-      ['EROSION', 'Erosion'],
-    ),
+    optionalFields: [
+      {
+        key: 'WEAR_EDGE_TYPE',
+        label: 'Incisal / occlusal wear',
+        options: options(['ATTRITION', 'Attrition'], ['EROSION', 'Erosion']),
+      },
+      {
+        key: 'WEAR_CERVICAL_TYPE',
+        label: 'Cervical wear',
+        options: options(
+          ['ABRASION', 'Abrasion'],
+          ['ABFRACTION', 'Abfraction'],
+          ['EROSION', 'Erosion'],
+        ),
+      },
+    ],
   },
   {
     code: 'DISCOLORATION',
@@ -555,29 +608,35 @@ const CLINICAL_FINDING_OPTION_DRAFTS: readonly ClinicalFindingOptionDraft[] = [
 ];
 
 export const CLINICAL_FINDING_OPTIONS: readonly ClinicalFindingOption[] =
-  CLINICAL_FINDING_OPTION_DRAFTS.map(
-    (option) => ({
-      ...option,
+  CLINICAL_FINDING_OPTION_DRAFTS.map((option) => ({
+    ...option,
+    capability: CLINICAL_FINDING_CAPABILITIES[option.code],
+    detailOptions: option.detailOptions?.map((detail) => ({
+      ...detail,
+      capability: {
+        ...CLINICAL_FINDING_CAPABILITIES[option.code],
+        projection:
+          CLINICAL_FINDING_CAPABILITIES[option.code].subtypeSupport?.[
+            detail.value
+          ] ?? CLINICAL_FINDING_CAPABILITIES[option.code].projection,
+      },
+    })),
+    additionalDetailOptions: option.additionalDetailOptions?.map((detail) => ({
+      ...detail,
       capability: CLINICAL_FINDING_CAPABILITIES[option.code],
-      detailOptions: option.detailOptions?.map((detail) => ({
-        ...detail,
-        capability: {
-          ...CLINICAL_FINDING_CAPABILITIES[option.code],
-          projection:
-            CLINICAL_FINDING_CAPABILITIES[option.code].subtypeSupport?.[
-              detail.value
-            ] ?? CLINICAL_FINDING_CAPABILITIES[option.code].projection,
-        },
-      })),
-      additionalDetailOptions: option.additionalDetailOptions?.map((detail) => ({
-        ...detail,
-        capability: CLINICAL_FINDING_CAPABILITIES[option.code],
-      })),
-    }),
-  );
+    })),
+  }));
 
 export const getTreatmentActOption = (code: TreatmentActCode) =>
   TREATMENT_ACT_OPTIONS.find((option) => option.code === code);
 
 export const getClinicalFindingOption = (code: ClinicalFindingCode) =>
   CLINICAL_FINDING_OPTIONS.find((option) => option.code === code);
+
+export const getClinicalFindingTarget = (
+  code: ClinicalFindingCode,
+  detail?: string,
+): TreatmentCatalogueTarget =>
+  code === 'EXISTING_FIXED_RESTORATION' && detail === 'BRIDGE'
+    ? 'bridge'
+    : (getClinicalFindingOption(code)?.target ?? 'tooth');

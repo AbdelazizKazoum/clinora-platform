@@ -57,7 +57,6 @@ describe('tooth layer registry', () => {
       { id: 'base', kind: 'base' },
       { id: 'tooth-base', kind: 'base' },
       { id: 'tooth-base-beauty', kind: 'base' },
-      { id: 'tooth-healthy-pulp', kind: 'base' },
       {
         appearance: 'planned',
         id: 'extraction-plan',
@@ -265,9 +264,10 @@ describe('tooth layer registry', () => {
 
   it('renders primary dentition on the stable permanent position', () => {
     expect(
-      deriveWholeToothVisualLayers(tooth(15, [], 'natural', 'primary'), 'side').layers.map(
-        (layer) => layer.id,
-      ),
+      deriveWholeToothVisualLayers(
+        tooth(15, [], 'natural', 'primary'),
+        'side',
+      ).layers.map((layer) => layer.id),
     ).toEqual([
       'base',
       'milktooth',
@@ -292,7 +292,13 @@ describe('tooth layer registry', () => {
       ).layers.map((layer) => layer.id),
     ).toEqual(
       ['missing-closed', 'crown-needed', 'crown-replacement'].includes(state)
-        ? ['base', 'tooth-base', 'tooth-base-beauty', 'tooth-healthy-pulp', ...expected]
+        ? [
+            'base',
+            'tooth-base',
+            'tooth-base-beauty',
+            'tooth-healthy-pulp',
+            ...expected,
+          ]
         : ['base', ...expected],
     );
   });
@@ -307,7 +313,18 @@ describe('tooth layer registry', () => {
     ] as const;
     for (const [prosthesis, expected] of cases) {
       const result = deriveWholeToothVisualLayers(
-        tooth(14, [{ kind: 'prosthesis', groupId: 'group-1', prosthesis, appearance: 'existing' }], 'implant'),
+        tooth(
+          14,
+          [
+            {
+              kind: 'prosthesis',
+              groupId: 'group-1',
+              prosthesis,
+              appearance: 'existing',
+            },
+          ],
+          'implant',
+        ),
         'side',
       );
       expect(result.layers.map((layer) => layer.id)).toContain(expected);
@@ -315,10 +332,26 @@ describe('tooth layer registry', () => {
     }
     expect(
       deriveWholeToothVisualLayers(
-        tooth(15, [{ kind: 'prosthesis', groupId: 'denture-1', prosthesis: 'removable-partial', appearance: 'planned' }], 'missing'),
+        tooth(
+          15,
+          [
+            {
+              kind: 'prosthesis',
+              groupId: 'denture-1',
+              prosthesis: 'removable-partial',
+              appearance: 'planned',
+            },
+          ],
+          'missing',
+        ),
         'side',
       ).layers.map((layer) => layer.id),
-    ).toEqual(['base', 'prosthesis', 'prosthesis-crown', 'prosthesis-connector']);
+    ).toEqual([
+      'base',
+      'prosthesis',
+      'prosthesis-crown',
+      'prosthesis-connector',
+    ]);
   });
 
   it('renders planned implant artwork without changing the existing base contract', () => {
@@ -347,29 +380,63 @@ describe('tooth layer registry', () => {
 
     expect(
       deriveWholeToothVisualLayers(
-        tooth(16, [{ appearance: 'existing', kind: 'peri-implant', state: 'moderate' }], 'implant'),
+        tooth(
+          16,
+          [{ appearance: 'existing', kind: 'peri-implant', state: 'moderate' }],
+          'implant',
+        ),
         'side',
       ).layers,
-    ).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'parodontal' }),
-      expect.objectContaining({ id: 'peri-implant-bone-loss', opacity: '0.7' }),
-    ]));
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'parodontal' }),
+        expect.objectContaining({
+          id: 'peri-implant-bone-loss',
+          opacity: '0.7',
+        }),
+      ]),
+    );
   });
 
   it('composes advanced endodontic, diagnostic, restorative-detail, and orthodontic layers', () => {
     const conditions = [
-      { kind: 'endodontic' as const, state: 'medication' as const, appearance: 'existing' as const },
-      { kind: 'clinical' as const, concept: 'filling-defect' as const, surface: 'mesial' as const, subtype: 'FRACTURE', appearance: 'existing' as const },
-      { kind: 'clinical' as const, concept: 'root-resorption' as const, subtype: 'INTERNAL', appearance: 'existing' as const },
-      { kind: 'clinical' as const, concept: 'ortho-drift' as const, subtype: 'DISTAL', appearance: 'existing' as const },
+      {
+        kind: 'endodontic' as const,
+        state: 'medication' as const,
+        appearance: 'existing' as const,
+      },
+      {
+        kind: 'clinical' as const,
+        concept: 'filling-defect' as const,
+        surface: 'mesial' as const,
+        subtype: 'FRACTURE',
+        appearance: 'existing' as const,
+      },
+      {
+        kind: 'clinical' as const,
+        concept: 'root-resorption' as const,
+        subtype: 'INTERNAL',
+        appearance: 'existing' as const,
+      },
+      {
+        kind: 'clinical' as const,
+        concept: 'ortho-drift' as const,
+        subtype: 'DISTAL_DRIFT',
+        appearance: 'existing' as const,
+      },
     ];
-    const ids = deriveWholeToothVisualLayers(tooth(16, conditions), 'side').layers.map((layer) => layer.id);
-    expect(ids).toEqual(expect.arrayContaining([
-      'endo-medical-filling',
-      'defect-mesial',
-      'endo-resorption',
-      'arrow-distal',
-    ]));
+    const ids = deriveWholeToothVisualLayers(
+      tooth(16, conditions),
+      'side',
+    ).layers.map((layer) => layer.id);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'endo-medical-filling',
+        'defect-mesial',
+        'endo-resorption',
+        'arrow-distal',
+      ]),
+    );
   });
 
   it('reports onlay as unsupported in side roots and renderable in occlusal roots', () => {
@@ -562,6 +629,11 @@ describe('tooth layer registry', () => {
       'calculus',
       'parodontal',
       'peri-implant-bone-loss',
+      'mobility',
+      'inflammation',
+      'granuloma',
+      'cysta',
+      'abscess',
       'endo-medical-filling',
       'endo-filling-incomplete',
       'endo-glass-pin',

@@ -22,6 +22,10 @@ export interface ApplyToothVisualsResult {
   readonly unsupportedVisuals: readonly UnsupportedToothVisual[];
 }
 
+// A mounted SVG's layer elements are stable. Index each clone once instead of
+// traversing hundreds of paths for every reset and activation on every edit.
+const layerElementsBySvg = new WeakMap<SVGSVGElement, ReadonlyMap<string, SVGElement>>();
+
 export function applyToothVisuals({
   svg,
   tooth,
@@ -33,15 +37,59 @@ export function applyToothVisuals({
   resetSurfaceLayers(svg, layerIdByOriginalId);
 
   const result = deriveToothVisualLayers(tooth, view);
+  const activeLayerIds: string[] = [];
+  const unsupportedVisuals: UnsupportedToothVisual[] = [
+    ...result.unsupportedVisuals,
+  ];
   for (const layer of result.layers) {
+    if (findLayerElement(svg, layerIdByOriginalId, layer.id) === null) {
+      if (
+        layer.kind === 'clinical' ||
+        layer.kind === 'periodontal' ||
+        layer.kind === 'prosthesis' ||
+        layer.kind === 'structure'
+      ) {
+        unsupportedVisuals.push({
+          condition: layer.id,
+          layerId: layer.id,
+          reason: 'missing-template-layer',
+        });
+      }
+      continue;
+    }
     activateVisualLayer(svg, layerIdByOriginalId, layer);
+    activeLayerIds.push(layer.id);
   }
+  applyPulpDetail(svg, layerIdByOriginalId, tooth);
   applyDiscolorationTint(svg, tooth);
 
   return {
-    activeLayerIds: result.layers.map((layer) => layer.id),
-    unsupportedVisuals: result.unsupportedVisuals,
+    activeLayerIds,
+    unsupportedVisuals,
   };
+}
+
+function applyPulpDetail(
+  svg: SVGSVGElement,
+  ids: ReadonlyMap<string, string>,
+  tooth: OdontogramTooth,
+): void {
+  const diagnosis = tooth.conditions.find(
+    (condition) =>
+      condition.kind === 'clinical' && condition.concept === 'pulp-diagnosis',
+  );
+  const mild =
+    diagnosis?.kind === 'clinical' &&
+    diagnosis.subtype === 'REVERSIBLE_PULPITIS';
+  for (let index = 1; index <= 8; index += 1) {
+    for (const suffix of ['', '1']) {
+      findLayerElement(
+        svg,
+        ids,
+        `pulp-inflam-path-${index}${suffix}`,
+      )?.setAttribute('data-active', mild ? '0' : '1');
+    }
+  }
 }
 
 function applyDiscolorationTint(
@@ -59,16 +107,20 @@ function applyDiscolorationTint(
     OTHER: '#b9a38c',
     TETRACYCLINE: '#c7a455',
   };
-  const tint = condition?.kind === 'clinical'
-    ? tintBySubtype[condition.subtype ?? '']
-    : undefined;
-  const activeBase = tooth.dentition === 'primary' ? 'milktooth-base' : 'tooth-base';
+  const tint =
+    condition?.kind === 'clinical'
+      ? tintBySubtype[condition.subtype ?? '']
+      : undefined;
+  const activeBase =
+    tooth.dentition === 'primary' ? 'milktooth-base' : 'tooth-base';
   for (const id of ['tooth-base', 'milktooth-base']) {
     const element = findLayerElement(svg, new Map(), id);
     if (element === null) continue;
-    const baseFill = element.getAttribute('data-odontogram-base-fill') ?? element.style.fill;
+    const baseFill =
+      element.getAttribute('data-odontogram-base-fill') ?? element.style.fill;
     element.setAttribute('data-odontogram-base-fill', baseFill);
-    element.style.fill = id === activeBase && tint !== undefined ? tint : baseFill;
+    element.style.fill =
+      id === activeBase && tint !== undefined ? tint : baseFill;
   }
 }
 
@@ -179,24 +231,20 @@ function findLayerElement(
   layerIdByOriginalId: ReadonlyMap<string, string>,
   originalLayerId: string,
 ): SVGElement | null {
-  const namespacedId = layerIdByOriginalId.get(originalLayerId);
-  const targetId = namespacedId ?? originalLayerId;
-
-  for (const element of [svg, ...Array.from(svg.querySelectorAll('[id]'))]) {
-    if (element.getAttribute('id') === targetId) {
-      return element as SVGElement;
+  let elements = layerElementsBySvg.get(svg);
+  if (elements === undefined) {
+    const index = new Map<string, SVGElement>();
+    for (const element of [svg, ...Array.from(svg.querySelectorAll('[id], [data-odontogram-layer]'))]) {
+      for (const attribute of ['id', 'data-odontogram-layer']) {
+        const id = element.getAttribute(attribute);
+        if (id !== null) index.set(id, element as SVGElement);
+      }
     }
+    elements = index;
+    layerElementsBySvg.set(svg, index);
   }
-
-  for (const element of Array.from(
-    svg.querySelectorAll('[data-odontogram-layer]'),
-  )) {
-    if (element.getAttribute('data-odontogram-layer') === originalLayerId) {
-      return element as SVGElement;
-    }
-  }
-
-  return null;
+  return elements.get(layerIdByOriginalId.get(originalLayerId) ?? originalLayerId)
+    ?? elements.get(originalLayerId) ?? null;
 }
 
 function getPrimaryCariesOpacity(severity: 1 | 2 | 3 | 4 | 5 | 6): string {

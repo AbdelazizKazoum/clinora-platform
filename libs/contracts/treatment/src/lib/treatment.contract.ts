@@ -54,7 +54,10 @@ export const TREATMENT_TARGET_KINDS = [
   'ARCH',
   'TOOTH',
   'TOOTH_SURFACE',
+  'TOOTH_REGION',
+  'INDEX_SURFACE',
   'PERIODONTAL_SITE',
+  'FURCATION_ENTRANCE',
   'BRIDGE_SPAN',
 ] as const;
 
@@ -140,16 +143,22 @@ export const CLINICAL_DETAIL_KEYS = [
   'MOBILITY_GRADE',
   'PERIAPICAL_LESION_TYPE',
   'PULP_DIAGNOSIS',
+  'PULP_LATIN',
   'APICAL_DIAGNOSIS',
   'ROOT_RESORPTION_TYPE',
   'ROOT_CARIES_STATE',
   'WEAR_TYPE',
+  'WEAR_EDGE_TYPE',
+  'WEAR_CERVICAL_TYPE',
   'DISCOLORATION_TYPE',
+  'ORTHODONTIC_APPLIANCE',
   'ORTHODONTIC_STATE',
+  'ORTHODONTIC_DRIFT',
+  'ORTHODONTIC_VERTICAL',
   'PERI_IMPLANT_STATE',
   'PROBING_DEPTH_MM',
   'GINGIVAL_MARGIN_MM',
-  'BLEEDING_ON_PROBING',
+  'BOP',
   'SUPPURATION',
   'FURCATION_GRADE',
   'PLAQUE_PRESENT',
@@ -199,10 +208,7 @@ const act = (
  * describe proposed, active, or performed care.
  */
 export const SUPPORTED_TREATMENT_ACT_CATALOGUE = [
-  act('FISSURE_SEALING', 'PREVENTIVE', 'Fissure sealing', [
-    'TOOTH',
-    'TOOTH_SURFACE',
-  ]),
+  act('FISSURE_SEALING', 'PREVENTIVE', 'Fissure sealing', ['TOOTH_SURFACE']),
   act(
     'DIRECT_FILLING',
     'RESTORATIVE',
@@ -211,18 +217,12 @@ export const SUPPORTED_TREATMENT_ACT_CATALOGUE = [
     ['FILLING_MATERIAL'],
   ),
   act('CROWN', 'RESTORATIVE', 'Crown', ['TOOTH'], ['RESTORATION_MATERIAL']),
-  act(
-    'INLAY',
-    'RESTORATIVE',
-    'Inlay',
-    ['TOOTH', 'TOOTH_SURFACE'],
-    ['RESTORATION_MATERIAL'],
-  ),
+  act('INLAY', 'RESTORATIVE', 'Inlay', ['TOOTH'], ['RESTORATION_MATERIAL']),
   act(
     'ONLAY',
     'RESTORATIVE',
     'Onlay',
-    ['TOOTH', 'TOOTH_SURFACE'],
+    ['TOOTH_SURFACE'],
     ['RESTORATION_MATERIAL'],
   ),
   act('VENEER', 'RESTORATIVE', 'Veneer', ['TOOTH'], ['RESTORATION_MATERIAL']),
@@ -249,7 +249,7 @@ export const SUPPORTED_TREATMENT_ACT_CATALOGUE = [
   act('HEALING_ABUTMENT', 'IMPLANT', 'Healing abutment', ['TOOTH']),
   act('LOCATOR_ATTACHMENT', 'PROSTHODONTIC', 'Locator attachment', ['TOOTH']),
   act('LOCATOR_OVERDENTURE', 'PROSTHODONTIC', 'Locator overdenture', ['ARCH']),
-  act('BAR_ATTACHMENT', 'PROSTHODONTIC', 'Bar attachment', ['TOOTH', 'ARCH']),
+  act('BAR_ATTACHMENT', 'PROSTHODONTIC', 'Bar attachment', ['TOOTH']),
   act('BAR_OVERDENTURE', 'PROSTHODONTIC', 'Bar overdenture', ['ARCH']),
   act(
     'PARTIAL_REMOVABLE_DENTURE',
@@ -274,8 +274,8 @@ export const SUPPORTED_TREATMENT_ACT_CATALOGUE = [
     'ORTHODONTIC_APPLIANCE',
     'ORTHODONTIC',
     'Orthodontic appliance',
-    ['TOOTH', 'ARCH'],
-    ['ORTHODONTIC_STATE'],
+    ['TOOTH'],
+    ['ORTHODONTIC_APPLIANCE'],
   ),
 ] as const satisfies readonly TreatmentCatalogueEntry[];
 
@@ -335,7 +335,7 @@ export const SUPPORTED_CLINICAL_FINDING_CATALOGUE = [
   ),
   finding('CALCULUS', 'Dental calculus', ['TOOTH']),
   finding('CONTACT_POINT_DEFECT', 'Contact point defect', ['TOOTH_SURFACE']),
-  finding('TOOTH_FRACTURE', 'Tooth fracture', ['TOOTH_SURFACE']),
+  finding('TOOTH_FRACTURE', 'Tooth fracture', ['TOOTH_REGION']),
   finding('MOBILITY', 'Tooth mobility', ['TOOTH'], ['MOBILITY_GRADE']),
   finding('PERIODONTAL_INVOLVEMENT', 'Periodontal involvement', ['TOOTH']),
   finding(
@@ -363,7 +363,7 @@ export const SUPPORTED_CLINICAL_FINDING_CATALOGUE = [
     'TOOTH_WEAR',
     'Tooth wear',
     ['TOOTH', 'TOOTH_SURFACE'],
-    ['WEAR_TYPE'],
+    ['WEAR_TYPE', 'WEAR_EDGE_TYPE', 'WEAR_CERVICAL_TYPE'],
   ),
   finding(
     'DISCOLORATION',
@@ -387,17 +387,12 @@ export const SUPPORTED_CLINICAL_FINDING_CATALOGUE = [
     'PERIODONTAL_MEASUREMENT',
     'Periodontal measurement',
     ['PERIODONTAL_SITE'],
-    [
-      'PROBING_DEPTH_MM',
-      'GINGIVAL_MARGIN_MM',
-      'BLEEDING_ON_PROBING',
-      'SUPPURATION',
-    ],
+    ['PROBING_DEPTH_MM', 'GINGIVAL_MARGIN_MM', 'BOP', 'SUPPURATION'],
   ),
   finding(
     'FURCATION_INVOLVEMENT',
     'Furcation involvement',
-    ['TOOTH'],
+    ['FURCATION_ENTRANCE'],
     ['FURCATION_GRADE'],
   ),
   finding(

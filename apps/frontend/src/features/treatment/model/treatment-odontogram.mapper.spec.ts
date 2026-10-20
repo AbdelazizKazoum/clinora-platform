@@ -6,6 +6,7 @@ import type {
   TreatmentAct,
   TreatmentVisit,
 } from './treatment';
+import { createTreatmentFindingInput } from './treatment-inputs';
 import { mapTreatmentVisitToOdontogram } from './treatment-odontogram.mapper';
 
 const createdAt = new Date('2026-08-13T11:00:00.000Z');
@@ -171,7 +172,9 @@ describe('Treatment odontogram projection', () => {
       details: [{ key: 'PULP_DIAGNOSIS', value: 'IRREVERSIBLE_PULPITIS' }],
       id: 'finding-pulp-16',
     };
-    expect(tooth({ ...base, findings: [...base.findings, finding] }, 16)?.conditions).toContainEqual(
+    expect(
+      tooth({ ...base, findings: [...base.findings, finding] }, 16)?.conditions,
+    ).toContainEqual(
       expect.objectContaining({
         concept: 'pulp-diagnosis',
         kind: 'clinical',
@@ -205,18 +208,18 @@ describe('Treatment odontogram projection', () => {
     expect(validateOdontogramData(projection.data).valid).toBe(true);
   });
 
-  it('keeps a primary tooth on its permanent position while exposing primary dentition', () => {
+  it('keeps a primary tooth on a compatible permanent chart position', () => {
     const base = createMockTreatmentVisit();
     const primary: ClinicalFinding = {
       ...base.findings[0],
       code: 'TOOTH_STATE',
       details: [{ key: 'TOOTH_STATE', value: 'PRIMARY' }],
-      id: 'finding-primary-16',
+      id: 'finding-primary-15',
       target: {
         ...base.findings[0].target,
         kind: 'TOOTH',
         surfaces: [],
-        toothNumbers: [16],
+        toothNumbers: [15],
       },
     };
     const projected = mapTreatmentVisitToOdontogram({
@@ -224,13 +227,43 @@ describe('Treatment odontogram projection', () => {
       findings: [primary],
     });
 
-    expect(tooth({ ...base, findings: [primary] }, 16)).toMatchObject({
+    expect(tooth({ ...base, findings: [primary] }, 15)).toMatchObject({
       base: 'natural',
       dentition: 'primary',
-      position: 16,
+      position: 15,
     });
     expect(projected.data.teeth).toHaveLength(32);
     expect(validateOdontogramData(projected.data).valid).toBe(true);
+  });
+
+  it('rejects primary dentition on molar chart positions that do not exist in primary FDI', () => {
+    const base = createMockTreatmentVisit();
+    const primary: ClinicalFinding = {
+      ...base.findings[0],
+      code: 'TOOTH_STATE',
+      details: [{ key: 'TOOTH_STATE', value: 'PRIMARY' }],
+      id: 'finding-invalid-primary-16',
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [16],
+      },
+    };
+
+    expect(() => createTreatmentFindingInput(primary)).toThrow(
+      'Primary dentition is limited',
+    );
+    expect(
+      mapTreatmentVisitToOdontogram({ ...base, findings: [primary] }).issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recordId: primary.id,
+          reason: expect.stringContaining('Primary dentition'),
+        }),
+      ]),
+    );
   });
 
   it('projects structural substrate, fracture, extraction socket, and crown actions', () => {
@@ -240,7 +273,12 @@ describe('Treatment odontogram projection', () => {
       code: 'TOOTH_SUBSTRATE',
       details: [{ key: 'TOOTH_SUBSTRATE', value: 'BROKEN' }],
       id: 'finding-broken-16',
-      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [16] },
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [16],
+      },
     };
     const fracture: ClinicalFinding = {
       ...base.findings[0],
@@ -259,7 +297,12 @@ describe('Treatment odontogram projection', () => {
       code: 'EXTRACTION_WOUND',
       details: [],
       id: 'finding-wound-26',
-      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [26] },
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [26],
+      },
     };
     const crownReplacement: TreatmentAct = {
       ...directFilling(),
@@ -276,12 +319,19 @@ describe('Treatment odontogram projection', () => {
         { key: 'RESTORATION_MATERIAL', value: 'ZIRCON' },
       ],
       id: 'finding-existing-crown-16',
-      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [16] },
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [16],
+      },
     };
     const projected = mapTreatmentVisitToOdontogram({
       ...base,
       findings: [
-        ...base.findings.filter((finding) => finding.target.toothNumbers[0] !== 16),
+        ...base.findings.filter(
+          (finding) => finding.target.toothNumbers[0] !== 16,
+        ),
         substrate,
         fracture,
         wound,
@@ -290,13 +340,34 @@ describe('Treatment odontogram projection', () => {
       acts: [crownReplacement],
     });
 
-    expect(tooth({ ...base, findings: [substrate, fracture, existingCrown, wound], acts: [crownReplacement] }, 16)?.conditions).toEqual(
+    expect(
+      tooth(
+        {
+          ...base,
+          findings: [substrate, fracture, existingCrown, wound],
+          acts: [crownReplacement],
+        },
+        16,
+      )?.conditions,
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: 'structure', state: 'broken' }),
-        expect.objectContaining({ kind: 'structure', state: 'crown-replacement' }),
+        expect.objectContaining({
+          kind: 'structure',
+          state: 'crown-replacement',
+        }),
       ]),
     );
-    expect(tooth({ ...base, findings: [substrate, fracture, wound], acts: [crownReplacement] }, 26)?.conditions).toContainEqual(
+    expect(
+      tooth(
+        {
+          ...base,
+          findings: [substrate, fracture, wound],
+          acts: [crownReplacement],
+        },
+        26,
+      )?.conditions,
+    ).toContainEqual(
       expect.objectContaining({ kind: 'structure', state: 'extraction-wound' }),
     );
     expect(validateOdontogramData(projected.data).valid).toBe(true);
@@ -310,21 +381,32 @@ describe('Treatment odontogram projection', () => {
       details: [],
       id: `act-implant-${status}`,
       status,
-      target: { ...directFilling().target, kind: 'TOOTH', surfaces: [], toothNumbers: [46] },
+      target: {
+        ...directFilling().target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [46],
+      },
     });
 
-    expect(tooth({ ...base, acts: [placement('PLANNED')] }, 46)?.conditions).toContainEqual({
+    expect(
+      tooth({ ...base, acts: [placement('PLANNED')] }, 46)?.conditions,
+    ).toContainEqual({
       appearance: 'planned',
       kind: 'planned-implant',
     });
-    expect(tooth({ ...base, acts: [placement('IN_PROGRESS')] }, 46)?.conditions).toContainEqual(
-      expect.objectContaining({ kind: 'planned-implant' }),
-    );
-    expect(tooth({ ...base, acts: [placement('COMPLETED')] }, 46)).toMatchObject({
+    expect(
+      tooth({ ...base, acts: [placement('IN_PROGRESS')] }, 46)?.conditions,
+    ).toContainEqual(expect.objectContaining({ kind: 'planned-implant' }));
+    expect(
+      tooth({ ...base, acts: [placement('COMPLETED')] }, 46),
+    ).toMatchObject({
       base: 'implant',
       conditions: [],
     });
-    expect(tooth({ ...base, acts: [placement('CANCELLED')] }, 46)).toMatchObject({
+    expect(
+      tooth({ ...base, acts: [placement('CANCELLED')] }, 46),
+    ).toMatchObject({
       base: 'missing',
       conditions: [],
     });
@@ -337,20 +419,33 @@ describe('Treatment odontogram projection', () => {
       code: 'TOOTH_STATE',
       details: [{ key: 'TOOTH_STATE', value: 'IMPLANT' }],
       id: 'finding-implant-14',
-      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [14] },
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [14],
+      },
     };
     const prosthesis: ClinicalFinding = {
       ...base.findings[0],
       code: 'EXISTING_PROSTHESIS',
       details: [{ key: 'PROSTHESIS_TYPE', value: 'LOCATOR' }],
       id: 'finding-locator-14',
-      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [14] },
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [14],
+      },
     };
     const projected = mapTreatmentVisitToOdontogram({
       ...base,
       findings: [implantFinding, prosthesis],
     });
-    expect(tooth({ ...base, findings: [implantFinding, prosthesis] }, 14)?.conditions).toContainEqual({
+    expect(
+      tooth({ ...base, findings: [implantFinding, prosthesis] }, 14)
+        ?.conditions,
+    ).toContainEqual({
       appearance: 'existing',
       groupId: 'finding-locator-14',
       kind: 'prosthesis',
@@ -361,34 +456,91 @@ describe('Treatment odontogram projection', () => {
 
   it('projects calculus, periodontal involvement, and implant-gated peri-implant status', () => {
     const base = createMockTreatmentVisit();
-    const finding = (code: ClinicalFinding['code'], id: string, details: ClinicalFinding['details'], toothNumber: number): ClinicalFinding => ({
+    const finding = (
+      code: ClinicalFinding['code'],
+      id: string,
+      details: ClinicalFinding['details'],
+      toothNumber: number,
+    ): ClinicalFinding => ({
       ...base.findings[0],
       code,
       details,
       id,
-      target: { ...base.findings[0].target, kind: 'TOOTH', surfaces: [], toothNumbers: [toothNumber] },
+      target: {
+        ...base.findings[0].target,
+        kind: 'TOOTH',
+        surfaces: [],
+        toothNumbers: [toothNumber],
+      },
     });
     const projected = mapTreatmentVisitToOdontogram({
       ...base,
       findings: [
         finding('CALCULUS', 'finding-calculus-16', [], 16),
         finding('PERIODONTAL_INVOLVEMENT', 'finding-periodontal-16', [], 16),
-        finding('TOOTH_STATE', 'finding-implant-14', [{ key: 'TOOTH_STATE', value: 'IMPLANT' }], 14),
-        finding('PERI_IMPLANT_STATUS', 'finding-peri-implant-14', [{ key: 'PERI_IMPLANT_STATE', value: 'MODERATE' }], 14),
+        finding(
+          'TOOTH_STATE',
+          'finding-implant-14',
+          [{ key: 'TOOTH_STATE', value: 'IMPLANT' }],
+          14,
+        ),
+        finding(
+          'PERI_IMPLANT_STATUS',
+          'finding-peri-implant-14',
+          [{ key: 'PERI_IMPLANT_STATE', value: 'MODERATE' }],
+          14,
+        ),
       ],
     });
 
-    expect(tooth({ ...base, findings: projected.data.teeth.length ? [
-      finding('CALCULUS', 'finding-calculus-16', [], 16),
-      finding('PERIODONTAL_INVOLVEMENT', 'finding-periodontal-16', [], 16),
-    ] : [] }, 16)?.conditions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ kind: 'periodontal', state: 'calculus' }),
-      expect.objectContaining({ kind: 'periodontal', state: 'involvement' }),
-    ]));
-    expect(tooth({ ...base, findings: [
-      finding('TOOTH_STATE', 'finding-implant-14', [{ key: 'TOOTH_STATE', value: 'IMPLANT' }], 14),
-      finding('PERI_IMPLANT_STATUS', 'finding-peri-implant-14', [{ key: 'PERI_IMPLANT_STATE', value: 'MODERATE' }], 14),
-    ] }, 14)?.conditions).toContainEqual(expect.objectContaining({ kind: 'peri-implant', state: 'moderate' }));
+    expect(
+      tooth(
+        {
+          ...base,
+          findings: projected.data.teeth.length
+            ? [
+                finding('CALCULUS', 'finding-calculus-16', [], 16),
+                finding(
+                  'PERIODONTAL_INVOLVEMENT',
+                  'finding-periodontal-16',
+                  [],
+                  16,
+                ),
+              ]
+            : [],
+        },
+        16,
+      )?.conditions,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'periodontal', state: 'calculus' }),
+        expect.objectContaining({ kind: 'periodontal', state: 'involvement' }),
+      ]),
+    );
+    expect(
+      tooth(
+        {
+          ...base,
+          findings: [
+            finding(
+              'TOOTH_STATE',
+              'finding-implant-14',
+              [{ key: 'TOOTH_STATE', value: 'IMPLANT' }],
+              14,
+            ),
+            finding(
+              'PERI_IMPLANT_STATUS',
+              'finding-peri-implant-14',
+              [{ key: 'PERI_IMPLANT_STATE', value: 'MODERATE' }],
+              14,
+            ),
+          ],
+        },
+        14,
+      )?.conditions,
+    ).toContainEqual(
+      expect.objectContaining({ kind: 'peri-implant', state: 'moderate' }),
+    );
     expect(validateOdontogramData(projected.data).valid).toBe(true);
   });
 });

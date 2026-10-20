@@ -21,6 +21,8 @@ export interface TreatmentEntryFieldsProps {
   readonly findingCode: ClinicalFindingCode;
   readonly findingDetail: string;
   readonly findingAdditionalDetail: string;
+  readonly findingOptionalDetails: Readonly<Record<string, string>>;
+  readonly actDetail: string;
   readonly findingSearch: string;
   readonly selectedFinding: ReturnType<typeof getClinicalFindingOption>;
   readonly actCode: TreatmentActCode;
@@ -32,6 +34,8 @@ export interface TreatmentEntryFieldsProps {
   readonly onFindingCodeChange: (code: ClinicalFindingCode) => void;
   readonly onFindingDetailChange: (value: string) => void;
   readonly onFindingAdditionalDetailChange: (value: string) => void;
+  readonly onFindingOptionalDetailChange: (key: string, value: string) => void;
+  readonly onActDetailChange: (value: string) => void;
   readonly onFindingSearchChange: (value: string) => void;
   readonly onActSearchChange: (value: string) => void;
   readonly onActCodeChange: (code: TreatmentActCode) => void;
@@ -171,6 +175,43 @@ export function FindingFormFields(props: TreatmentEntryFieldsProps) {
           value={props.restorationMaterial}
         />
       )}
+      {props.findingCode === 'EXISTING_FIXED_RESTORATION' &&
+        props.findingDetail === 'BRIDGE' && (
+          <Alert className="py-2 fs-sm" variant="info">
+            Select the complete existing bridge span with Ctrl/Cmd-click,
+            including its missing tooth positions.
+          </Alert>
+        )}
+      {props.selectedFinding?.optionalFields?.map((field) => (
+        <div key={field.key}>
+          <FormLabel htmlFor={`finding-${field.key}`}>{field.label}</FormLabel>
+          <FormSelect
+            className="mb-3"
+            disabled={!props.canDocument}
+            id={`finding-${field.key}`}
+            value={props.findingOptionalDetails[field.key] ?? ''}
+            onChange={(event) =>
+              props.onFindingOptionalDetailChange(
+                field.key,
+                event.currentTarget.value,
+              )
+            }
+          >
+            <option value="">Not recorded</option>
+            {field.options
+              .filter(
+                (option) =>
+                  !option.parentValue ||
+                  option.parentValue === props.findingDetail,
+              )
+              .map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+          </FormSelect>
+        </div>
+      ))}
     </>
   );
 }
@@ -211,6 +252,18 @@ export function ActFormFields(props: TreatmentEntryFieldsProps) {
           Select a contiguous span with Ctrl/Cmd-click. At least one selected
           position must be missing for a pontic.
         </Alert>
+      )}
+      {props.selectedAct?.detailKey && props.selectedAct.detailOptions && (
+        <MaterialSelect
+          disabled={!props.canDocument}
+          id="act-detail"
+          label="Appliance type"
+          onChange={props.onActDetailChange}
+          value={props.actDetail}
+          options={props.selectedAct.detailOptions.map(
+            ({ value, label }) => [value, label] as const,
+          )}
+        />
       )}
 
       {props.selectedAct?.target === 'arch' && (

@@ -57,6 +57,7 @@ export {
 export { mapTreatmentVisitFromDto } from './model/treatment.mapper';
 export { mapTreatmentVisitToOdontogram } from './model/treatment-odontogram.mapper';
 export { TreatmentWorkspacePage } from './pages/treatment-workspace-page';
+export { OdontogramReferencePage } from './pages/odontogram-reference-page';
 export {
   approveWorkspacePeriodontalExamination,
   updateWorkspacePeriodontalExamination,
