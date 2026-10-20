@@ -87,7 +87,7 @@
 .chartCard,
 .detailsCard,
 .recordCard {
-  height: 100%;
+  height: auto;
 }
 
 .chartColumn {
@@ -100,9 +100,7 @@
   max-width: 20rem;
 }
 
-.detailsCard {
-  min-height: 46rem;
-}
+
 
 .chartLegend {
   align-items: center;

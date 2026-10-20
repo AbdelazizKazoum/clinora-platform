@@ -23,7 +23,7 @@ import {
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Alert,
@@ -194,6 +194,10 @@ export function TreatmentWorkspacePage({
     [projectionMode, visit],
   );
   const projection = workflowProjection.projections[projectionMode];
+  const projectionIssueIds = useMemo(
+    () => new Set(projection.issues.map(({ recordId }) => recordId)),
+    [projection.issues],
+  );
   const activeTooth = selection.activeToothPosition;
   const activeToothVisual = projection.data.teeth.find(
     (tooth) => tooth.position === activeTooth,
@@ -216,20 +220,81 @@ export function TreatmentWorkspacePage({
     return id;
   };
 
-  const runAction = (action: () => TreatmentVisit, success: string) => {
-    try {
-      setVisit(action());
-      setFeedback({ message: success, variant: 'success' });
-    } catch (error) {
-      setFeedback({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Unable to update the visit.',
-        variant: 'danger',
-      });
-    }
+  const runAction = (action: (visit: TreatmentVisit) => TreatmentVisit, success: string) => {
+    setVisit((currentVisit) => {
+      try {
+        const nextVisit = action(currentVisit);
+        setFeedback({ message: success, variant: 'success' });
+        return nextVisit;
+      } catch (error) {
+        setFeedback({
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Unable to update the visit.',
+          variant: 'danger',
+        });
+        return currentVisit;
+      }
+    });
   };
+
+  const handleApproveAct = useCallback(
+    (id: string) => {
+      setVisit((currentVisit) => {
+        try {
+          const nextVisit = approveWorkspaceAct(currentVisit, actor, id, new Date());
+          setFeedback({ message: 'Treatment act approved.', variant: 'success' });
+          return nextVisit;
+        } catch (error) {
+          setFeedback({
+            message: error instanceof Error ? error.message : 'Unable to update the visit.',
+            variant: 'danger',
+          });
+          return currentVisit;
+        }
+      });
+    },
+    [actor],
+  );
+
+  const handleTransitionAct = useCallback(
+    (actId: string, status: TreatmentActStatus) => {
+      setVisit((currentVisit) => {
+        try {
+          const nextVisit = transitionWorkspaceAct(currentVisit, actor, actId, status, new Date());
+          setFeedback({ message: treatmentActTransitionMessage(status), variant: 'success' });
+          return nextVisit;
+        } catch (error) {
+          setFeedback({
+            message: error instanceof Error ? error.message : 'Unable to update the visit.',
+            variant: 'danger',
+          });
+          return currentVisit;
+        }
+      });
+    },
+    [actor],
+  );
+
+  const handleApproveFinding = useCallback(
+    (id: string) => {
+      setVisit((currentVisit) => {
+        try {
+          const nextVisit = approveWorkspaceFinding(currentVisit, actor, id, new Date());
+          setFeedback({ message: 'Clinical finding confirmed.', variant: 'success' });
+          return nextVisit;
+        } catch (error) {
+          setFeedback({
+            message: error instanceof Error ? error.message : 'Unable to update the visit.',
+            variant: 'danger',
+          });
+          return currentVisit;
+        }
+      });
+    },
+    [actor],
+  );
 
   const addFinding = () => {
     if (!activeTooth || !selectedFinding) {
@@ -266,9 +331,9 @@ export function TreatmentWorkspacePage({
     }
 
     runAction(
-      () =>
+      (currentVisit) =>
         recordWorkspaceFinding(
-          visit,
+          currentVisit,
           actor,
           createTreatmentFindingInput({
             code: findingCode,
@@ -322,9 +387,9 @@ export function TreatmentWorkspacePage({
     }
 
     runAction(
-      () =>
+      (currentVisit) =>
         recordWorkspaceAct(
-          visit,
+          currentVisit,
           actor,
           createTreatmentActInput({
             code: actCode,
@@ -517,23 +582,12 @@ export function TreatmentWorkspacePage({
               </CardBody>
             </Card>
 
-            <CurrentSessionTreatmentPlans
-              actor={actor}
-              onApproveAct={(id) =>
-                runAction(
-                  () => approveWorkspaceAct(visit, actor, id, new Date()),
-                  'Treatment act approved.',
-                )
-              }
-              onTransitionAct={(actId, status) =>
-                runAction(
-                  () =>
-                    transitionWorkspaceAct(visit, actor, actId, status, new Date()),
-                  treatmentActTransitionMessage(status),
-                )
-              }
-              visit={visit}
-            />
+          <CurrentSessionTreatmentPlans
+            actor={actor}
+            onApproveAct={handleApproveAct}
+            onTransitionAct={handleTransitionAct}
+            visit={visit}
+          />
           </Col>
 
           <Col className={styles.detailsColumn}>
@@ -557,24 +611,8 @@ export function TreatmentWorkspacePage({
               onActCodeChange={selectActCode}
               onAddAct={addAct}
               onAddFinding={addFinding}
-              onApproveAct={(actId) =>
-                runAction(
-                  () => approveWorkspaceAct(visit, actor, actId, new Date()),
-                  'Treatment act approved.',
-                )
-              }
-              onApproveFinding={(findingId) =>
-                runAction(
-                  () =>
-                    approveWorkspaceFinding(
-                      visit,
-                      actor,
-                      findingId,
-                      new Date(),
-                    ),
-                  'Clinical finding confirmed.',
-                )
-              }
+              onApproveAct={handleApproveAct}
+              onApproveFinding={handleApproveFinding}
               onFillingMaterialChange={setFillingMaterial}
               onFindingCodeChange={selectFindingCode}
               onFindingDetailChange={selectFindingDetail}
@@ -585,19 +623,7 @@ export function TreatmentWorkspacePage({
               onPeriodontalSiteChange={setPeriodontalSite}
               onRestorationMaterialChange={setRestorationMaterial}
               onSurfacesChange={setSurfaces}
-              onTransitionAct={(actId, status) =>
-                runAction(
-                  () =>
-                    transitionWorkspaceAct(
-                      visit,
-                      actor,
-                      actId,
-                      status,
-                      new Date(),
-                    ),
-                  treatmentActTransitionMessage(status),
-                )
-              }
+              onTransitionAct={handleTransitionAct}
               periodontalSite={periodontalSite}
               restorationMaterial={restorationMaterial}
               selectedAct={selectedAct}
@@ -613,15 +639,8 @@ export function TreatmentWorkspacePage({
       {activeTab === 'findings' && (
         <FindingsTab
           actor={actor}
-          onApproveFinding={(id) =>
-            runAction(
-              () => approveWorkspaceFinding(visit, actor, id, new Date()),
-              'Clinical finding confirmed.',
-            )
-          }
-          projectionIssueIds={
-            new Set(projection.issues.map(({ recordId }) => recordId))
-          }
+          onApproveFinding={handleApproveFinding}
+          projectionIssueIds={projectionIssueIds}
           visit={visit}
         />
       )}
@@ -629,22 +648,9 @@ export function TreatmentWorkspacePage({
       {activeTab === 'treatment-plans' && (
         <TreatmentPlansTab
           actor={actor}
-          onApproveAct={(id) =>
-            runAction(
-              () => approveWorkspaceAct(visit, actor, id, new Date()),
-              'Treatment act approved.',
-            )
-          }
-          onTransitionAct={(actId, status) =>
-            runAction(
-              () =>
-                transitionWorkspaceAct(visit, actor, actId, status, new Date()),
-              treatmentActTransitionMessage(status),
-            )
-          }
-          projectionIssueIds={
-            new Set(projection.issues.map(({ recordId }) => recordId))
-          }
+          onApproveAct={handleApproveAct}
+          onTransitionAct={handleTransitionAct}
+          projectionIssueIds={projectionIssueIds}
           visit={visit}
         />
       )}
@@ -664,8 +670,7 @@ export function TreatmentWorkspacePage({
           onAction={(action, message) => runAction(action, message)}
           visit={visit}
         />
-      )}
-    </div>
+      )}    </div>
   );
 }
 
@@ -1256,73 +1261,78 @@ function FindingsTab({
 
   const findingsColumnHelper = createColumnHelper<ClinicalFinding>();
 
-  const columns = [
-    findingsColumnHelper.accessor('code', {
-      header: 'Finding',
-      cell: ({ row }) => {
-        const label = getClinicalFindingOption(row.original.code as ClinicalFindingCode)?.label;
-        return (
-          <div className="fw-semibold">
-            {label ?? row.original.code}
+  const columns = useMemo(
+    () => [
+      findingsColumnHelper.accessor('code', {
+        header: 'Finding',
+        cell: ({ row }) => {
+          const label = getClinicalFindingOption(row.original.code as ClinicalFindingCode)?.label;
+          return (
+            <div className="fw-semibold">
+              {label ?? row.original.code}
+            </div>
+          );
+        },
+      }),
+      findingsColumnHelper.accessor('target', {
+        header: 'Target',
+        cell: ({ row }) => (
+          <div className="text-muted">
+            {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
+            {row.original.target.surfaces.length > 0 && (
+              <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
+            )}
           </div>
-        );
-      },
-    }),
-    findingsColumnHelper.accessor('target', {
-      header: 'Target',
-      cell: ({ row }) => (
-        <div className="text-muted">
-          {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
-          {row.original.target.surfaces.length > 0 && (
-            <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
-          )}
-        </div>
-      ),
-    }),
-    findingsColumnHelper.accessor('status', {
-      header: 'Status',
-      cell: ({ row }) => (
-        <div className="d-flex align-items-center gap-2">
-          <Badge bg={recordStatusVariant(row.original.status)}>
-            {row.original.status}
-          </Badge>
-          {projectionIssueIds.has(row.original.id) && (
-            <Badge bg="light" className="text-muted">
-              Not visualized
+        ),
+      }),
+      findingsColumnHelper.accessor('status', {
+        header: 'Status',
+        cell: ({ row }) => (
+          <div className="d-flex align-items-center gap-2">
+            <Badge bg={recordStatusVariant(row.original.status)}>
+              {row.original.status}
             </Badge>
-          )}
-        </div>
-      ),
-    }),
-    findingsColumnHelper.accessor('note', {
-      header: 'Note',
-      cell: ({ row }) => (
-        <div className="fs-sm text-muted">
-          {row.original.note || '—'}
-        </div>
-      ),
-    }),
-    {
-      header: 'Actions',
-      cell: ({ row }: { row: { original: ClinicalFinding } }) => (
-        <div className="d-flex align-items-center justify-content-center gap-1">
-          {row.original.status === 'DRAFT' && actor.role === 'doctor' && (
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => onApproveFinding(row.original.id)}
-            >
-              <Icon icon="check" className="me-1" />
-              Approve
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
+            {projectionIssueIds.has(row.original.id) && (
+              <Badge bg="light" className="text-muted">
+                Not visualized
+              </Badge>
+            )}
+          </div>
+        ),
+      }),
+      findingsColumnHelper.accessor('note', {
+        header: 'Note',
+        cell: ({ row }) => (
+          <div className="fs-sm text-muted">
+            {row.original.note || '—'}
+          </div>
+        ),
+      }),
+      {
+        header: 'Actions',
+        cell: ({ row }: { row: { original: ClinicalFinding } }) => (
+          <div className="d-flex align-items-center justify-content-center gap-1">
+            {row.original.status === 'DRAFT' && actor.role === 'doctor' && (
+              <Button
+                size="sm"
+                variant="success"
+                onClick={() => onApproveFinding(row.original.id)}
+              >
+                <Icon icon="check" className="me-1" />
+                Approve
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [findingsColumnHelper, projectionIssueIds, actor.role, onApproveFinding],
+  );
+
+  const data = useMemo(() => [...visit.findings], [visit.findings]);
 
   const table = useReactTable({
-    data: [...visit.findings],
+    data,
     columns,
     state: { sorting, columnFilters, pagination },
     onSortingChange: setSorting,
@@ -1410,111 +1420,116 @@ function TreatmentPlansTab({
 
   const actsColumnHelper = createColumnHelper<TreatmentAct>();
 
-  const columns = [
-    actsColumnHelper.accessor('code', {
-      header: 'Treatment Act',
-      cell: ({ row }) => {
-        const label = getTreatmentActOption(row.original.code as TreatmentActCode)?.label;
-        return (
-          <div className="fw-semibold">
-            {label ?? row.original.code}
+  const columns = useMemo(
+    () => [
+      actsColumnHelper.accessor('code', {
+        header: 'Treatment Act',
+        cell: ({ row }) => {
+          const label = getTreatmentActOption(row.original.code as TreatmentActCode)?.label;
+          return (
+            <div className="fw-semibold">
+              {label ?? row.original.code}
+            </div>
+          );
+        },
+      }),
+      actsColumnHelper.accessor('target', {
+        header: 'Target',
+        cell: ({ row }) => (
+          <div className="text-muted">
+            {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
+            {row.original.target.surfaces.length > 0 && (
+              <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
+            )}
+            {row.original.target.arch && (
+              <small className="d-block">Arch: {row.original.target.arch}</small>
+            )}
           </div>
-        );
-      },
-    }),
-    actsColumnHelper.accessor('target', {
-      header: 'Target',
-      cell: ({ row }) => (
-        <div className="text-muted">
-          {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
-          {row.original.target.surfaces.length > 0 && (
-            <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
-          )}
-          {row.original.target.arch && (
-            <small className="d-block">Arch: {row.original.target.arch}</small>
-          )}
-        </div>
-      ),
-    }),
-    actsColumnHelper.accessor('status', {
-      header: 'Status',
-      cell: ({ row }) => (
-        <div className="d-flex align-items-center gap-2">
-          <Badge bg={recordStatusVariant(row.original.status)}>
-            {row.original.status}
-          </Badge>
-          {projectionIssueIds.has(row.original.id) && (
-            <Badge bg="light" className="text-muted">
-              Not visualized
+        ),
+      }),
+      actsColumnHelper.accessor('status', {
+        header: 'Status',
+        cell: ({ row }) => (
+          <div className="d-flex align-items-center gap-2">
+            <Badge bg={recordStatusVariant(row.original.status)}>
+              {row.original.status}
             </Badge>
-          )}
-        </div>
-      ),
-    }),
-    actsColumnHelper.accessor('note', {
-      header: 'Note',
-      cell: ({ row }) => (
-        <div className="fs-sm text-muted">
-          {row.original.note || '—'}
-        </div>
-      ),
-    }),
-    {
-      header: 'Actions',
-      cell: ({ row }: { row: { original: TreatmentAct } }) => {
-        const act = row.original;
-        return (
-          <div className="d-flex align-items-center justify-content-center gap-1">
-            {act.status === 'DRAFT' && actor.role === 'doctor' && (
-              <Button
-                size="sm"
-                variant="success"
-                onClick={() => onApproveAct(act.id)}
-              >
-                <Icon icon="check" className="me-1" />
-                Approve
-              </Button>
+            {projectionIssueIds.has(row.original.id) && (
+              <Badge bg="light" className="text-muted">
+                Not visualized
+              </Badge>
             )}
-            {act.status === 'PLANNED' && actor.role === 'doctor' && (
-              <Button
-                size="sm"
-                variant="outline-primary"
-                onClick={() => onTransitionAct(act.id, 'IN_PROGRESS')}
-              >
-                <Icon icon="play" className="me-1" />
-                Start
-              </Button>
-            )}
-            {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') && actor.role === 'doctor' && (
-              <>
+          </div>
+        ),
+      }),
+      actsColumnHelper.accessor('note', {
+        header: 'Note',
+        cell: ({ row }) => (
+          <div className="fs-sm text-muted">
+            {row.original.note || '—'}
+          </div>
+        ),
+      }),
+      {
+        header: 'Actions',
+        cell: ({ row }: { row: { original: TreatmentAct } }) => {
+          const act = row.original;
+          return (
+            <div className="d-flex align-items-center justify-content-center gap-1">
+              {act.status === 'DRAFT' && actor.role === 'doctor' && (
                 <Button
                   size="sm"
                   variant="success"
-                  onClick={() => onTransitionAct(act.id, 'COMPLETED')}
+                  onClick={() => onApproveAct(act.id)}
                 >
-                  <Icon icon="check-circle" className="me-1" />
-                  Done
+                  <Icon icon="check" className="me-1" />
+                  Approve
                 </Button>
-                {act.status !== 'IN_PROGRESS' && (
+              )}
+              {act.status === 'PLANNED' && actor.role === 'doctor' && (
+                <Button
+                  size="sm"
+                  variant="outline-primary"
+                  onClick={() => onTransitionAct(act.id, 'IN_PROGRESS')}
+                >
+                  <Icon icon="play" className="me-1" />
+                  Start
+                </Button>
+              )}
+              {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') && actor.role === 'doctor' && (
+                <>
                   <Button
                     size="sm"
-                    variant="outline-danger"
-                    onClick={() => onTransitionAct(act.id, 'CANCELLED')}
+                    variant="success"
+                    onClick={() => onTransitionAct(act.id, 'COMPLETED')}
                   >
-                    <Icon icon="x" className="me-1" />
-                    Cancel
+                    <Icon icon="check-circle" className="me-1" />
+                    Done
                   </Button>
-                )}
-              </>
-            )}
-          </div>
-        );
+                  {act.status !== 'IN_PROGRESS' && (
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      onClick={() => onTransitionAct(act.id, 'CANCELLED')}
+                    >
+                      <Icon icon="x" className="me-1" />
+                      Cancel
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        },
       },
-    },
-  ];
+    ],
+    [actsColumnHelper, projectionIssueIds, actor.role, onApproveAct, onTransitionAct],
+  );
+
+  const data = useMemo(() => [...visit.acts], [visit.acts]);
 
   const table = useReactTable({
-    data: [...visit.acts],
+    data,
     columns,
     state: { sorting, columnFilters, pagination },
     onSortingChange: setSorting,
@@ -1607,101 +1622,104 @@ function CurrentSessionTreatmentPlans({
     [visit.acts, actor.userId],
   );
 
-  const columns = [
-    actsColumnHelper.accessor('code', {
-      header: 'Treatment Act',
-      cell: ({ row }) => {
-        const label = getTreatmentActOption(row.original.code as TreatmentActCode)?.label;
-        return (
-          <div className="fw-semibold">
-            {label ?? row.original.code}
+  const columns = useMemo(
+    () => [
+      actsColumnHelper.accessor('code', {
+        header: 'Treatment Act',
+        cell: ({ row }) => {
+          const label = getTreatmentActOption(row.original.code as TreatmentActCode)?.label;
+          return (
+            <div className="fw-semibold">
+              {label ?? row.original.code}
+            </div>
+          );
+        },
+      }),
+      actsColumnHelper.accessor('target', {
+        header: 'Target',
+        cell: ({ row }) => (
+          <div className="text-muted">
+            {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
+            {row.original.target.surfaces.length > 0 && (
+              <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
+            )}
+            {row.original.target.arch && (
+              <small className="d-block">Arch: {row.original.target.arch}</small>
+            )}
           </div>
-        );
-      },
-    }),
-    actsColumnHelper.accessor('target', {
-      header: 'Target',
-      cell: ({ row }) => (
-        <div className="text-muted">
-          {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
-          {row.original.target.surfaces.length > 0 && (
-            <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
-          )}
-          {row.original.target.arch && (
-            <small className="d-block">Arch: {row.original.target.arch}</small>
-          )}
-        </div>
-      ),
-    }),
-    actsColumnHelper.accessor('status', {
-      header: 'Status',
-      cell: ({ row }) => (
-        <Badge bg={recordStatusVariant(row.original.status)}>
-          {row.original.status}
-        </Badge>
-      ),
-    }),
-    actsColumnHelper.accessor('note', {
-      header: 'Note',
-      cell: ({ row }) => (
-        <div className="fs-sm text-muted">
-          {row.original.note || '—'}
-        </div>
-      ),
-    }),
-    {
-      header: 'Actions',
-      cell: ({ row }: { row: { original: TreatmentAct } }) => {
-        const act = row.original;
-        return (
-          <div className="d-flex align-items-center justify-content-center gap-1">
-            {act.status === 'DRAFT' && actor.role === 'doctor' && (
-              <Button
-                size="sm"
-                variant="success"
-                onClick={() => onApproveAct(act.id)}
-              >
-                <Icon icon="check" className="me-1" />
-                Approve
-              </Button>
-            )}
-            {act.status === 'PLANNED' && actor.role === 'doctor' && (
-              <Button
-                size="sm"
-                variant="outline-primary"
-                onClick={() => onTransitionAct(act.id, 'IN_PROGRESS')}
-              >
-                <Icon icon="play" className="me-1" />
-                Start
-              </Button>
-            )}
-            {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') && actor.role === 'doctor' && (
-              <>
+        ),
+      }),
+      actsColumnHelper.accessor('status', {
+        header: 'Status',
+        cell: ({ row }) => (
+          <Badge bg={recordStatusVariant(row.original.status)}>
+            {row.original.status}
+          </Badge>
+        ),
+      }),
+      actsColumnHelper.accessor('note', {
+        header: 'Note',
+        cell: ({ row }) => (
+          <div className="fs-sm text-muted">
+            {row.original.note || '—'}
+          </div>
+        ),
+      }),
+      {
+        header: 'Actions',
+        cell: ({ row }: { row: { original: TreatmentAct } }) => {
+          const act = row.original;
+          return (
+            <div className="d-flex align-items-center justify-content-center gap-1">
+              {act.status === 'DRAFT' && actor.role === 'doctor' && (
                 <Button
                   size="sm"
                   variant="success"
-                  onClick={() => onTransitionAct(act.id, 'COMPLETED')}
+                  onClick={() => onApproveAct(act.id)}
                 >
-                  <Icon icon="check-circle" className="me-1" />
-                  Done
+                  <Icon icon="check" className="me-1" />
+                  Approve
                 </Button>
-                {act.status !== 'IN_PROGRESS' && (
+              )}
+              {act.status === 'PLANNED' && actor.role === 'doctor' && (
+                <Button
+                  size="sm"
+                  variant="outline-primary"
+                  onClick={() => onTransitionAct(act.id, 'IN_PROGRESS')}
+                >
+                  <Icon icon="play" className="me-1" />
+                  Start
+                </Button>
+              )}
+              {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') && actor.role === 'doctor' && (
+                <>
                   <Button
                     size="sm"
-                    variant="outline-danger"
-                    onClick={() => onTransitionAct(act.id, 'CANCELLED')}
+                    variant="success"
+                    onClick={() => onTransitionAct(act.id, 'COMPLETED')}
                   >
-                    <Icon icon="x" className="me-1" />
-                    Cancel
+                    <Icon icon="check-circle" className="me-1" />
+                    Done
                   </Button>
-                )}
-              </>
-            )}
-          </div>
-        );
+                  {act.status !== 'IN_PROGRESS' && (
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      onClick={() => onTransitionAct(act.id, 'CANCELLED')}
+                    >
+                      <Icon icon="x" className="me-1" />
+                      Cancel
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        },
       },
-    },
-  ];
+    ],
+    [actsColumnHelper, actor.role, onApproveAct, onTransitionAct],
+  );
 
   const table = useReactTable({
     data: currentSessionActs,
@@ -1726,7 +1744,7 @@ function CurrentSessionTreatmentPlans({
       <CardHeader className="border-light">
         <div className="d-flex align-items-center justify-content-between">
           <div>
-            <h5 className="mb-1">Current Session Treatment Plans</h5>
+            <h5 className="mb-1">Current Session</h5>
             <small className="text-muted">
               Treatment acts added during this session
             </small>
@@ -1810,7 +1828,7 @@ function HandoffPanel({
   visit,
 }: {
   readonly actor: MockTreatmentActor;
-  readonly onAction: (action: () => TreatmentVisit, message: string) => void;
+  readonly onAction: (action: (visit: TreatmentVisit) => TreatmentVisit, message: string) => void;
   readonly visit: TreatmentVisit;
 }) {
   const handoff = visit.documentationHandoff;
@@ -1874,9 +1892,9 @@ function HandoffPanel({
                 <Button
                   onClick={() =>
                     onAction(
-                      () =>
+                      (currentVisit) =>
                         assignWorkspaceDocumentation(
-                          visit,
+                          currentVisit,
                           actor,
                           MOCK_ASSISTANT.userId,
                           'handoff-mock-1',
@@ -1895,8 +1913,8 @@ function HandoffPanel({
                   <Button
                     onClick={() =>
                       onAction(
-                        () =>
-                          startWorkspaceDocumentation(visit, actor, new Date()),
+                        (currentVisit) =>
+                          startWorkspaceDocumentation(currentVisit, actor, new Date()),
                         'Documentation session started.',
                       )
                     }
@@ -1909,9 +1927,9 @@ function HandoffPanel({
                   <Button
                     onClick={() =>
                       onAction(
-                        () =>
+                        (currentVisit) =>
                           submitWorkspaceDocumentation(
-                            visit,
+                            currentVisit,
                             actor,
                             new Date(),
                           ),
@@ -1928,9 +1946,9 @@ function HandoffPanel({
                   <Button
                     onClick={() =>
                       onAction(
-                        () =>
+                        (currentVisit) =>
                           reviewWorkspaceDocumentation(
-                            visit,
+                            currentVisit,
                             actor,
                             'ACCEPT',
                             new Date(),
@@ -1945,9 +1963,9 @@ function HandoffPanel({
                   <Button
                     onClick={() =>
                       onAction(
-                        () =>
+                        (currentVisit) =>
                           reviewWorkspaceDocumentation(
-                            visit,
+                            currentVisit,
                             actor,
                             'RETURN',
                             new Date(),
@@ -1966,7 +1984,7 @@ function HandoffPanel({
                   <Button
                     onClick={() =>
                       onAction(
-                        () => completeWorkspaceVisit(visit, actor, new Date()),
+                        (currentVisit) => completeWorkspaceVisit(currentVisit, actor, new Date()),
                         'Visit completed and locked.',
                       )
                     }
