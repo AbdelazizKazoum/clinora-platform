@@ -18,8 +18,10 @@ import {
 import styles from './waiting-room-board.module.scss';
 
 const timeFormatter = new Intl.DateTimeFormat('en', {
+  day: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
+  month: 'short',
 });
 
 const priorityCardClassNames = {
@@ -36,21 +38,6 @@ const WaitingRoomActionsPortal = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return portalRoot ? createPortal(children, portalRoot) : null;
-};
-
-const getElapsedTimeLabel = (date: Date): string => {
-  const elapsedMinutes = Math.max(
-    0,
-    Math.floor((Date.now() - date.getTime()) / 60_000),
-  );
-
-  if (elapsedMinutes < 1) return 'Just now';
-  if (elapsedMinutes < 60) return `${elapsedMinutes} min`;
-
-  const hours = Math.floor(elapsedMinutes / 60);
-  const minutes = elapsedMinutes % 60;
-
-  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
 };
 
 const getEntryTiming = (
@@ -305,23 +292,17 @@ const WaitingRoomEntryCard = ({
         <hr className="border-dashed my-3" />
 
         <div
-          className={`d-flex align-items-center justify-content-between gap-2 text-muted fs-xs ${styles.entryFooter}`}
+          className={`d-flex align-items-center justify-content-between gap-2 ${styles.entryFooter}`}
         >
-          <span
-            className={`d-flex align-items-center gap-1 ${styles.entryTiming}`}
-          >
-            <Icon icon="clock-3" className="flex-shrink-0" />
-            <span
-              className={`${styles.truncateText} ${styles.flexTruncateText}`}
-            >
-              {timing.label} {getElapsedTimeLabel(timing.date)}
-              <span aria-hidden="true"> &middot; </span>
+          <div className="d-flex align-items-center gap-1">
+            <Icon icon="clock-3" className="fs-lg flex-shrink-0 text-body" />
+            <h5 className={`mb-0 ${styles.entryTimingText}`}>
               {timeFormatter.format(timing.date)}
-            </span>
-          </span>
+            </h5>
+          </div>
           <span
             className={clsx(
-              'd-flex align-items-center gap-1 flex-shrink-0',
+              'd-flex align-items-center gap-1 flex-shrink-0 text-muted fs-xs',
               isDragEnabled && styles.dragIndicator,
             )}
             title={
