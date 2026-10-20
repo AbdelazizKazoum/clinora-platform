@@ -34,15 +34,13 @@ import {
   type PeriodontalExamination,
   type PeriodontalSummary,
 } from '../model/periodontal';
-import {
-  approveWorkspacePeriodontalExamination,
-  updateWorkspacePeriodontalExamination,
-} from '../model/treatment-workspace';
+import type { PeriodontalExaminationUpdater } from '../model/treatment-workspace';
 
 export interface PeriodontalWorkspaceProps {
   readonly actor: MockTreatmentActor;
   readonly canDocument: boolean;
-  readonly onVisitChange: (visit: TreatmentVisit) => void;
+  readonly onExaminationChange: (update: PeriodontalExaminationUpdater) => void;
+  readonly onApproveExamination: () => void;
   readonly visit: TreatmentVisit;
 }
 
@@ -54,7 +52,8 @@ const TOOTH_POSITIONS = [
 export function PeriodontalWorkspace({
   actor,
   canDocument,
-  onVisitChange,
+  onExaminationChange: apply,
+  onApproveExamination: approve,
   visit,
 }: PeriodontalWorkspaceProps) {
   const [toothNumber, setToothNumber] = useState<number>(16);
@@ -68,30 +67,6 @@ export function PeriodontalWorkspace({
     () => summarizePeriodontalExamination(examination, presentNaturalToothNumbers),
     [examination, presentNaturalToothNumbers.join(',')],
   );
-
-  const apply = (
-    update: Parameters<typeof updateWorkspacePeriodontalExamination>[2],
-  ) => {
-    try {
-      onVisitChange(
-        updateWorkspacePeriodontalExamination(visit, actor, update, new Date()),
-      );
-    } catch {
-      // The parent workspace owns the general feedback channel. Disabled
-      // controls prevent normal UI errors; failed transitions remain harmless.
-    }
-  };
-
-  const approve = () => {
-    if (actor.role !== 'doctor') return;
-    try {
-      onVisitChange(
-        approveWorkspacePeriodontalExamination(visit, actor, new Date()),
-      );
-    } catch {
-      // The examination may be empty; keep the panel usable without throwing.
-    }
-  };
 
   return (
     <Row className="g-3">
@@ -145,8 +120,8 @@ export function PeriodontalWorkspace({
                         <td><PeriodontalNumberInput ariaLabel={`${site} probing depth`} disabled={!canDocument || implant || isMissingTooth(visit, toothNumber)} value={measurement?.pd} onCommit={(value) => apply((exam) => updatePeriodontalSite(exam, toothNumber, site, { pd: value }))} /></td>
                         <td><PeriodontalNumberInput ariaLabel={`${site} gingival margin`} disabled={!canDocument || implant || isMissingTooth(visit, toothNumber) || measurement === undefined} value={measurement?.gm} allowNegative onCommit={(value) => apply((exam) => updatePeriodontalSite(exam, toothNumber, site, { gm: value }))} /></td>
                         <td>{measurement === undefined ? '—' : measurement.pd + (measurement.gm ?? 0)}</td>
-                        <td><input aria-label={`${site} bleeding on probing`} checked={measurement?.bop ?? false} disabled={!canDocument || measurement === undefined} onChange={(event) => apply((exam) => updatePeriodontalSite(exam, toothNumber, site, { bop: event.currentTarget.checked }))} type="checkbox" /></td>
-                        <td><input aria-label={`${site} suppuration`} checked={measurement?.suppuration ?? false} disabled={!canDocument || measurement === undefined} onChange={(event) => apply((exam) => updatePeriodontalSite(exam, toothNumber, site, { suppuration: event.currentTarget.checked }))} type="checkbox" /></td>
+                        <td><input aria-label={`${site} bleeding on probing`} checked={measurement?.bop ?? false} disabled={!canDocument || measurement === undefined} onChange={({ currentTarget: { checked } }) => apply((exam) => updatePeriodontalSite(exam, toothNumber, site, { bop: checked }))} type="checkbox" /></td>
+                        <td><input aria-label={`${site} suppuration`} checked={measurement?.suppuration ?? false} disabled={!canDocument || measurement === undefined} onChange={({ currentTarget: { checked } }) => apply((exam) => updatePeriodontalSite(exam, toothNumber, site, { suppuration: checked }))} type="checkbox" /></td>
                       </tr>
                     );
                   })}
@@ -255,7 +230,7 @@ function PeriodontalDetailControls({
 }: {
   readonly canDocument: boolean;
   readonly implant: boolean;
-  readonly onUpdate: (update: Parameters<typeof updateWorkspacePeriodontalExamination>[2]) => void;
+  readonly onUpdate: (update: PeriodontalExaminationUpdater) => void;
   readonly tooth: ReturnType<typeof getPeriodontalTooth>;
   readonly toothNumber: number;
 }) {
@@ -265,24 +240,24 @@ function PeriodontalDetailControls({
       <Row className="g-3">
         <Col md={4}>
           <FormLabel htmlFor="periodontal-mobility">Mobility</FormLabel>
-          <FormSelect aria-label="Mobility grade" disabled={!canDocument || implant} id="periodontal-mobility" onChange={(event) => onUpdate((exam) => updatePeriodontalMobility(exam, toothNumber, event.currentTarget.value === '' ? null : Number(event.currentTarget.value) as PeriodontalGrade))} value={tooth.mobility ?? ''}>
+          <FormSelect aria-label="Mobility grade" disabled={!canDocument || implant} id="periodontal-mobility" onChange={({ currentTarget: { value } }) => onUpdate((exam) => updatePeriodontalMobility(exam, toothNumber, value === '' ? null : Number(value) as PeriodontalGrade))} value={tooth.mobility ?? ''}>
             <option value="">Not charted</option>
             {PERIODONTAL_GRADES.map((grade) => <option key={grade} value={grade}>Grade {grade}</option>)}
           </FormSelect>
         </Col>
         <Col md={8}>
           <FormLabel>Furcation entrances</FormLabel>
-          {entrances.length === 0 ? <div className="text-muted fs-sm">Not applicable for this tooth position.</div> : <div className="d-flex flex-wrap gap-2">{entrances.map((entrance) => <FormSelect aria-label={`${entrance} furcation grade`} disabled={!canDocument} key={entrance} onChange={(event) => onUpdate((exam) => updateFurcation(exam, toothNumber, entrance, event.currentTarget.value === '' ? null : Number(event.currentTarget.value) as FurcationGrade))} value={tooth.furcation[entrance] ?? ''}><option value="">{entrance}: not charted</option>{FURCATION_GRADES.map((grade) => <option key={grade} value={grade}>{entrance}: {grade}</option>)}</FormSelect>)}</div>}
+          {entrances.length === 0 ? <div className="text-muted fs-sm">Not applicable for this tooth position.</div> : <div className="d-flex flex-wrap gap-2">{entrances.map((entrance) => <FormSelect aria-label={`${entrance} furcation grade`} disabled={!canDocument} key={entrance} onChange={({ currentTarget: { value } }) => onUpdate((exam) => updateFurcation(exam, toothNumber, entrance, value === '' ? null : Number(value) as FurcationGrade))} value={tooth.furcation[entrance] ?? ''}><option value="">{entrance}: not charted</option>{FURCATION_GRADES.map((grade) => <option key={grade} value={grade}>{entrance}: {grade}</option>)}</FormSelect>)}</div>}
         </Col>
         <Col md={6}><IndexSurfaceControls canDocument={canDocument} index="plaqueIndex" label="Plaque index" tooth={tooth} toothNumber={toothNumber} onUpdate={onUpdate} /></Col>
         <Col md={6}><IndexSurfaceControls canDocument={canDocument} index="gingivalIndex" label="Gingival index" tooth={tooth} toothNumber={toothNumber} onUpdate={onUpdate} /></Col>
         {implant && <><Col md={6}><IndexSurfaceControls canDocument={canDocument} index="periImplantPlaqueIndex" label="mPI" tooth={tooth} toothNumber={toothNumber} onUpdate={onUpdate} /></Col><Col md={6}><IndexSurfaceControls canDocument={canDocument} index="periImplantBleedingIndex" label="mBI" tooth={tooth} toothNumber={toothNumber} onUpdate={onUpdate} /></Col></>}
-        <Col md={4}><FormLabel htmlFor="periodontal-kg">Keratinized gingiva (mm)</FormLabel><FormControl aria-label="Keratinized gingiva width" disabled={!canDocument} id="periodontal-kg" max={15} min={0} onChange={(event) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { keratinizedGingivaWidth: event.currentTarget.value === '' ? undefined : Number(event.currentTarget.value) }))} type="number" value={tooth.keratinizedGingivaWidth ?? ''} /></Col>
-        <Col md={4}><FormLabel htmlFor="periodontal-phenotype">Gingival phenotype</FormLabel><FormSelect aria-label="Gingival phenotype" disabled={!canDocument} id="periodontal-phenotype" onChange={(event) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { gingivalPhenotype: event.currentTarget.value === '' ? undefined : event.currentTarget.value as GingivalPhenotype }))} value={tooth.gingivalPhenotype ?? ''}><option value="">Not charted</option>{GINGIVAL_PHENOTYPES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect></Col>
-        <Col md={4}><FormLabel htmlFor="periodontal-miller">Miller class</FormLabel><FormSelect aria-label="Miller recession class" disabled={!canDocument} id="periodontal-miller" onChange={(event) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { millerClass: event.currentTarget.value === '' ? undefined : event.currentTarget.value as MillerClass }))} value={tooth.millerClass ?? ''}><option value="">Not charted</option>{MILLER_CLASSES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect></Col>
+        <Col md={4}><FormLabel htmlFor="periodontal-kg">Keratinized gingiva (mm)</FormLabel><FormControl aria-label="Keratinized gingiva width" disabled={!canDocument} id="periodontal-kg" max={15} min={0} onChange={({ currentTarget: { value } }) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { keratinizedGingivaWidth: value === '' ? undefined : Number(value) }))} type="number" value={tooth.keratinizedGingivaWidth ?? ''} /></Col>
+        <Col md={4}><FormLabel htmlFor="periodontal-phenotype">Gingival phenotype</FormLabel><FormSelect aria-label="Gingival phenotype" disabled={!canDocument} id="periodontal-phenotype" onChange={({ currentTarget: { value } }) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { gingivalPhenotype: value === '' ? undefined : value as GingivalPhenotype }))} value={tooth.gingivalPhenotype ?? ''}><option value="">Not charted</option>{GINGIVAL_PHENOTYPES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect></Col>
+        <Col md={4}><FormLabel htmlFor="periodontal-miller">Miller class</FormLabel><FormSelect aria-label="Miller recession class" disabled={!canDocument} id="periodontal-miller" onChange={({ currentTarget: { value } }) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { millerClass: value === '' ? undefined : value as MillerClass }))} value={tooth.millerClass ?? ''}><option value="">Not charted</option>{MILLER_CLASSES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect></Col>
       </Row>
-      <div className="d-flex flex-wrap gap-2 mt-3"><span className="text-muted fs-sm">Mucogingival detail</span><FormSelect aria-label="CEJ visibility" disabled={!canDocument} onChange={(event) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { cejVisibility: event.currentTarget.value === '' ? undefined : event.currentTarget.value as (typeof CEJ_VISIBILITY_VALUES)[number] }))} value={tooth.cejVisibility ?? ''}><option value="">CEJ not charted</option>{CEJ_VISIBILITY_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect><FormSelect aria-label="Root concavity" disabled={!canDocument} onChange={(event) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { rootConcavity: event.currentTarget.value === '' ? undefined : event.currentTarget.value as (typeof ROOT_CONCAVITY_VALUES)[number] }))} value={tooth.rootConcavity ?? ''}><option value="">Concavity not charted</option>{ROOT_CONCAVITY_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect></div>
-      <div className="mt-3"><FormLabel>O&apos;Leary plaque presence</FormLabel><div className="d-flex flex-wrap gap-3">{PERIODONTAL_INDEX_SURFACES.map((surface) => <label className="form-check" key={surface}><input aria-label={`${surface} plaque presence`} checked={tooth.plaque.includes(surface)} className="form-check-input" disabled={!canDocument} onChange={(event) => onUpdate((exam) => updatePlaque(exam, toothNumber, surface, event.currentTarget.checked))} type="checkbox" /><span className="form-check-label">{surface}</span></label>)}</div></div>
+      <div className="d-flex flex-wrap gap-2 mt-3"><span className="text-muted fs-sm">Mucogingival detail</span><FormSelect aria-label="CEJ visibility" disabled={!canDocument} onChange={({ currentTarget: { value } }) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { cejVisibility: value === '' ? undefined : value as (typeof CEJ_VISIBILITY_VALUES)[number] }))} value={tooth.cejVisibility ?? ''}><option value="">CEJ not charted</option>{CEJ_VISIBILITY_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect><FormSelect aria-label="Root concavity" disabled={!canDocument} onChange={({ currentTarget: { value } }) => onUpdate((exam) => updatePeriodontalToothDetail(exam, toothNumber, { rootConcavity: value === '' ? undefined : value as (typeof ROOT_CONCAVITY_VALUES)[number] }))} value={tooth.rootConcavity ?? ''}><option value="">Concavity not charted</option>{ROOT_CONCAVITY_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}</FormSelect></div>
+      <div className="mt-3"><FormLabel>O&apos;Leary plaque presence</FormLabel><div className="d-flex flex-wrap gap-3">{PERIODONTAL_INDEX_SURFACES.map((surface) => <label className="form-check" key={surface}><input aria-label={`${surface} plaque presence`} checked={tooth.plaque.includes(surface)} className="form-check-input" disabled={!canDocument} onChange={({ currentTarget: { checked } }) => onUpdate((exam) => updatePlaque(exam, toothNumber, surface, checked))} type="checkbox" /><span className="form-check-label">{surface}</span></label>)}</div></div>
     </div>
   );
 }
@@ -298,11 +273,11 @@ function IndexSurfaceControls({
   readonly canDocument: boolean;
   readonly index: 'plaqueIndex' | 'gingivalIndex' | 'periImplantPlaqueIndex' | 'periImplantBleedingIndex';
   readonly label: string;
-  readonly onUpdate: (update: Parameters<typeof updateWorkspacePeriodontalExamination>[2]) => void;
+  readonly onUpdate: (update: PeriodontalExaminationUpdater) => void;
   readonly tooth: ReturnType<typeof getPeriodontalTooth>;
   readonly toothNumber: number;
 }) {
-  return <div><FormLabel>{label}</FormLabel><div className="d-flex flex-wrap gap-1">{PERIODONTAL_INDEX_SURFACES.map((surface) => <FormSelect aria-label={`${label} ${surface}`} disabled={!canDocument} key={surface} onChange={(event) => onUpdate((exam) => updateSurfaceIndex(exam, toothNumber, index, surface, Number(event.currentTarget.value) as PeriodontalGrade | 0, index.startsWith('periImplant')))} value={tooth[index][surface] ?? 0}><option value={0}>{surface}: 0</option>{PERIODONTAL_GRADES.map((grade) => <option key={grade} value={grade}>{surface}: {grade}</option>)}</FormSelect>)}</div></div>;
+  return <div><FormLabel>{label}</FormLabel><div className="d-flex flex-wrap gap-1">{PERIODONTAL_INDEX_SURFACES.map((surface) => <FormSelect aria-label={`${label} ${surface}`} disabled={!canDocument} key={surface} onChange={({ currentTarget: { value } }) => onUpdate((exam) => updateSurfaceIndex(exam, toothNumber, index, surface, Number(value) as PeriodontalGrade | 0, index.startsWith('periImplant')))} value={tooth[index][surface] ?? 0}><option value={0}>{surface}: 0</option>{PERIODONTAL_GRADES.map((grade) => <option key={grade} value={grade}>{surface}: {grade}</option>)}</FormSelect>)}</div></div>;
 }
 
 function PeriodontalSummaryCard({

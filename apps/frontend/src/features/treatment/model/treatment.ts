@@ -300,3 +300,13 @@ export const documentationHandoffStatusLabels = {
   ACCEPTED: 'Accepted by dentist',
   CANCELLED: 'Cancelled',
 } satisfies Record<DocumentationHandoffStatus, string>;
+
+/** Patient snapshot displayed with the treatment visit. */
+export interface TreatmentPatientSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly dateOfBirth: string;
+  readonly sex: string;
+  readonly allergies: readonly string[];
+  readonly alerts: readonly string[];
+}

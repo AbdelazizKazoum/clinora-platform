@@ -1,5 +1,5 @@
 import type { MockTreatmentActor } from '../model/treatment-workspace';
-import type { TreatmentVisit } from '../model/treatment';
+import type { TreatmentPatientSummary, TreatmentVisit } from '../model/treatment';
 
 const createdAt = new Date('2026-08-13T09:30:00.000Z');
 
@@ -15,16 +15,7 @@ export const MOCK_ASSISTANT: MockTreatmentActor = {
   userId: 'assistant-demo',
 };
 
-export interface MockTreatmentPatient {
-  readonly id: string;
-  readonly name: string;
-  readonly dateOfBirth: string;
-  readonly sex: string;
-  readonly allergies: readonly string[];
-  readonly alerts: readonly string[];
-}
-
-export const MOCK_TREATMENT_PATIENT: MockTreatmentPatient = {
+export const MOCK_TREATMENT_PATIENT: TreatmentPatientSummary = {
   alerts: ['Anticoagulant therapy'],
   allergies: ['Penicillin'],
   dateOfBirth: '1988-04-17',
