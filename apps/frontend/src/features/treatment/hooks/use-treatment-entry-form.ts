@@ -67,14 +67,14 @@ export function useTreatmentEntryForm({
   const addFinding = () => {
     if (!activeTooth || !selectedFinding) {
       return showFeedback({
-        message: 'Select a tooth first.',
+        message: 'Please select a tooth and a clinical finding.',
         variant: 'warning',
       });
     }
     const findingTarget = getClinicalFindingTarget(findingCode, findingDetail);
     if (requiresSurface(findingTarget) && surfaces.length === 0) {
       return showFeedback({
-        message: 'Select at least one tooth surface.',
+        message: `${selectedFinding.label} requires at least one tooth surface. Please select surfaces above.`,
         variant: 'warning',
       });
     }
@@ -104,30 +104,50 @@ export function useTreatmentEntryForm({
     }
 
     if (findingTarget === 'bridge') {
+      if (selection.selectedToothPositions.length < 2) {
+        return showFeedback({
+          message: 'Bridge findings require at least two teeth. Hold Ctrl/Cmd and click to select multiple contiguous teeth.',
+          variant: 'warning',
+        });
+      }
       const error = validateBridgeSelection(
         selection.selectedToothPositions,
         data,
       );
       if (error) return showFeedback({ message: error, variant: 'warning' });
     }
-    actions.recordFinding({
-      code: findingCode,
-      details,
-      note: note.trim() || null,
-      target: buildTarget(
-        findingTarget,
-        findingTarget === 'bridge'
-          ? selection.selectedToothPositions
-          : [activeTooth],
-        surfaces,
-        periodontalSite,
-      ),
-    });
-    setNote('');
+    
+    try {
+      actions.recordFinding({
+        code: findingCode,
+        details,
+        note: note.trim() || null,
+        target: buildTarget(
+          findingTarget,
+          findingTarget === 'bridge'
+            ? selection.selectedToothPositions
+            : [activeTooth],
+          surfaces,
+          periodontalSite,
+        ),
+      });
+      setNote('');
+    } catch (error) {
+      return showFeedback({
+        message: error instanceof Error ? error.message : 'Failed to record clinical finding. Please check your selection.',
+        variant: 'danger',
+      });
+    }
   };
 
   const addAct = () => {
-    if (!selectedAct || selection.selectedToothPositions.length === 0) {
+    if (!selectedAct) {
+      return showFeedback({
+        message: 'Please select a treatment act.',
+        variant: 'warning',
+      });
+    }
+    if (selection.selectedToothPositions.length === 0) {
       return showFeedback({
         message: 'Select the target tooth or teeth first.',
         variant: 'warning',
@@ -135,14 +155,14 @@ export function useTreatmentEntryForm({
     }
     if (requiresSurface(selectedAct.target) && surfaces.length === 0) {
       return showFeedback({
-        message: 'Select at least one tooth surface.',
+        message: `${selectedAct.label} requires at least one tooth surface. Please select surfaces above.`,
         variant: 'warning',
       });
     }
     if (selectedAct.target === 'bridge') {
       if (selection.selectedToothPositions.length < 2) {
         return showFeedback({
-          message: 'Select at least two teeth for a bridge span.',
+          message: 'Fixed bridge requires at least two teeth. Hold Ctrl/Cmd and click to select multiple contiguous teeth.',
           variant: 'warning',
         });
       }
@@ -152,6 +172,30 @@ export function useTreatmentEntryForm({
       );
       if (bridgeError)
         return showFeedback({ message: bridgeError, variant: 'warning' });
+    }
+    if (selectedAct.target === 'arch' && selection.selectedToothPositions.length === 0) {
+      return showFeedback({
+        message: `${selectedAct.label} requires selecting teeth in the affected arch.`,
+        variant: 'warning',
+      });
+    }
+    if (selectedAct.detailKey && !actDetail) {
+      return showFeedback({
+        message: `Please select the appliance type or detail for ${selectedAct.label}.`,
+        variant: 'warning',
+      });
+    }
+    if (selectedAct.requiresMaterial === 'filling' && !fillingMaterial) {
+      return showFeedback({
+        message: 'Please select a filling material.',
+        variant: 'warning',
+      });
+    }
+    if (selectedAct.requiresMaterial === 'restoration' && !restorationMaterial) {
+      return showFeedback({
+        message: 'Please select a restoration material.',
+        variant: 'warning',
+      });
     }
 
     const details: ClinicalDetail[] = [];
@@ -164,18 +208,25 @@ export function useTreatmentEntryForm({
       details.push({ key: 'RESTORATION_MATERIAL', value: restorationMaterial });
     }
 
-    actions.recordAct({
-      code: actCode,
-      details,
-      note: note.trim() || null,
-      target: buildTarget(
-        selectedAct.target,
-        selection.selectedToothPositions,
-        surfaces,
-        periodontalSite,
-      ),
-    });
-    setNote('');
+    try {
+      actions.recordAct({
+        code: actCode,
+        details,
+        note: note.trim() || null,
+        target: buildTarget(
+          selectedAct.target,
+          selection.selectedToothPositions,
+          surfaces,
+          periodontalSite,
+        ),
+      });
+      setNote('');
+    } catch (error) {
+      return showFeedback({
+        message: error instanceof Error ? error.message : 'Failed to create treatment act. Please check your selection.',
+        variant: 'danger',
+      });
+    }
   };
 
   const selectFindingCode = (code: ClinicalFindingCode) => {

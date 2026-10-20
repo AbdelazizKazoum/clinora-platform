@@ -66,12 +66,17 @@ export function ToothDetailsPanel(props: ToothDetailsPanelProps) {
     mode === 'finding'
       ? props.selectedFinding?.capability
       : props.selectedAct?.capability;
-  const capabilityPresentation = selectedCapability
-    ? getTreatmentCapabilityPresentation(selectedCapability, {
-        ...props.capabilityContext,
-        subtype: mode === 'finding' ? props.findingDetail : undefined,
-      })
-    : 'not-available';
+  const isMultiToothAct = 
+    mode === 'act' && 
+    (props.selectedAct?.target === 'bridge' || props.selectedAct?.target === 'arch');
+  const capabilityPresentation = isMultiToothAct
+    ? 'visual'
+    : selectedCapability
+      ? getTreatmentCapabilityPresentation(selectedCapability, {
+          ...props.capabilityContext,
+          subtype: mode === 'finding' ? props.findingDetail : undefined,
+        })
+      : 'not-available';
   const needsSurface =
     mode === 'finding'
       ? requiresSurface(props.selectedFinding?.target)

@@ -52,20 +52,20 @@ export const validateBridgeSelection = (
   positions: readonly ToothPosition[],
   data: OdontogramData,
 ): string | null => {
-  if (positions.length < 2) return 'Select at least two teeth for a bridge.';
+  if (positions.length < 2) return 'Select at least two teeth for a bridge span.';
   const indices = positions
     .map((position) => TOOTH_POSITIONS.indexOf(position))
     .sort((left, right) => left - right);
   const sameArch =
     indices.every((index) => index < 16) ||
     indices.every((index) => index >= 16);
-  if (!sameArch) return 'A bridge cannot cross between upper and lower arches.';
+  if (!sameArch) return 'A bridge cannot cross between upper and lower arches. All selected teeth must be in the same arch.';
   if (
     indices.some(
       (index, offset) => offset > 0 && index !== indices[offset - 1] + 1,
     )
   ) {
-    return 'Bridge teeth must form one contiguous span.';
+    return 'Bridge teeth must form one contiguous span. Please select adjacent teeth without gaps.';
   }
   const hasPontic = positions.some(
     (position) =>
@@ -74,5 +74,5 @@ export const validateBridgeSelection = (
   );
   return hasPontic
     ? null
-    : 'Select a span containing at least one missing tooth for the pontic.';
+    : 'A bridge requires at least one missing tooth in the span for the pontic. Please mark one of the selected teeth as missing first.';
 };
