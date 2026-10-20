@@ -1,5 +1,6 @@
 .workspace {
   --treatment-panel-border: var(--bs-border-color);
+  padding-bottom: 1.5rem;
 }
 
 .patientHeader {
@@ -8,7 +9,8 @@
 
 .patientAvatar {
   align-items: center;
-  background: var(--bs-primary-bg-subtle);
+  background: linear-gradient(135deg, var(--bs-primary-bg-subtle) 0%, var(--bs-primary-bg-subtle) 100%);
+  border: 2px solid var(--bs-primary);
   border-radius: 50%;
   color: var(--bs-primary);
   display: flex;
@@ -17,6 +19,8 @@
   font-weight: 700;
   height: 3.25rem;
   justify-content: center;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(var(--bs-primary-rgb), 0.15);
 }
 
 .actorSelect {

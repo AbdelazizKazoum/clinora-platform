@@ -1,6 +1,8 @@
 'use client';
 
 import PageBreadcrumb from '@/components/PageBreadcrumb';
+import DataTable from '@/components/table/DataTable';
+import TablePagination from '@/components/table/TablePagination';
 import Icon from '@/components/wrappers/Icon';
 import {
   Odontogram,
@@ -11,6 +13,16 @@ import {
   type ToothPosition,
   type ToothSurface,
 } from '@/features/odontogram';
+import {
+  type ColumnFiltersState,
+  createColumnHelper,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -20,6 +32,7 @@ import {
   ButtonGroup,
   Card,
   CardBody,
+  CardFooter,
   CardHeader,
   Col,
   Form,
@@ -100,7 +113,7 @@ export interface TreatmentWorkspacePageProps {
   readonly launchContext?: TreatmentLaunchContext | null;
 }
 
-type WorkspaceTab = 'chart' | 'periodontal' | 'record' | 'handoff';
+type WorkspaceTab = 'chart' | 'periodontal' | 'findings' | 'treatment-plans' | 'handoff';
 
 const FILLING_MATERIALS = [
   ['COMPOSITE', 'Composite'],
@@ -173,11 +186,7 @@ export function TreatmentWorkspacePage({
   const [feedback, setFeedback] = useState<{
     readonly message: string;
     readonly variant: 'success' | 'warning' | 'danger' | 'info';
-  } | null>({
-    message:
-      'Demo mode: all changes are local and reset when the page reloads.',
-    variant: 'info',
-  });
+  } | null>(null);
   const idCounter = useRef(1);
 
   const workflowProjection = useMemo(
@@ -401,7 +410,8 @@ export function TreatmentWorkspacePage({
           {([
             ['chart', 'Odontogram & tooth details', 'smile', visit.findings.length + visit.acts.length],
             ['periodontal', 'Periodontal chart', 'activity', visit.findings.filter(f => f.target.toothNumbers.length === 0).length],
-            ['record', 'Clinical record', 'file-text', visit.findings.length + visit.acts.length],
+            ['findings', 'Clinical findings', 'stethoscope', visit.findings.length],
+            ['treatment-plans', 'Treatment plans', 'clipboard-list', visit.acts.length],
             ['handoff', 'Documentation handoff', 'users', visit.documentationHandoff ? 1 : 0],
           ] as const).map(([tab, label, icon, count]) => (
             <button
@@ -498,20 +508,32 @@ export function TreatmentWorkspacePage({
                     </span>
                   </div>
                 )}
-                {workflowProjection.plannedDelta.length > 0 && (
-                  <Alert className="mt-3 mb-0 py-2" variant="light">
-                    {workflowProjection.plannedDelta.length} tooth plan delta(s)
-                    are shown separately from confirmed status.
-                  </Alert>
-                )}
                 {workflowProjection.conflicts.length > 0 && (
-                  <Alert className="mt-2 mb-0 py-2" variant="warning">
+                  <Alert className="mt-3 mb-0 py-2" variant="warning">
                     {workflowProjection.conflicts.length} overlapping active
                     plan conflict(s) require deterministic dentist resolution.
                   </Alert>
                 )}
               </CardBody>
             </Card>
+
+            <CurrentSessionTreatmentPlans
+              actor={actor}
+              onApproveAct={(id) =>
+                runAction(
+                  () => approveWorkspaceAct(visit, actor, id, new Date()),
+                  'Treatment act approved.',
+                )
+              }
+              onTransitionAct={(actId, status) =>
+                runAction(
+                  () =>
+                    transitionWorkspaceAct(visit, actor, actId, status, new Date()),
+                  treatmentActTransitionMessage(status),
+                )
+              }
+              visit={visit}
+            />
           </Col>
 
           <Col className={styles.detailsColumn}>
@@ -588,19 +610,29 @@ export function TreatmentWorkspacePage({
         </Row>
       )}
 
-      {activeTab === 'record' && (
-        <ClinicalRecord
+      {activeTab === 'findings' && (
+        <FindingsTab
+          actor={actor}
+          onApproveFinding={(id) =>
+            runAction(
+              () => approveWorkspaceFinding(visit, actor, id, new Date()),
+              'Clinical finding confirmed.',
+            )
+          }
+          projectionIssueIds={
+            new Set(projection.issues.map(({ recordId }) => recordId))
+          }
+          visit={visit}
+        />
+      )}
+
+      {activeTab === 'treatment-plans' && (
+        <TreatmentPlansTab
           actor={actor}
           onApproveAct={(id) =>
             runAction(
               () => approveWorkspaceAct(visit, actor, id, new Date()),
               'Treatment act approved.',
-            )
-          }
-          onApproveFinding={(id) =>
-            runAction(
-              () => approveWorkspaceFinding(visit, actor, id, new Date()),
-              'Clinical finding confirmed.',
             )
           }
           onTransitionAct={(actId, status) =>
@@ -613,7 +645,6 @@ export function TreatmentWorkspacePage({
           projectionIssueIds={
             new Set(projection.issues.map(({ recordId }) => recordId))
           }
-          toothSummaries={workflowProjection.toothSummaries}
           visit={visit}
         />
       )}
@@ -653,7 +684,9 @@ function PatientVisitHeader({
     <Card className={`${styles.patientHeader} mb-3`}>
       <CardBody>
         <div className="d-flex flex-wrap align-items-center gap-3">
-          <div className={styles.patientAvatar}>OM</div>
+          <div className="avatar-md rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center border border-2 border-primary">
+            <Icon icon="user" className="fs-2 text-primary" />
+          </div>
           <div className="flex-grow-1">
             <div className="d-flex flex-wrap align-items-center gap-2">
               <h4 className="mb-0">{MOCK_TREATMENT_PATIENT.name}</h4>
@@ -1206,165 +1239,525 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
   );
 }
 
-function ClinicalRecord({
+function FindingsTab({
+  actor,
+  onApproveFinding,
+  projectionIssueIds,
+  visit,
+}: {
+  readonly actor: MockTreatmentActor;
+  readonly onApproveFinding: (id: string) => void;
+  readonly projectionIssueIds: ReadonlySet<string>;
+  readonly visit: TreatmentVisit;
+}) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+
+  const findingsColumnHelper = createColumnHelper<ClinicalFinding>();
+
+  const columns = [
+    findingsColumnHelper.accessor('code', {
+      header: 'Finding',
+      cell: ({ row }) => {
+        const label = getClinicalFindingOption(row.original.code as ClinicalFindingCode)?.label;
+        return (
+          <div className="fw-semibold">
+            {label ?? row.original.code}
+          </div>
+        );
+      },
+    }),
+    findingsColumnHelper.accessor('target', {
+      header: 'Target',
+      cell: ({ row }) => (
+        <div className="text-muted">
+          {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
+          {row.original.target.surfaces.length > 0 && (
+            <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
+          )}
+        </div>
+      ),
+    }),
+    findingsColumnHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ row }) => (
+        <div className="d-flex align-items-center gap-2">
+          <Badge bg={recordStatusVariant(row.original.status)}>
+            {row.original.status}
+          </Badge>
+          {projectionIssueIds.has(row.original.id) && (
+            <Badge bg="light" className="text-muted">
+              Not visualized
+            </Badge>
+          )}
+        </div>
+      ),
+    }),
+    findingsColumnHelper.accessor('note', {
+      header: 'Note',
+      cell: ({ row }) => (
+        <div className="fs-sm text-muted">
+          {row.original.note || '—'}
+        </div>
+      ),
+    }),
+    {
+      header: 'Actions',
+      cell: ({ row }: { row: { original: ClinicalFinding } }) => (
+        <div className="d-flex align-items-center justify-content-center gap-1">
+          {row.original.status === 'DRAFT' && actor.role === 'doctor' && (
+            <Button
+              size="sm"
+              variant="success"
+              onClick={() => onApproveFinding(row.original.id)}
+            >
+              <Icon icon="check" className="me-1" />
+              Approve
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  const table = useReactTable({
+    data: [...visit.findings],
+    columns,
+    state: { sorting, columnFilters, pagination },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    enableColumnFilters: true,
+  });
+
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const totalItems = table.getFilteredRowModel().rows.length;
+  const start = pageIndex * pageSize + 1;
+  const end = Math.min(start + pageSize - 1, totalItems);
+
+  return (
+    <Card>
+      <CardHeader className="border-light justify-content-between">
+        <h5 className="mb-0">Clinical findings</h5>
+        <div className="d-flex align-items-center gap-2">
+          <div>
+            <FormSelect
+              className="form-control"
+              value={pageSize}
+              onChange={(e) => table.setPageSize(Number(e.target.value))}
+            >
+              {[5, 10, 15, 20].map((size) => (
+                <option key={size} value={size}>
+                  {size} per page
+                </option>
+              ))}
+            </FormSelect>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardBody className="p-0">
+        <DataTable<ClinicalFinding>
+          table={table}
+          emptyMessage="No clinical findings recorded."
+        />
+      </CardBody>
+
+      {table.getRowModel().rows.length > 0 && (
+        <CardFooter className="border-0">
+          <TablePagination
+            totalItems={totalItems}
+            start={start}
+            end={end}
+            itemsName="findings"
+            showInfo
+            previousPage={table.previousPage}
+            canPreviousPage={table.getCanPreviousPage()}
+            pageCount={table.getPageCount()}
+            pageIndex={table.getState().pagination.pageIndex}
+            setPageIndex={table.setPageIndex}
+            nextPage={table.nextPage}
+            canNextPage={table.getCanNextPage()}
+          />
+        </CardFooter>
+      )}
+    </Card>
+  );
+}
+
+function TreatmentPlansTab({
   actor,
   onApproveAct,
-  onApproveFinding,
   onTransitionAct,
   projectionIssueIds,
-  toothSummaries,
   visit,
 }: {
   readonly actor: MockTreatmentActor;
   readonly onApproveAct: (id: string) => void;
-  readonly onApproveFinding: (id: string) => void;
   readonly onTransitionAct: (id: string, status: TreatmentActStatus) => void;
   readonly projectionIssueIds: ReadonlySet<string>;
-  readonly toothSummaries: readonly import('../model/treatment-workflow').TreatmentToothSummary[];
   readonly visit: TreatmentVisit;
 }) {
-  return (
-    <Row className="g-3">
-      <Col lg={6}>
-        <RecordCard
-          actor={actor}
-          empty="No clinical findings recorded."
-          kind="finding"
-          onApprove={onApproveFinding}
-          projectionIssueIds={projectionIssueIds}
-          records={visit.findings}
-          title="Clinical findings"
-        />
-      </Col>
-      <Col lg={12}>
-        <Card>
-          <CardHeader>
-            <h5 className="mb-0">Structured per-tooth summaries</h5>
-          </CardHeader>
-          <CardBody>
-            {toothSummaries.length === 0 ? (
-              <p className="text-muted mb-0">No tooth summaries available.</p>
-            ) : (
-              <div className="recordList">
-                {toothSummaries.map((summary) => (
-                  <div className="recordRow" key={summary.toothNumber}>
-                    <strong>Tooth {summary.toothNumber}</strong>
-                    <span className="text-muted">
-                      Existing: {summary.existingFindings.join(', ') || 'none'};
-                      Planned: {summary.plannedActs.join(', ') || 'none'};
-                      Completed: {summary.completedActs.join(', ') || 'none'};
-                      Record-only:{' '}
-                      {summary.recordOnlyDetails.join(', ') || 'none'}
-                    </span>
-                  </div>
-                ))}
-              </div>
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+
+  const actsColumnHelper = createColumnHelper<TreatmentAct>();
+
+  const columns = [
+    actsColumnHelper.accessor('code', {
+      header: 'Treatment Act',
+      cell: ({ row }) => {
+        const label = getTreatmentActOption(row.original.code as TreatmentActCode)?.label;
+        return (
+          <div className="fw-semibold">
+            {label ?? row.original.code}
+          </div>
+        );
+      },
+    }),
+    actsColumnHelper.accessor('target', {
+      header: 'Target',
+      cell: ({ row }) => (
+        <div className="text-muted">
+          {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
+          {row.original.target.surfaces.length > 0 && (
+            <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
+          )}
+          {row.original.target.arch && (
+            <small className="d-block">Arch: {row.original.target.arch}</small>
+          )}
+        </div>
+      ),
+    }),
+    actsColumnHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ row }) => (
+        <div className="d-flex align-items-center gap-2">
+          <Badge bg={recordStatusVariant(row.original.status)}>
+            {row.original.status}
+          </Badge>
+          {projectionIssueIds.has(row.original.id) && (
+            <Badge bg="light" className="text-muted">
+              Not visualized
+            </Badge>
+          )}
+        </div>
+      ),
+    }),
+    actsColumnHelper.accessor('note', {
+      header: 'Note',
+      cell: ({ row }) => (
+        <div className="fs-sm text-muted">
+          {row.original.note || '—'}
+        </div>
+      ),
+    }),
+    {
+      header: 'Actions',
+      cell: ({ row }: { row: { original: TreatmentAct } }) => {
+        const act = row.original;
+        return (
+          <div className="d-flex align-items-center justify-content-center gap-1">
+            {act.status === 'DRAFT' && actor.role === 'doctor' && (
+              <Button
+                size="sm"
+                variant="success"
+                onClick={() => onApproveAct(act.id)}
+              >
+                <Icon icon="check" className="me-1" />
+                Approve
+              </Button>
             )}
-          </CardBody>
-        </Card>
-      </Col>
-      <Col lg={6}>
-        <RecordCard
-          actor={actor}
-          empty="No treatment acts planned."
-          kind="act"
-          onApprove={onApproveAct}
-          onTransitionAct={onTransitionAct}
-          projectionIssueIds={projectionIssueIds}
-          records={visit.acts}
-          title="Treatment acts"
+            {act.status === 'PLANNED' && actor.role === 'doctor' && (
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={() => onTransitionAct(act.id, 'IN_PROGRESS')}
+              >
+                <Icon icon="play" className="me-1" />
+                Start
+              </Button>
+            )}
+            {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') && actor.role === 'doctor' && (
+              <>
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={() => onTransitionAct(act.id, 'COMPLETED')}
+                >
+                  <Icon icon="check-circle" className="me-1" />
+                  Done
+                </Button>
+                {act.status !== 'IN_PROGRESS' && (
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    onClick={() => onTransitionAct(act.id, 'CANCELLED')}
+                  >
+                    <Icon icon="x" className="me-1" />
+                    Cancel
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: [...visit.acts],
+    columns,
+    state: { sorting, columnFilters, pagination },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    enableColumnFilters: true,
+  });
+
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const totalItems = table.getFilteredRowModel().rows.length;
+  const start = pageIndex * pageSize + 1;
+  const end = Math.min(start + pageSize - 1, totalItems);
+
+  return (
+    <Card>
+      <CardHeader className="border-light justify-content-between">
+        <h5 className="mb-0">Treatment acts</h5>
+        <div className="d-flex align-items-center gap-2">
+          <div>
+            <FormSelect
+              className="form-control"
+              value={pageSize}
+              onChange={(e) => table.setPageSize(Number(e.target.value))}
+            >
+              {[5, 10, 15, 20].map((size) => (
+                <option key={size} value={size}>
+                  {size} per page
+                </option>
+              ))}
+            </FormSelect>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardBody className="p-0">
+        <DataTable<TreatmentAct>
+          table={table}
+          emptyMessage="No treatment acts planned."
         />
-      </Col>
-    </Row>
+      </CardBody>
+
+      {table.getRowModel().rows.length > 0 && (
+        <CardFooter className="border-0">
+          <TablePagination
+            totalItems={totalItems}
+            start={start}
+            end={end}
+            itemsName="treatment acts"
+            showInfo
+            previousPage={table.previousPage}
+            canPreviousPage={table.getCanPreviousPage()}
+            pageCount={table.getPageCount()}
+            pageIndex={table.getState().pagination.pageIndex}
+            setPageIndex={table.setPageIndex}
+            nextPage={table.nextPage}
+            canNextPage={table.getCanNextPage()}
+          />
+        </CardFooter>
+      )}
+    </Card>
   );
 }
 
-function RecordCard({
+function CurrentSessionTreatmentPlans({
   actor,
-  empty,
-  kind,
-  onApprove,
+  onApproveAct,
   onTransitionAct,
-  projectionIssueIds,
-  records,
-  title,
+  visit,
 }: {
   readonly actor: MockTreatmentActor;
-  readonly empty: string;
-  readonly kind: 'finding' | 'act';
-  readonly onApprove: (id: string) => void;
-  readonly onTransitionAct?: (id: string, status: TreatmentActStatus) => void;
-  readonly projectionIssueIds: ReadonlySet<string>;
-  readonly records: readonly (ClinicalFinding | TreatmentAct)[];
-  readonly title: string;
+  readonly onApproveAct: (id: string) => void;
+  readonly onTransitionAct: (id: string, status: TreatmentActStatus) => void;
+  readonly visit: TreatmentVisit;
 }) {
-  return (
-    <Card className={styles.recordCard}>
-      <CardHeader>
-        <h5 className="mb-0">{title}</h5>
-      </CardHeader>
-      <CardBody>
-        {records.length === 0 ? (
-          <p className="text-muted">{empty}</p>
-        ) : (
-          <div className={styles.recordList}>
-            {records.map((record) => {
-              const label =
-                kind === 'act'
-                  ? getTreatmentActOption(record.code as TreatmentActCode)
-                      ?.label
-                  : getClinicalFindingOption(record.code as ClinicalFindingCode)
-                      ?.label;
-              return (
-                <div className={styles.recordRow} key={record.id}>
-                  <div className="flex-grow-1">
-                    <div className="d-flex align-items-center flex-wrap gap-2">
-                      <span className="fw-semibold">
-                        {label ?? record.code}
-                      </span>
-                      <Badge bg={recordStatusVariant(record.status)}>
-                        {record.status}
-                      </Badge>
-                      {projectionIssueIds.has(record.id) && (
-                        <Badge bg="light" className="text-muted">
-                          Not visualized
-                        </Badge>
-                      )}
-                    </div>
-                    <small className="text-muted">
-                      {formatTarget(
-                        record.target.toothNumbers,
-                        record.target.surfaces,
-                      )}
-                    </small>
-                    {record.note && (
-                      <p className="mb-0 mt-1 fs-sm">{record.note}</p>
-                    )}
-                  </div>
-                  {record.status === 'DRAFT' && actor.role === 'doctor' && (
-                    <Button
-                      onClick={() => onApprove(record.id)}
-                      size="sm"
-                      variant="success"
-                    >
-                      Approve
-                    </Button>
-                  )}
-                  {kind === 'act' &&
-                    actor.role === 'doctor' &&
-                    onTransitionAct &&
-                    record.status !== 'DRAFT' && (
-                      <ActLifecycleButtons
-                        act={record as TreatmentAct}
-                        onTransition={onTransitionAct}
-                      />
-                    )}
-                </div>
-              );
-            })}
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 });
+
+  const actsColumnHelper = createColumnHelper<TreatmentAct>();
+
+  const currentSessionActs = useMemo(
+    () =>
+      [...visit.acts].filter(
+        (act) => act.enteredByUserId === actor.userId,
+      ),
+    [visit.acts, actor.userId],
+  );
+
+  const columns = [
+    actsColumnHelper.accessor('code', {
+      header: 'Treatment Act',
+      cell: ({ row }) => {
+        const label = getTreatmentActOption(row.original.code as TreatmentActCode)?.label;
+        return (
+          <div className="fw-semibold">
+            {label ?? row.original.code}
           </div>
-        )}
+        );
+      },
+    }),
+    actsColumnHelper.accessor('target', {
+      header: 'Target',
+      cell: ({ row }) => (
+        <div className="text-muted">
+          {formatTarget(row.original.target.toothNumbers, row.original.target.surfaces)}
+          {row.original.target.surfaces.length > 0 && (
+            <small className="d-block">{row.original.target.surfaces.join(', ')}</small>
+          )}
+          {row.original.target.arch && (
+            <small className="d-block">Arch: {row.original.target.arch}</small>
+          )}
+        </div>
+      ),
+    }),
+    actsColumnHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge bg={recordStatusVariant(row.original.status)}>
+          {row.original.status}
+        </Badge>
+      ),
+    }),
+    actsColumnHelper.accessor('note', {
+      header: 'Note',
+      cell: ({ row }) => (
+        <div className="fs-sm text-muted">
+          {row.original.note || '—'}
+        </div>
+      ),
+    }),
+    {
+      header: 'Actions',
+      cell: ({ row }: { row: { original: TreatmentAct } }) => {
+        const act = row.original;
+        return (
+          <div className="d-flex align-items-center justify-content-center gap-1">
+            {act.status === 'DRAFT' && actor.role === 'doctor' && (
+              <Button
+                size="sm"
+                variant="success"
+                onClick={() => onApproveAct(act.id)}
+              >
+                <Icon icon="check" className="me-1" />
+                Approve
+              </Button>
+            )}
+            {act.status === 'PLANNED' && actor.role === 'doctor' && (
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={() => onTransitionAct(act.id, 'IN_PROGRESS')}
+              >
+                <Icon icon="play" className="me-1" />
+                Start
+              </Button>
+            )}
+            {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') && actor.role === 'doctor' && (
+              <>
+                <Button
+                  size="sm"
+                  variant="success"
+                  onClick={() => onTransitionAct(act.id, 'COMPLETED')}
+                >
+                  <Icon icon="check-circle" className="me-1" />
+                  Done
+                </Button>
+                {act.status !== 'IN_PROGRESS' && (
+                  <Button
+                    size="sm"
+                    variant="outline-danger"
+                    onClick={() => onTransitionAct(act.id, 'CANCELLED')}
+                  >
+                    <Icon icon="x" className="me-1" />
+                    Cancel
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: currentSessionActs,
+    columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    enableSorting: true,
+  });
+
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const totalItems = table.getFilteredRowModel().rows.length;
+  const start = pageIndex * pageSize + 1;
+  const end = Math.min(start + pageSize - 1, totalItems);
+
+  return (
+    <Card>
+      <CardHeader className="border-light">
+        <div className="d-flex align-items-center justify-content-between">
+          <div>
+            <h5 className="mb-1">Current Session Treatment Plans</h5>
+            <small className="text-muted">
+              Treatment acts added during this session
+            </small>
+          </div>
+          <Badge bg="primary">{currentSessionActs.length} acts</Badge>
+        </div>
+      </CardHeader>
+      <CardBody className="p-0">
+        <DataTable<TreatmentAct>
+          table={table}
+          emptyMessage="No treatment acts added in this session yet."
+        />
       </CardBody>
+      {table.getRowModel().rows.length > 0 && (
+        <CardFooter className="border-0">
+          <TablePagination
+            totalItems={totalItems}
+            start={start}
+            end={end}
+            itemsName="treatment acts"
+            showInfo
+            previousPage={table.previousPage}
+            canPreviousPage={table.getCanPreviousPage()}
+            pageCount={table.getPageCount()}
+            pageIndex={table.getState().pagination.pageIndex}
+            setPageIndex={table.setPageIndex}
+            nextPage={table.nextPage}
+            canNextPage={table.getCanNextPage()}
+          />
+        </CardFooter>
+      )}
     </Card>
   );
 }
