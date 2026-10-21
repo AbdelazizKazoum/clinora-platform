@@ -25,6 +25,8 @@ import {
   isPartialRestoration,
   isPartialRestorationMaterial,
 } from '../model/treatment-materials';
+import { validateProsthesisActForTeeth } from '../model/treatment-prosthesis-validation';
+import { validateBridgeActForTeeth } from '../model/treatment-bridge-validation';
 import type {
   TreatmentFeedback,
   TreatmentVisitActions,
@@ -61,6 +63,15 @@ export function useTreatmentEntryForm({
   const [fillingMaterial, setFillingMaterial] = useState('COMPOSITE');
   const [restorationMaterial, setRestorationMaterial] = useState('ZIRCON');
   const [note, setNote] = useState('');
+  const [prosthesisValidationError, setProsthesisValidationError] = useState<{
+    reason: string;
+    requirement: string;
+    actLabel: string;
+  } | null>(null);
+  const [bridgeValidationError, setBridgeValidationError] = useState<{
+    reason: string;
+    requirement: string;
+  } | null>(null);
   const activeTooth = selection.activeToothPosition;
   const selectedFinding = getClinicalFindingOption(findingCode);
   const selectedAct = getTreatmentActOption(actCode);
@@ -160,18 +171,34 @@ export function useTreatmentEntryForm({
       });
     }
     if (selectedAct.target === 'bridge') {
-      if (selection.selectedToothPositions.length < 2) {
-        return showFeedback({
-          message: 'Fixed bridge requires at least two teeth. Hold Ctrl/Cmd and click to select multiple contiguous teeth.',
-          variant: 'warning',
-        });
-      }
-      const bridgeError = validateBridgeSelection(
+      const bridgeValidation = validateBridgeActForTeeth(
         selection.selectedToothPositions,
         data,
       );
-      if (bridgeError)
-        return showFeedback({ message: bridgeError, variant: 'warning' });
+      if (
+        !bridgeValidation.valid &&
+        bridgeValidation.reason &&
+        bridgeValidation.requirement
+      ) {
+        setBridgeValidationError({
+          reason: bridgeValidation.reason,
+          requirement: bridgeValidation.requirement,
+        });
+        return;
+      }
+    }
+    const prosthesisValidation = validateProsthesisActForTeeth(
+      actCode,
+      selection.selectedToothPositions,
+      data,
+    );
+    if (!prosthesisValidation.valid && prosthesisValidation.reason && prosthesisValidation.requirement) {
+      setProsthesisValidationError({
+        reason: prosthesisValidation.reason,
+        requirement: prosthesisValidation.requirement,
+        actLabel: selectedAct.label,
+      });
+      return;
     }
     if (selectedAct.target === 'arch' && selection.selectedToothPositions.length === 0) {
       return showFeedback({
@@ -256,6 +283,14 @@ export function useTreatmentEntryForm({
     }
   };
 
+  const closeProsthesisValidationError = () => {
+    setProsthesisValidationError(null);
+  };
+
+  const closeBridgeValidationError = () => {
+    setBridgeValidationError(null);
+  };
+
   const selectActCode = (code: TreatmentActCode) => {
     setActCode(code);
     setActSearch('');
@@ -303,6 +338,10 @@ export function useTreatmentEntryForm({
     selectedFinding,
     actSearch,
     surfaces,
+    prosthesisValidationError,
+    onCloseProsthesisValidationError: closeProsthesisValidationError,
+    bridgeValidationError,
+    onCloseBridgeValidationError: closeBridgeValidationError,
   };
 }
 
