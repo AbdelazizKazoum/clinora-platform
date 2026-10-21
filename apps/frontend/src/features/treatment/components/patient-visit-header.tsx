@@ -33,30 +33,36 @@ export function PatientVisitHeader({
           </div>
           <div className="flex-grow-1">
             <div className="d-flex flex-wrap align-items-center gap-2">
-              <h4 className="mb-0">{patient.name}</h4>
-              {patient.allergies.map((allergy) => (
-                <Badge
-                  key={allergy}
-                  bg="danger"
-                  className="badge-soft-danger text-danger"
-                >
-                  {allergy} allergy
-                </Badge>
-              ))}
-              {patient.alerts.map((alert) => (
-                <Badge
-                  key={alert}
-                  bg="warning"
-                  className="badge-soft-warning text-warning"
-                >
-                  {alert}
-                </Badge>
-              ))}
+              <h4 className={`${styles.patientName} mb-0`}>{patient.name}</h4>
             </div>
-            <p className="text-muted mb-0 mt-1">
+            <p className={`${styles.patientMeta} mb-0 mt-1`}>
               {patient.sex} · Born {patient.dateOfBirth} · Chair{' '}
               {visit.chairId ?? '—'} · Visit {visit.id}
             </p>
+            {(patient.allergies.length > 0 || patient.alerts.length > 0) && (
+              <div className="d-flex flex-wrap gap-2 mt-2">
+                {patient.allergies.map((allergy) => (
+                  <Badge
+                    key={allergy}
+                    bg="danger"
+                    className={`${styles.alertBadge} text-white d-flex align-items-center gap-1 px-2 py-1`}
+                  >
+                    <Icon icon="alert-circle" className="fs-6" />
+                    <span className="fw-semibold">{allergy} allergy</span>
+                  </Badge>
+                ))}
+                {patient.alerts.map((alert) => (
+                  <Badge
+                    key={alert}
+                    bg="warning"
+                    className={`${styles.alertBadge} text-dark d-flex align-items-center gap-1 px-2 py-1`}
+                  >
+                    <Icon icon="alert-triangle" className="fs-6" />
+                    <span className="fw-semibold">{alert}</span>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
           <div className="text-end">
             <Badge className="mb-2" bg={visitStatusVariant(visit.status)}>
