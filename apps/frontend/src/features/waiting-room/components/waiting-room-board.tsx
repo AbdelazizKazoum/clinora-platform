@@ -1,5 +1,4 @@
 import Icon from '@/components/wrappers/Icon';
-import { SimpleBar } from '@/components/wrappers/SimpleBar';
 import {
   DragDropContext,
   Draggable,
@@ -137,8 +136,8 @@ const WaitingRoomBoard = ({
                       )}
                     </div>
 
-                    <SimpleBar
-                      className={`kanban-board-group px-2 pb-2 ${styles.columnScroll}`}
+                    <div
+                      className={`kanban-board-group px-2 pb-2 ${styles.columnContent}`}
                     >
                       <ul
                         {...provided.droppableProps}
@@ -201,7 +200,7 @@ const WaitingRoomBoard = ({
                         )}
                         {provided.placeholder}
                       </ul>
-                    </SimpleBar>
+                    </div>
                   </section>
                 )}
               </Droppable>

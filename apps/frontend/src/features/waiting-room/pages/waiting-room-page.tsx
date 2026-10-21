@@ -26,6 +26,7 @@ import WaitingRoomSummaryCards, {
   WaitingRoomSummarySkeleton,
 } from '../components/waiting-room-summary-cards';
 import WaitingRoomToolbar from '../components/waiting-room-toolbar';
+import boardStyles from '../components/waiting-room-board.module.scss';
 import {
   useAssignWaitingRoomChair,
   useCreateWaitingRoomChair,
@@ -597,8 +598,10 @@ const WaitingRoomPage = () => {
 
           <WaitingRoomSummaryCards summary={summary} />
 
-          <div className="outlook-box kanban-app mb-3">
-            <Card className="h-100 mb-0 flex-grow-1 overflow-hidden">
+          <div
+            className={`outlook-box kanban-app mb-3 ${boardStyles.boardShell}`}
+          >
+            <Card className={`h-100 mb-0 flex-grow-1 ${boardStyles.boardCard}`}>
               <WaitingRoomToolbar
                 canManageChairs={canManageChairs}
                 canManageQueue={canManageQueue}

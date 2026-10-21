@@ -1,27 +1,51 @@
+.boardShell {
+  height: auto !important;
+  min-height: calc(100vh - var(--bs-topbar-height) - 40px - 42px - 2rem);
+}
+
+.boardCard {
+  display: flex;
+  flex-direction: column;
+  height: auto !important;
+  min-height: inherit;
+}
+
 .boardBody {
   display: flex;
   min-height: 0;
-  overflow: hidden;
+  flex: 1 0 auto;
+  overflow: visible;
 }
 
 .boardContent {
   flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: stretch;
+  overflow: visible !important;
 }
 
 .boardColumn {
   display: flex;
   flex-direction: column;
-  flex: 1 0 19rem;
-  min-height: 0;
-  min-width: 19rem !important;
-  max-width: 24rem;
+  flex: 1 1 0;
+  min-height: 100%;
+  min-width: 0 !important;
+  max-width: none;
+  width: auto !important;
 }
 
-.columnScroll {
-  flex: 1 1 auto;
-  height: auto !important;
+.columnContent {
+  flex: 0 1 auto;
   min-height: 0;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+:global(.kanban-app) .boardContent.boardContent .boardColumn {
+  min-width: 0 !important;
+  width: auto !important;
 }
 
 .emptyColumn {
@@ -286,6 +310,10 @@
 }
 
 @media (max-width: 991.98px) {
+  .boardColumn {
+    flex-basis: 50%;
+  }
+
   .toolbarHeading {
     flex-basis: 100%;
   }
@@ -301,8 +329,7 @@
 
 @media (max-width: 767.98px) {
   .boardColumn {
-    flex-basis: 17.5rem;
-    min-width: 17.5rem !important;
+    flex-basis: 100%;
   }
 
   .patientDetailsGrid {
@@ -312,9 +339,7 @@
 
 @media (max-width: 575.98px) {
   .boardColumn {
-    flex-basis: max(17.5rem, calc(100vw - 4rem));
-    max-width: calc(100vw - 3rem);
-    min-width: max(17.5rem, calc(100vw - 4rem)) !important;
+    flex-basis: 100%;
   }
 
   .toolbarTopRow :global(.btn-group) {
