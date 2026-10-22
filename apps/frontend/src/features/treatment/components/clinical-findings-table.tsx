@@ -1,23 +1,26 @@
 'use client';
 import { useMemo } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Badge, Button } from 'react-bootstrap';
-import Icon from '@/components/wrappers/Icon';
+import { Badge } from 'react-bootstrap';
 import type { ClinicalFinding, TreatmentVisit } from '../model/treatment';
 import type { MockTreatmentActor } from '../model/treatment-workspace';
 import { getClinicalFindingOption } from '../model/treatment-catalogue';
+import { canRemoveTreatmentFinding } from '../model/treatment.rules';
 import { formatTarget, recordStatusVariant } from './treatment-presentation';
 import { TreatmentRecordsTable } from './treatment-records-table';
 import { ClinicalRecordDetails } from './clinical-record-details';
+import { ClinicalFindingActions } from './clinical-finding-actions';
 
 export function ClinicalFindingsTable({
   actor,
   onApproveFinding,
+  onRemoveFinding,
   projectionIssueIds,
   visit,
 }: {
   readonly actor: MockTreatmentActor;
   readonly onApproveFinding: (id: string) => void;
+  readonly onRemoveFinding: (id: string, reason?: string) => void;
   readonly projectionIssueIds: ReadonlySet<string>;
   readonly visit: TreatmentVisit;
 }) {
@@ -82,25 +85,28 @@ export function ClinicalFindingsTable({
       {
         header: 'Actions',
         cell: ({ row }: { row: { original: ClinicalFinding } }) => (
-          <div className="d-flex align-items-center justify-content-center gap-1">
-            {row.original.status === 'DRAFT' && actor.role === 'doctor' && (
-              <Button
-                size="sm"
-                variant="success"
-                onClick={() => onApproveFinding(row.original.id)}
-              >
-                <Icon icon="check" className="me-1" />
-                Approve
-              </Button>
+          <ClinicalFindingActions
+            actor={actor}
+            finding={row.original}
+            onApprove={onApproveFinding}
+            onRemove={onRemoveFinding}
+            canRemove={canRemoveTreatmentFinding(
+              visit,
+              row.original,
+              actor.userId,
+              actor.role,
             )}
-          </div>
+          />
         ),
       },
     ],
-    [projectionIssueIds, actor.role, onApproveFinding],
+    [projectionIssueIds, actor, onApproveFinding, onRemoveFinding, visit],
   );
 
-  const data = useMemo(() => [...visit.findings], [visit.findings]);
+  const data = useMemo(
+    () => visit.findings.filter(({ status }) => status !== 'ENTERED_IN_ERROR'),
+    [visit.findings],
+  );
   return (
     <TreatmentRecordsTable
       data={data}

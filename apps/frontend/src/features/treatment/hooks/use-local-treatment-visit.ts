@@ -27,6 +27,7 @@ import {
   completeWorkspaceVisit,
   recordWorkspaceAct,
   recordWorkspaceFinding,
+  removeWorkspaceFinding,
   reviewWorkspaceDocumentation,
   startWorkspaceDocumentation,
   submitWorkspaceDocumentation,
@@ -46,6 +47,7 @@ export interface TreatmentVisitActions {
   readonly recordFinding: (input: FindingDraft) => void;
   readonly recordAct: (input: ActDraft) => void;
   readonly approveFinding: (id: string) => void;
+  readonly removeFinding: (id: string, reason?: string) => void;
   readonly approveAct: (id: string) => void;
   readonly transitionAct: (id: string, status: TreatmentActStatus) => void;
   readonly assignDocumentation: (assistantId: string) => void;
@@ -179,6 +181,11 @@ export function useLocalTreatmentVisit(
         run(
           (visit, now) => approveWorkspaceFinding(visit, actor, id, now),
           'Clinical finding confirmed.',
+        ),
+      removeFinding: (id, reason) =>
+        run(
+          (visit, now) => removeWorkspaceFinding(visit, actor, id, reason, now),
+          'Clinical finding removed from the active chart.',
         ),
       approveAct: (id) =>
         run(

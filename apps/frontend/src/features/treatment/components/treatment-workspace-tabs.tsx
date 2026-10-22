@@ -32,7 +32,8 @@ export function TreatmentWorkspaceTabs({
               'chart',
               'Odontogram & tooth details',
               'smile',
-              visit.findings.length + visit.acts.length,
+              visit.findings.filter(({ status }) => status !== 'ENTERED_IN_ERROR')
+                .length + visit.acts.length,
             ],
             [
               'periodontal',
@@ -45,7 +46,8 @@ export function TreatmentWorkspaceTabs({
               'findings',
               'Clinical findings',
               'stethoscope',
-              visit.findings.length,
+              visit.findings.filter(({ status }) => status !== 'ENTERED_IN_ERROR')
+                .length,
             ],
             [
               'treatment-plans',

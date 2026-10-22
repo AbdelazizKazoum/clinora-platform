@@ -115,6 +115,7 @@ export function TreatmentWorkspacePage({
         <ClinicalFindingsTable
           actor={actor}
           onApproveFinding={actions.approveFinding}
+          onRemoveFinding={actions.removeFinding}
           projectionIssueIds={projectionIssueIds}
           visit={visit}
         />

@@ -6,6 +6,8 @@ import {
   assignWorkspaceDocumentation,
   completeWorkspaceVisit,
   recordWorkspaceAct,
+  recordWorkspaceFinding,
+  removeWorkspaceFinding,
   reviewWorkspaceDocumentation,
   startWorkspaceDocumentation,
   submitWorkspaceDocumentation,
@@ -41,6 +43,65 @@ const fillingInput = {
 };
 
 describe('Mock Treatment workspace workflow', () => {
+  it('removes a draft finding and audits the removal', () => {
+    const assigned = assignWorkspaceDocumentation(
+      createMockTreatmentVisit(),
+      dentist,
+      assistant.userId,
+      'handoff-finding',
+      now,
+    );
+    const drafted = recordWorkspaceFinding(
+      startWorkspaceDocumentation(assigned, assistant, now),
+      assistant,
+      {
+        code: 'CALCULUS',
+        details: [],
+        id: 'finding-assistant-draft',
+        target: {
+          arch: null,
+          kind: 'TOOTH' as const,
+          periodontalSites: [],
+          surfaces: [],
+          toothNumbers: [16],
+        },
+      },
+      now,
+    );
+
+    const removed = removeWorkspaceFinding(
+      drafted,
+      assistant,
+      'finding-assistant-draft',
+      undefined,
+      now,
+    );
+
+    expect(removed.findings).toHaveLength(createMockTreatmentVisit().findings.length);
+    expect(removed.auditHistory?.at(-1)).toMatchObject({
+      action: 'FINDING_REMOVED',
+      actorUserId: assistant.userId,
+      recordId: 'finding-assistant-draft',
+    });
+  });
+
+  it('marks a confirmed finding entered in error instead of deleting it', () => {
+    const removed = removeWorkspaceFinding(
+      createMockTreatmentVisit(),
+      dentist,
+      'finding-demo-caries-16',
+      'Recorded against the wrong tooth.',
+      now,
+    );
+
+    expect(removed.findings.find(({ id }) => id === 'finding-demo-caries-16'))
+      .toMatchObject({ status: 'ENTERED_IN_ERROR' });
+    expect(removed.auditHistory?.at(-1)).toMatchObject({
+      action: 'FINDING_ENTERED_IN_ERROR',
+      reason: 'Recorded against the wrong tooth.',
+    });
+  });
+
   it('requires an active assignment before an assistant can document', () => {
     expect(() =>
       recordWorkspaceAct(

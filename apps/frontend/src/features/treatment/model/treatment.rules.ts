@@ -1,4 +1,8 @@
-import type { TreatmentLaunchContext, TreatmentVisit } from './treatment';
+import type {
+  ClinicalFinding,
+  TreatmentLaunchContext,
+  TreatmentVisit,
+} from './treatment';
 
 export type TreatmentWorkspaceRole =
   | 'admin'
@@ -21,6 +25,30 @@ export const canEditTreatmentDraft = (
     role === 'dental_assistant' &&
       handoff?.assignedToAssistantId === userId &&
       ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'].includes(handoff.status),
+  );
+};
+
+export const canRemoveTreatmentFinding = (
+  visit: TreatmentVisit,
+  finding: ClinicalFinding,
+  userId: string,
+  role: TreatmentWorkspaceRole,
+): boolean => {
+  if (visit.status === 'COMPLETED' || visit.status === 'CANCELLED') {
+    return false;
+  }
+
+  if (finding.status === 'DRAFT') {
+    return (
+      canEditTreatmentDraft(visit, userId, role) &&
+      (role === 'doctor' || finding.enteredByUserId === userId)
+    );
+  }
+
+  return (
+    finding.status === 'CONFIRMED' &&
+    role === 'doctor' &&
+    visit.responsibleDentistId === userId
   );
 };
 

@@ -82,14 +82,17 @@ export function TreatmentChartWorkspace({
             )}
             findings={visit.findings.filter(
               (finding) =>
+                finding.status !== 'ENTERED_IN_ERROR' &&
                 activeTooth !== null &&
                 finding.target.toothNumbers.includes(activeTooth),
             )}
             actor={actor}
             canDocument={canDocument}
+            visit={visit}
             selectedToothCount={selection.selectedToothPositions.length}
             onApproveAct={actions.approveAct}
             onApproveFinding={actions.approveFinding}
+            onRemoveFinding={actions.removeFinding}
             onTransitionAct={actions.transitionAct}
           />
         </Col>

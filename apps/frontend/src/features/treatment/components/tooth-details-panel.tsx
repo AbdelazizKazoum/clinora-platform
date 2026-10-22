@@ -30,6 +30,7 @@ import type {
   ClinicalFinding,
   TreatmentAct,
   TreatmentActStatus,
+  TreatmentVisit,
 } from '../model/treatment';
 import type { MockTreatmentActor } from '../model/treatment-workspace';
 import { requiresSurface } from '../model/treatment-targets';
@@ -40,6 +41,8 @@ import {
 } from './treatment-entry-fields';
 import { ActLifecycleButtons } from './treatment-act-actions';
 import { ClinicalRecordDetails } from './clinical-record-details';
+import { ClinicalFindingActions } from './clinical-finding-actions';
+import { canRemoveTreatmentFinding } from '../model/treatment.rules';
 import styles from './treatment-workspace.module.scss';
 
 export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
@@ -49,6 +52,7 @@ export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
   readonly surfaces: readonly ToothSurface[];
   readonly findings: readonly ClinicalFinding[];
   readonly acts: readonly TreatmentAct[];
+  readonly visit: TreatmentVisit;
   readonly actor: MockTreatmentActor;
   readonly note: string;
   readonly onSurfacesChange: (surfaces: readonly ToothSurface[]) => void;
@@ -56,6 +60,7 @@ export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
   readonly onAddFinding: () => void;
   readonly onAddAct: () => void;
   readonly onApproveFinding: (id: string) => void;
+  readonly onRemoveFinding: (id: string, reason?: string) => void;
   readonly onApproveAct: (id: string) => void;
   readonly onTransitionAct: (id: string, status: TreatmentActStatus) => void;
 }
@@ -266,24 +271,35 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
                 details={record.details}
               />
             </div>
-            {record.status === 'DRAFT' && props.actor.role === 'doctor' ? (
-              <Button
-                onClick={() =>
-                  isAct
-                    ? props.onApproveAct(record.id)
-                    : props.onApproveFinding(record.id)
-                }
-                size="sm"
-                variant="outline-success"
-              >
-                Approve
-              </Button>
-            ) : isAct && props.actor.role === 'doctor' ? (
-              <ActLifecycleButtons
-                act={record}
-                onTransition={props.onTransitionAct}
+            {isAct ? (
+              record.status === 'DRAFT' && props.actor.role === 'doctor' ? (
+                <Button
+                  onClick={() => props.onApproveAct(record.id)}
+                  size="sm"
+                  variant="outline-success"
+                >
+                  Approve
+                </Button>
+              ) : props.actor.role === 'doctor' ? (
+                <ActLifecycleButtons
+                  act={record}
+                  onTransition={props.onTransitionAct}
+                />
+              ) : null
+            ) : (
+              <ClinicalFindingActions
+                actor={props.actor}
+                finding={record}
+                onApprove={props.onApproveFinding}
+                onRemove={props.onRemoveFinding}
+                canRemove={canRemoveTreatmentFinding(
+                  props.visit,
+                  record,
+                  props.actor.userId,
+                  props.actor.role,
+                )}
               />
-            ) : null}
+            )}
           </div>
         );
       })}

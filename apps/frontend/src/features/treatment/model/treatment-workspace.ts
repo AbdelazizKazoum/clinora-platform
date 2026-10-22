@@ -120,6 +120,68 @@ export const approveWorkspaceFinding = (
   }, 'FINDING_CONFIRMED', dentist.userId, findingId, now);
 };
 
+export const removeWorkspaceFinding = (
+  visit: TreatmentVisit,
+  actor: MockTreatmentActor,
+  findingId: string,
+  reason: string | undefined,
+  now: Date,
+): TreatmentVisit => {
+  const finding = visit.findings.find(({ id }) => id === findingId);
+  if (!finding) {
+    throw new Error('Clinical finding was not found.');
+  }
+
+  if (finding.status === 'DRAFT') {
+    assertCanDocument(visit, actor);
+    if (
+      actor.role === 'dental_assistant' &&
+      finding.enteredByUserId !== actor.userId
+    ) {
+      throw new Error('An assistant can only remove their own draft finding.');
+    }
+
+    return withAudit(
+      {
+        ...visit,
+        findings: visit.findings.filter(({ id }) => id !== findingId),
+        updatedAt: now,
+      },
+      'FINDING_REMOVED',
+      actor.userId,
+      findingId,
+      now,
+    );
+  }
+
+  assertVisitEditable(visit);
+  assertResponsibleDentist(visit, actor);
+  const removalReason = reason?.trim();
+  if (!removalReason) {
+    throw new Error('A reason is required to remove a confirmed finding.');
+  }
+  if (finding.status !== 'CONFIRMED') {
+    throw new Error('Only draft or confirmed findings can be removed.');
+  }
+
+  return withAudit(
+    {
+      ...visit,
+      findings: visit.findings.map((candidate) =>
+        candidate.id === findingId
+          ? { ...candidate, status: 'ENTERED_IN_ERROR', updatedAt: now }
+          : candidate,
+      ),
+      updatedAt: now,
+    },
+    'FINDING_ENTERED_IN_ERROR',
+    actor.userId,
+    findingId,
+    now,
+    removalReason,
+  );
+};
+
 export const approveWorkspaceAct = (
   visit: TreatmentVisit,
   dentist: MockTreatmentActor,

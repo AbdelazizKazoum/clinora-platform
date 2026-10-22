@@ -232,6 +232,8 @@ export interface DocumentationHandoff {
 
 export type TreatmentAuditAction =
   | 'FINDING_RECORDED'
+  | 'FINDING_REMOVED'
+  | 'FINDING_ENTERED_IN_ERROR'
   | 'ACT_RECORDED'
   | 'FINDING_CONFIRMED'
   | 'ACT_APPROVED'

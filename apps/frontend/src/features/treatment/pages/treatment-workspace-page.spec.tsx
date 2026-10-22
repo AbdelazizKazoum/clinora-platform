@@ -29,6 +29,27 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  it('removes a confirmed finding after a dentist provides a reason', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Clinical findings/ }));
+
+    const cariesRow = screen.getByRole('row', { name: /Dental caries/ });
+    fireEvent.click(
+      within(cariesRow).getByRole('button', {
+        name: 'Remove CARIES finding',
+      }),
+    );
+    fireEvent.change(screen.getByLabelText('Reason'), {
+      target: { value: 'Recorded against the wrong tooth.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    expect(screen.queryByRole('row', { name: /Dental caries/ })).toBeNull();
+    expect(
+      screen.getByText('Clinical finding removed from the active chart.'),
+    ).toBeTruthy();
+  });
+
   it('records radiographic depth and displays it in the tooth record', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.change(screen.getByLabelText('Radiographic depth'), {
