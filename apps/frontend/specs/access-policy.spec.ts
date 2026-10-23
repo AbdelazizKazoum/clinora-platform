@@ -37,6 +37,26 @@ const menuItems: MenuItemType[] = [
 ];
 
 describe('frontend access policy', () => {
+  it.each(['/', '/dashboard', '/visits', '/visits/new', '/patients', '/staff'])(
+    'requires authentication for %s',
+    (path) => {
+      expect(canAccessPath(null, path)).toBe(false);
+      expect(canAccessPath(undefined, path)).toBe(false);
+    },
+  );
+
+  it.each(['/auth/split/sign-in', '/auth/split/sign-up', '/error/403'])(
+    'keeps %s accessible without a session',
+    (path) => {
+      expect(canAccessPath(null, path)).toBe(true);
+    },
+  );
+
+  it('does not treat similar route prefixes as public', () => {
+    expect(canAccessPath(null, '/auth-other')).toBe(false);
+    expect(canAccessPath(null, '/error-other')).toBe(false);
+  });
+
   it('grants admin wildcard access to staff capabilities', () => {
     expect(can('admin', 'staff:read')).toBe(true);
     expect(can('admin', 'staff:create')).toBe(true);

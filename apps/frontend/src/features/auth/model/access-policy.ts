@@ -61,6 +61,18 @@ export const canAccessPath = (
   path: string,
 ): boolean => {
   const normalizedPath = normalizePath(path);
+
+  if (
+    isPathOrChildPath(normalizedPath, '/auth') ||
+    isPathOrChildPath(normalizedPath, '/error')
+  ) {
+    return true;
+  }
+
+  if (!role) {
+    return false;
+  }
+
   const rule = routeAccessRules.find(({ matches }) => matches(normalizedPath));
 
   return rule ? can(role, rule.capability) : true;

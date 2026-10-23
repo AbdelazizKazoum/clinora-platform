@@ -30,6 +30,10 @@ export const getMiddlewareAuthRole = async (
     secret,
   })) as AuthSessionToken | null;
 
+  if (token?.authError === 'RefreshTokenError') {
+    return null;
+  }
+
   const role = token?.user?.role;
 
   return isAuthUserRole(role) ? role : null;
