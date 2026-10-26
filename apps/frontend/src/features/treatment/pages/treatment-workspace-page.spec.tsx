@@ -29,6 +29,63 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  it('retains unsent handoff text across tabs and shows the assigned text to the assistant', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    const assign = screen.getByRole('button', { name: /Assign to Yasmine/ });
+    expect(assign).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+      target: { value: '   \n  ' },
+    });
+    expect(assign).toHaveProperty('disabled', true);
+
+    const instruction =
+      'Plan an MOD composite restoration on tooth 16.\nPlan a crown on tooth 26. Neither has been performed.';
+    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+      target: { value: instruction },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /Clinical findings/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    expect(screen.getByLabelText('Doctor instructions')).toHaveProperty(
+      'value',
+      instruction,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Assign to Yasmine/ }));
+
+    expect(screen.getByText('Assigned')).toBeTruthy();
+    expect(screen.getByText('In progress')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Complete visit' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Demo actor'), {
+      target: { value: 'assistant' },
+    });
+    expect(screen.getByLabelText('Doctor instructions')).toHaveProperty(
+      'value',
+      instruction,
+    );
+    expect(screen.getByLabelText('Doctor instructions')).toHaveProperty(
+      'readOnly',
+      true,
+    );
+    expect(screen.queryByRole('button', { name: /Assign to/ })).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Start documentation' }),
+    );
+    expect(screen.getByLabelText('Doctor instructions')).toHaveProperty(
+      'value',
+      instruction,
+    );
+  });
+
+  it('does not expose a doctor instruction form to an unassigned assistant', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.change(screen.getByLabelText('Demo actor'), {
+      target: { value: 'assistant' },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    expect(screen.queryByLabelText('Doctor instructions')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Assign to/ })).toBeNull();
+  });
+
   it('removes a confirmed finding after a dentist provides a reason', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('tab', { name: /Clinical findings/ }));
@@ -263,6 +320,9 @@ describe('Treatment workspace page', () => {
   it('supports assistant drafts, dentist approval, and visit completion', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+      target: { value: 'Record the clinical findings from today for review.' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Assign to Yasmine/ }));
     fireEvent.change(screen.getByLabelText('Demo actor'), {
       target: { value: 'assistant' },

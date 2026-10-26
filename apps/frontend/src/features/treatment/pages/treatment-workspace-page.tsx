@@ -53,6 +53,7 @@ export function TreatmentWorkspacePage({
     showFeedback,
   } = useLocalTreatmentVisit(launchContext);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('chart');
+  const [handoffInstruction, setHandoffInstruction] = useState('');
   const [projectionMode, setProjectionMode] =
     useState<TreatmentProjectionMode>('combined');
   // All three projections are built together; switching mode only selects one.
@@ -143,6 +144,8 @@ export function TreatmentWorkspacePage({
           actor={actor}
           assistant={assistant}
           actions={actions}
+          instruction={handoffInstruction}
+          onInstructionChange={setHandoffInstruction}
           visit={visit}
         />
       )}

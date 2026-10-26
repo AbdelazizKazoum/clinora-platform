@@ -43,12 +43,98 @@ const fillingInput = {
 };
 
 describe('Mock Treatment workspace workflow', () => {
+  it('assigns the doctor instructions without completing the visit or creating acts', () => {
+    const visit = createMockTreatmentVisit();
+    const instruction =
+      'Plan an MOD composite restoration on tooth 16.\nPlan a crown on tooth 26.';
+    const assigned = assignWorkspaceDocumentation(
+      visit,
+      dentist,
+      assistant.userId,
+      'handoff-text',
+      `  ${instruction}  `,
+      now,
+    );
+
+    expect(assigned.documentationHandoff).toMatchObject({
+      note: instruction,
+      assignedByDentistId: dentist.userId,
+      assignedToAssistantId: assistant.userId,
+      status: 'ASSIGNED',
+    });
+    expect(assigned.status).toBe('IN_PROGRESS');
+    expect(assigned.completedAt).toBeNull();
+    expect(assigned.acts).toBe(visit.acts);
+    expect(assigned.auditHistory?.at(-1)).toMatchObject({
+      action: 'DOCUMENTATION_ASSIGNED',
+      actorUserId: dentist.userId,
+      recordId: 'handoff-text',
+    });
+    expect(() =>
+      assignWorkspaceDocumentation(
+        assigned,
+        dentist,
+        assistant.userId,
+        'replacement',
+        'Replace instructions.',
+        now,
+      ),
+    ).toThrow('Only an in-progress visit without a handoff can be assigned.');
+  });
+
+  it('rejects blank instructions and unauthorized or closed-visit assignment', () => {
+    const visit = createMockTreatmentVisit();
+    expect(() =>
+      assignWorkspaceDocumentation(
+        visit,
+        dentist,
+        assistant.userId,
+        'handoff-text',
+        '  \n  ',
+        now,
+      ),
+    ).toThrow('Enter instructions for the assistant');
+    expect(() =>
+      assignWorkspaceDocumentation(
+        visit,
+        assistant,
+        assistant.userId,
+        'handoff-text',
+        'Plan a crown.',
+        now,
+      ),
+    ).toThrow('Only the responsible dentist');
+    expect(() =>
+      assignWorkspaceDocumentation(
+        visit,
+        { ...dentist, userId: 'another-doctor' },
+        assistant.userId,
+        'handoff-text',
+        'Plan a crown.',
+        now,
+      ),
+    ).toThrow('Only the responsible dentist');
+    for (const status of ['COMPLETED', 'CANCELLED'] as const) {
+      expect(() =>
+        assignWorkspaceDocumentation(
+          { ...visit, status },
+          dentist,
+          assistant.userId,
+          'handoff-text',
+          'Plan a crown.',
+          now,
+        ),
+      ).toThrow('This visit is read-only.');
+    }
+  });
+
   it('removes a draft finding and audits the removal', () => {
     const assigned = assignWorkspaceDocumentation(
       createMockTreatmentVisit(),
       dentist,
       assistant.userId,
       'handoff-finding',
+      'Plan an occlusal composite restoration on tooth 16.',
       now,
     );
     const drafted = recordWorkspaceFinding(
@@ -119,6 +205,7 @@ describe('Mock Treatment workspace workflow', () => {
       dentist,
       assistant.userId,
       'handoff-1',
+      'Plan an occlusal composite restoration on tooth 16.',
       now,
     );
     const started = startWorkspaceDocumentation(assigned, assistant, now);
@@ -163,6 +250,7 @@ describe('Mock Treatment workspace workflow', () => {
       dentist,
       assistant.userId,
       'handoff-1',
+      'Plan an occlusal composite restoration on tooth 16.',
       now,
     );
     const started = startWorkspaceDocumentation(assigned, assistant, now);
@@ -192,6 +280,7 @@ describe('Mock Treatment workspace workflow', () => {
       dentist,
       assistant.userId,
       'handoff-1',
+      'Plan an occlusal composite restoration on tooth 16.',
       now,
     );
     const submitted = submitWorkspaceDocumentation(
@@ -250,6 +339,7 @@ describe('Mock Treatment workspace workflow', () => {
       dentist,
       assistant.userId,
       'handoff-periodontal',
+      'Plan an occlusal composite restoration on tooth 16.',
       now,
     );
     const started = startWorkspaceDocumentation(assigned, assistant, now);

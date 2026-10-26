@@ -50,7 +50,7 @@ export interface TreatmentVisitActions {
   readonly removeFinding: (id: string, reason?: string) => void;
   readonly approveAct: (id: string) => void;
   readonly transitionAct: (id: string, status: TreatmentActStatus) => void;
-  readonly assignDocumentation: (assistantId: string) => void;
+  readonly assignDocumentation: (assistantId: string, instruction: string) => void;
   readonly startDocumentation: () => void;
   readonly submitDocumentation: () => void;
   readonly reviewDocumentation: (decision: 'ACCEPT' | 'RETURN') => void;
@@ -197,11 +197,18 @@ export function useLocalTreatmentVisit(
           (visit, now) => transitionWorkspaceAct(visit, actor, id, status, now),
           treatmentActTransitionMessage(status),
         ),
-      assignDocumentation: (assistantId) => {
+      assignDocumentation: (assistantId, instruction) => {
         const id = nextId('handoff');
         run(
           (visit, now) =>
-            assignWorkspaceDocumentation(visit, actor, assistantId, id, now),
+            assignWorkspaceDocumentation(
+              visit,
+              actor,
+              assistantId,
+              id,
+              instruction,
+              now,
+            ),
           'Documentation assigned to the assistant.',
         );
       },

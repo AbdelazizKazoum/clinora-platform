@@ -292,27 +292,49 @@ export const assignWorkspaceDocumentation = (
   dentist: MockTreatmentActor,
   assistantId: string,
   handoffId: string,
+  instruction: string,
   now: Date,
 ): TreatmentVisit => {
   assertResponsibleDentist(visit, dentist);
+  assertVisitEditable(visit);
+  if (visit.status !== 'IN_PROGRESS' || visit.documentationHandoff) {
+    throw new Error(
+      'Only an in-progress visit without a handoff can be assigned.',
+    );
+  }
+  if (!assistantId.trim() || assistantId === dentist.userId) {
+    throw new Error('A different dental assistant must be assigned.');
+  }
+  const note = instruction.trim();
+  if (!note) {
+    throw new Error(
+      'Enter instructions for the assistant before assigning the handoff.',
+    );
+  }
   const handoff: DocumentationHandoff = {
     assignedAt: now,
     assignedByDentistId: dentist.userId,
     assignedToAssistantId: assistantId,
     id: handoffId,
-    note: 'Enter today’s clinical findings and proposed acts for dentist review.',
+    note,
     reviewNote: null,
     reviewedAt: null,
     revision: 1,
     status: 'ASSIGNED',
     submittedAt: null,
   };
-  return withAudit({
-    ...visit,
-    documentationHandoff: handoff,
-    status: 'IN_PROGRESS',
-    updatedAt: now,
-  }, 'DOCUMENTATION_ASSIGNED', dentist.userId, handoffId, now);
+  return withAudit(
+    {
+      ...visit,
+      documentationHandoff: handoff,
+      status: 'IN_PROGRESS',
+      updatedAt: now,
+    },
+    'DOCUMENTATION_ASSIGNED',
+    dentist.userId,
+    handoffId,
+    now,
+  );
 };
 
 export const startWorkspaceDocumentation = (
