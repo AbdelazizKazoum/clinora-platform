@@ -415,15 +415,24 @@ export const completeWorkspaceVisit = (
   if (
     visit.findings.some(({ status }) => status === 'DRAFT') ||
     visit.acts.some(
-      ({ status }) => status === 'DRAFT' || status === 'IN_PROGRESS',
+      ({ id, status }) =>
+        status === 'DRAFT' ||
+        (status === 'IN_PROGRESS' &&
+          !visit.treatmentSessions?.some(
+            (session) =>
+              session.planItemId === id &&
+              session.visitId === visit.id &&
+              session.status === 'COMPLETED',
+          )),
     ) ||
+    visit.treatmentSessions?.some(({ status }) => status === 'IN_PROGRESS') ||
     visit.periodontalExamination?.status === 'DRAFT'
   ) {
     throw new Error('Approve or resolve all draft clinical entries first.');
   }
   return withAudit(
     { ...visit, completedAt: now, status: 'COMPLETED', updatedAt: now },
-    'DOCUMENTATION_ACCEPTED',
+    'VISIT_COMPLETED',
     dentist.userId,
     null,
     now,

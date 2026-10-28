@@ -35,11 +35,11 @@ export const createMockTreatmentVisit = (
 ): TreatmentVisit => ({
   acts: [
     {
-      approvedByDentistId: MOCK_DENTIST.userId,
+      approvedByDentistId: launch?.doctorId ?? MOCK_DENTIST.userId,
       code: 'ROOT_CANAL_FILLING',
       createdAt,
       details: [],
-      enteredByUserId: MOCK_DENTIST.userId,
+      enteredByUserId: launch?.doctorId ?? MOCK_DENTIST.userId,
       id: 'act-demo-root-canal-36',
       note: 'Existing endodontic plan from today’s assessment.',
       performedByUserId: null,

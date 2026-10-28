@@ -1,0 +1,336 @@
+import {
+  createMockTreatmentVisit,
+  MOCK_ASSISTANT,
+  MOCK_DENTIST,
+} from '../mock/treatment-workspace.mock';
+import {
+  assignWorkspaceDocumentation,
+  recordWorkspaceAct,
+  reviewWorkspaceDocumentation,
+  startWorkspaceDocumentation,
+  submitWorkspaceDocumentation,
+} from './treatment-workspace';
+import {
+  assertReviewedEntries,
+  closeLocalTreatmentSession,
+  completeLocalTreatmentVisit,
+  createLocalTreatmentRecord,
+  createNextLocalTreatmentVisit,
+  getLocalTreatmentVisit,
+  selectLocalTreatmentVisit,
+  startLocalTreatmentSession,
+  transitionLocalTreatmentPlan,
+  updateLocalTreatmentVisit,
+  type LocalTreatmentRecord,
+} from './local-treatment-record';
+
+const now = new Date('2026-10-28T10:00:00Z');
+const later = new Date('2026-11-04T10:00:00Z');
+const makeRecord = () => createLocalTreatmentRecord(createMockTreatmentVisit());
+const start = (record: LocalTreatmentRecord, sessionId = 'session-1') =>
+  startLocalTreatmentSession(
+    record,
+    MOCK_DENTIST,
+    {
+      planItemId: record.planItems[0].id,
+      sessionId,
+      expectedVersion: record.planItems[0].version,
+    },
+    now,
+  );
+const close = (
+  record: LocalTreatmentRecord,
+  outcome: 'CONTINUE_LATER' | 'TREATMENT_FINISHED' = 'CONTINUE_LATER',
+) =>
+  closeLocalTreatmentSession(
+    record,
+    MOCK_DENTIST,
+    {
+      sessionId: record.sessions.at(-1)?.id ?? '',
+      outcome,
+      note: 'Today’s work recorded. Further treatment discussed.',
+      expectedVersion: 1,
+    },
+    now,
+  );
+
+describe('Local treatment continuation', () => {
+  it('continues the same plan across visits without rewriting earlier visits or sessions', () => {
+    const started = start(makeRecord());
+    expect(() =>
+      completeLocalTreatmentVisit(started, MOCK_DENTIST, now),
+    ).toThrow('Close today');
+    const closed = close(started);
+    const completed = completeLocalTreatmentVisit(closed, MOCK_DENTIST, now);
+    expect(completed.planItems[0].status).toBe('IN_PROGRESS');
+    const originalVisit = completed.visits[0];
+    const originalSession = completed.sessions[0];
+    const next = createNextLocalTreatmentVisit(
+      completed,
+      MOCK_DENTIST,
+      'visit-2',
+      later,
+    );
+    expect(getLocalTreatmentVisit(next).acts).toHaveLength(0);
+    const continued = startLocalTreatmentSession(
+      next,
+      MOCK_DENTIST,
+      {
+        planItemId: next.planItems[0].id,
+        sessionId: 'session-2',
+        expectedVersion: next.planItems[0].version,
+      },
+      later,
+    );
+    const finished = closeLocalTreatmentSession(
+      continued,
+      MOCK_DENTIST,
+      {
+        sessionId: 'session-2',
+        outcome: 'TREATMENT_FINISHED',
+        note: 'Treatment finished during this visit.',
+        expectedVersion: 1,
+      },
+      later,
+    );
+
+    expect(finished.planItems).toHaveLength(1);
+    expect(finished.planItems[0]).toMatchObject({
+      status: 'COMPLETED',
+      originVisitId: 'visit-demo',
+      originHandoffId: null,
+    });
+    expect(finished.sessions.map(({ planItemId }) => planItemId)).toEqual([
+      finished.planItems[0].id,
+      finished.planItems[0].id,
+    ]);
+    expect(finished.visits[0]).toBe(originalVisit);
+    expect(finished.sessions[0]).toBe(originalSession);
+    expect(finished.visits[0].acts[0].status).toBe('IN_PROGRESS');
+    expect(finished.sessions[0].planSnapshot.status).toBe('PLANNED');
+    expect(finished.sessions[1].planSnapshot.status).toBe('IN_PROGRESS');
+    expect(
+      completeLocalTreatmentVisit(finished, MOCK_DENTIST, later).visits[1]
+        .status,
+    ).toBe('COMPLETED');
+  });
+
+  it('keeps several plan sessions independent within one visit', () => {
+    const record = makeRecord();
+    const another = { ...record.planItems[0], id: 'another-plan' };
+    const withPlans = { ...record, planItems: [...record.planItems, another] };
+    const first = start(withPlans);
+    const second = startLocalTreatmentSession(
+      first,
+      MOCK_DENTIST,
+      {
+        planItemId: another.id,
+        sessionId: 'session-2',
+        expectedVersion: another.version,
+      },
+      now,
+    );
+    const closed = close(second, 'TREATMENT_FINISHED');
+    expect(closed.planItems.map(({ status }) => status)).toEqual([
+      'IN_PROGRESS',
+      'COMPLETED',
+    ]);
+    expect(() =>
+      completeLocalTreatmentVisit(closed, MOCK_DENTIST, now),
+    ).toThrow('Close today');
+  });
+
+  it('rejects drafts, foreign scope, unauthorized clinicians, stale versions, and duplicate open sessions', () => {
+    const record = makeRecord();
+    const input = {
+      planItemId: record.planItems[0].id,
+      sessionId: 'session-1',
+      expectedVersion: 1,
+    };
+    expect(() =>
+      startLocalTreatmentSession(record, MOCK_ASSISTANT, input, now),
+    ).toThrow('responsible dentist');
+    expect(() =>
+      startLocalTreatmentSession(
+        record,
+        { ...MOCK_DENTIST, userId: 'another-doctor' },
+        input,
+        now,
+      ),
+    ).toThrow('responsible dentist');
+    expect(() =>
+      startLocalTreatmentSession(
+        record,
+        MOCK_DENTIST,
+        { ...input, expectedVersion: 0 },
+        now,
+      ),
+    ).toThrow('changed');
+    for (const status of [
+      'DRAFT',
+      'CANCELLED',
+      'COMPLETED',
+      'ENTERED_IN_ERROR',
+    ] as const) {
+      expect(() =>
+        start({ ...record, planItems: [{ ...record.planItems[0], status }] }),
+      ).toThrow('approved, active');
+    }
+    for (const scope of [
+      { clinicId: 'another-clinic' },
+      { patientId: 'another-patient' },
+    ]) {
+      expect(() =>
+        start({ ...record, planItems: [{ ...record.planItems[0], ...scope }] }),
+      ).toThrow('patient and clinic');
+    }
+    const started = start(record);
+    expect(startLocalTreatmentSession(started, MOCK_DENTIST, input, now)).toBe(
+      started,
+    );
+    expect(() => start(started, 'duplicate-session')).toThrow(
+      'Close the previous',
+    );
+    expect(() => start(close(started), 'duplicate-session')).toThrow(
+      'already has a session',
+    );
+  });
+
+  it('requires closure notes and prevents correction of finalized history', () => {
+    const started = start(makeRecord());
+    const input = {
+      sessionId: 'session-1',
+      outcome: 'CONTINUE_LATER' as const,
+      note: ' ',
+      expectedVersion: 1,
+    };
+    expect(() =>
+      closeLocalTreatmentSession(started, MOCK_DENTIST, input, now),
+    ).toThrow('Describe today');
+    expect(() =>
+      closeLocalTreatmentSession(
+        started,
+        MOCK_DENTIST,
+        { ...input, note: 'Work recorded.', expectedVersion: 0 },
+        now,
+      ),
+    ).toThrow('changed');
+    const closed = close(started);
+    expect(close(closed)).toBe(closed);
+    const completed = completeLocalTreatmentVisit(closed, MOCK_DENTIST, now);
+    expect(() =>
+      updateLocalTreatmentVisit(completed, (visit) => ({
+        ...visit,
+        findings: [],
+      })),
+    ).toThrow('read-only');
+    expect(() => start(completed, 'session-2')).toThrow('read-only');
+    const next = createNextLocalTreatmentVisit(
+      completed,
+      MOCK_DENTIST,
+      'visit-2',
+      later,
+    );
+    expect(() =>
+      closeLocalTreatmentSession(
+        next,
+        MOCK_DENTIST,
+        { ...input, note: 'Change previous session.' },
+        later,
+      ),
+    ).toThrow('not found in this visit');
+    const historical = selectLocalTreatmentVisit(
+      next,
+      completed.currentVisitId,
+    );
+    expect(getLocalTreatmentVisit(historical)).toBe(completed.visits[0]);
+    expect(() =>
+      createNextLocalTreatmentVisit(historical, MOCK_DENTIST, 'visit-3', later),
+    ).toThrow('Complete the open visit');
+  });
+
+  it('retains handoff origins and blocks finalization until drafts and handoff review are resolved', () => {
+    const assigned = updateLocalTreatmentVisit(makeRecord(), (visit) =>
+      assignWorkspaceDocumentation(
+        visit,
+        MOCK_DENTIST,
+        MOCK_ASSISTANT.userId,
+        'handoff-1',
+        'Plan the requested treatment.',
+        now,
+      ),
+    );
+    const started = updateLocalTreatmentVisit(assigned, (visit) =>
+      startWorkspaceDocumentation(visit, MOCK_ASSISTANT, now),
+    );
+    const drafted = updateLocalTreatmentVisit(started, (visit) =>
+      recordWorkspaceAct(
+        visit,
+        MOCK_ASSISTANT,
+        {
+          id: 'assistant-plan',
+          code: 'ROOT_CANAL_FILLING',
+          details: [],
+          target: { ...visit.acts[0].target, kind: 'TOOTH' },
+        },
+        now,
+      ),
+    );
+    expect(drafted.planItems[1]).toMatchObject({
+      source: 'ASSISTANT_HANDOFF',
+      originHandoffId: 'handoff-1',
+      status: 'DRAFT',
+    });
+    expect(() =>
+      assertReviewedEntries(getLocalTreatmentVisit(drafted)),
+    ).toThrow('draft clinical');
+    expect(() =>
+      completeLocalTreatmentVisit(assigned, MOCK_DENTIST, now),
+    ).toThrow('handoff');
+    const submitted = updateLocalTreatmentVisit(started, (visit) =>
+      submitWorkspaceDocumentation(visit, MOCK_ASSISTANT, now),
+    );
+    const accepted = updateLocalTreatmentVisit(submitted, (visit) =>
+      reviewWorkspaceDocumentation(visit, MOCK_DENTIST, 'ACCEPT', now),
+    );
+    expect(
+      completeLocalTreatmentVisit(accepted, MOCK_DENTIST, now).visits[0].status,
+    ).toBe('COMPLETED');
+  });
+
+  it('requires a correction reason and never cancels an open session implicitly', () => {
+    const record = makeRecord();
+    expect(() =>
+      transitionLocalTreatmentPlan(
+        record,
+        MOCK_DENTIST,
+        record.planItems[0].id,
+        'CANCELLED',
+        '',
+        now,
+      ),
+    ).toThrow('reason');
+    expect(() =>
+      transitionLocalTreatmentPlan(
+        start(record),
+        MOCK_DENTIST,
+        record.planItems[0].id,
+        'CANCELLED',
+        'Treatment declined.',
+        now,
+      ),
+    ).toThrow('Close the treatment session');
+    const cancelled = transitionLocalTreatmentPlan(
+      record,
+      MOCK_DENTIST,
+      record.planItems[0].id,
+      'CANCELLED',
+      'Treatment declined.',
+      now,
+    );
+    expect(cancelled.planItems[0].status).toBe('CANCELLED');
+    expect(cancelled.visits[0].auditHistory?.at(-1)?.reason).toBe(
+      'Treatment declined.',
+    );
+  });
+});

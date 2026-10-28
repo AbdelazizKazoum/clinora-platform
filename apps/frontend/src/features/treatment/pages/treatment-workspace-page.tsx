@@ -11,7 +11,8 @@ import {
 } from '../components/treatment-workspace-tabs';
 import { TreatmentChartWorkspace } from '../components/treatment-chart-workspace';
 import { ClinicalFindingsTable } from '../components/clinical-findings-table';
-import { TreatmentActsTable } from '../components/treatment-acts-table';
+import { TreatmentPlansWorkspace } from '../components/treatment-plans-workspace';
+import { TreatmentVisitNavigation } from '../components/treatment-visit-navigation';
 import { DocumentationHandoffPanel } from '../components/documentation-handoff-panel';
 import { useLocalTreatmentVisit } from '../hooks/use-local-treatment-visit';
 import { useTreatmentEntryForm } from '../hooks/use-treatment-entry-form';
@@ -41,8 +42,22 @@ export interface TreatmentWorkspacePageProps {
 export function TreatmentWorkspacePage({
   launchContext,
 }: TreatmentWorkspacePageProps) {
+  const workspace = useLocalTreatmentVisit(launchContext);
+  return (
+    <TreatmentVisitWorkspace key={workspace.visit.id} workspace={workspace} />
+  );
+}
+
+function TreatmentVisitWorkspace({
+  workspace,
+}: {
+  readonly workspace: ReturnType<typeof useLocalTreatmentVisit>;
+}) {
   const {
     visit,
+    visits,
+    planItems,
+    sessions,
     actor,
     setActor,
     dentist,
@@ -51,7 +66,7 @@ export function TreatmentWorkspacePage({
     actions,
     feedback,
     showFeedback,
-  } = useLocalTreatmentVisit(launchContext);
+  } = workspace;
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('chart');
   const [handoffInstruction, setHandoffInstruction] = useState('');
   const [projectionMode, setProjectionMode] =
@@ -84,6 +99,12 @@ export function TreatmentWorkspacePage({
         patient={patient}
         onActorChange={setActor}
         visit={visit}
+      />
+      <TreatmentVisitNavigation
+        visit={visit}
+        visits={visits}
+        actor={actor}
+        actions={actions}
       />
       {feedback && (
         <Alert
@@ -122,10 +143,11 @@ export function TreatmentWorkspacePage({
         />
       )}
       {activeTab === 'treatment-plans' && (
-        <TreatmentActsTable
+        <TreatmentPlansWorkspace
           actor={actor}
-          onApproveAct={actions.approveAct}
-          onTransitionAct={actions.transitionAct}
+          actions={actions}
+          planItems={planItems}
+          sessions={sessions}
           projectionIssueIds={projectionIssueIds}
           visit={visit}
         />

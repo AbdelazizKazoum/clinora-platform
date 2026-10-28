@@ -13,6 +13,7 @@ import type {
   TreatmentActStatus,
   TreatmentLaunchContext,
   TreatmentVisit,
+  TreatmentSessionOutcome,
 } from '../model/treatment';
 import {
   createTreatmentActInput,
@@ -24,17 +25,29 @@ import {
   approveWorkspaceFinding,
   approveWorkspacePeriodontalExamination,
   assignWorkspaceDocumentation,
-  completeWorkspaceVisit,
   recordWorkspaceAct,
   recordWorkspaceFinding,
   removeWorkspaceFinding,
   reviewWorkspaceDocumentation,
   startWorkspaceDocumentation,
   submitWorkspaceDocumentation,
-  transitionWorkspaceAct,
   updateWorkspacePeriodontalExamination,
   type PeriodontalExaminationUpdater,
 } from '../model/treatment-workspace';
+
+import {
+  assertReviewedEntries,
+  closeLocalTreatmentSession,
+  completeLocalTreatmentVisit,
+  createLocalTreatmentRecord,
+  createNextLocalTreatmentVisit,
+  getLocalTreatmentVisit,
+  selectLocalTreatmentVisit,
+  startLocalTreatmentSession,
+  transitionLocalTreatmentPlan,
+  updateLocalTreatmentVisit,
+  type LocalTreatmentRecord,
+} from '../model/local-treatment-record';
 
 type FindingDraft = Omit<TreatmentInputDraft, 'id' | 'code'> & {
   readonly code: ClinicalFindingCode;
@@ -49,8 +62,22 @@ export interface TreatmentVisitActions {
   readonly approveFinding: (id: string) => void;
   readonly removeFinding: (id: string, reason?: string) => void;
   readonly approveAct: (id: string) => void;
-  readonly transitionAct: (id: string, status: TreatmentActStatus) => void;
-  readonly assignDocumentation: (assistantId: string, instruction: string) => void;
+  readonly transitionAct: (
+    id: string,
+    status: TreatmentActStatus,
+    reason?: string,
+  ) => void;
+  readonly closeSession: (
+    id: string,
+    outcome: TreatmentSessionOutcome,
+    note: string,
+  ) => void;
+  readonly selectVisit: (id: string) => void;
+  readonly createNextVisit: () => void;
+  readonly assignDocumentation: (
+    assistantId: string,
+    instruction: string,
+  ) => void;
   readonly startDocumentation: () => void;
   readonly submitDocumentation: () => void;
   readonly reviewDocumentation: (decision: 'ACCEPT' | 'RETURN') => void;
@@ -66,14 +93,14 @@ export interface TreatmentFeedback {
   readonly variant: 'success' | 'warning' | 'danger' | 'info';
 }
 interface VisitState {
-  readonly visit: TreatmentVisit;
+  readonly data: LocalTreatmentRecord;
   readonly feedback: TreatmentFeedback | null;
 }
 type VisitAction =
   | { readonly type: 'feedback'; readonly feedback: TreatmentFeedback | null }
   | {
       readonly type: 'update';
-      readonly update: (visit: TreatmentVisit) => TreatmentVisit;
+      readonly update: (data: LocalTreatmentRecord) => LocalTreatmentRecord;
       readonly message: string;
     };
 
@@ -84,7 +111,7 @@ function reduceVisit(state: VisitState, action: VisitAction): VisitState {
     return { ...state, feedback: action.feedback };
   try {
     return {
-      visit: action.update(state.visit),
+      data: action.update(state.data),
       feedback: { message: action.message, variant: 'success' },
     };
   } catch (error) {
@@ -117,13 +144,15 @@ export function useLocalTreatmentVisit(
     reduceVisit,
     launchContext,
     (context): VisitState => ({
-      visit: createMockTreatmentVisit({
-        appointmentId: context?.appointmentId ?? undefined,
-        chairId: context?.chairId ?? undefined,
-        doctorId: context?.doctorId ?? undefined,
-        patientId: context?.patientId ?? undefined,
-        queueEntryId: context?.queueEntryId ?? undefined,
-      }),
+      data: createLocalTreatmentRecord(
+        createMockTreatmentVisit({
+          appointmentId: context?.appointmentId ?? undefined,
+          chairId: context?.chairId ?? undefined,
+          doctorId: context?.doctorId ?? undefined,
+          patientId: context?.patientId ?? undefined,
+          queueEntryId: context?.queueEntryId ?? undefined,
+        }),
+      ),
       feedback: null,
     }),
   );
@@ -135,18 +164,56 @@ export function useLocalTreatmentVisit(
   );
   const actions = useMemo<TreatmentVisitActions>(() => {
     const nextId = (prefix: string) => `${prefix}-mock-${idCounter.current++}`;
-    const run = (
-      update: (visit: TreatmentVisit, now: Date) => TreatmentVisit,
+    const runRecord = (
+      update: (data: LocalTreatmentRecord, now: Date) => LocalTreatmentRecord,
       message: string,
     ) => {
       const now = new Date();
       dispatch({
         type: 'update',
-        update: (visit) => update(visit, now),
+        update: (data) => update(data, now),
         message,
       });
     };
+    const run = (
+      update: (visit: TreatmentVisit, now: Date) => TreatmentVisit,
+      message: string,
+    ) =>
+      runRecord(
+        (data, now) =>
+          updateLocalTreatmentVisit(data, (visit) => update(visit, now)),
+        message,
+      );
     return {
+      selectVisit: (id) =>
+        runRecord(
+          (data) => selectLocalTreatmentVisit(data, id),
+          'Visit opened.',
+        ),
+      createNextVisit: () => {
+        const id = nextId('visit');
+        runRecord(
+          (data, now) => createNextLocalTreatmentVisit(data, actor, id, now),
+          'New visit started. Select an existing plan to continue treatment.',
+        );
+      },
+      closeSession: (id, outcome, note) => {
+        const expectedVersion =
+          state.data.sessions.find((session) => session.id === id)?.version ??
+          -1;
+        runRecord(
+          (data, now) =>
+            closeLocalTreatmentSession(
+              data,
+              actor,
+              { sessionId: id, outcome, note, expectedVersion },
+              now,
+            ),
+          outcome === 'CONTINUE_LATER'
+            ? 'Session closed. Treatment remains active for a later visit.'
+            : 'Treatment act completed and updated on the odontogram.',
+        );
+      },
       recordFinding: (input) => {
         const id = nextId('finding');
         run(
@@ -192,11 +259,36 @@ export function useLocalTreatmentVisit(
           (visit, now) => approveWorkspaceAct(visit, actor, id, now),
           'Treatment act approved.',
         ),
-      transitionAct: (id, status) =>
-        run(
-          (visit, now) => transitionWorkspaceAct(visit, actor, id, status, now),
-          treatmentActTransitionMessage(status),
-        ),
+      transitionAct: (id, status, reason) => {
+        if (status === 'IN_PROGRESS') {
+          const sessionId = nextId('session');
+          const expectedVersion =
+            state.data.planItems.find((plan) => plan.id === id)?.version ?? -1;
+          runRecord(
+            (data, now) =>
+              startLocalTreatmentSession(
+                data,
+                actor,
+                { planItemId: id, sessionId, expectedVersion },
+                now,
+              ),
+            'Treatment session started.',
+          );
+        } else {
+          runRecord((data, now) => {
+            if (status !== 'CANCELLED' && status !== 'ENTERED_IN_ERROR')
+              throw new Error('Use session closure to finish treatment.');
+            return transitionLocalTreatmentPlan(
+              data,
+              actor,
+              id,
+              status,
+              reason ?? '',
+              now,
+            );
+          }, 'Treatment plan updated.');
+        }
+      },
       assignDocumentation: (assistantId, instruction) => {
         const id = nextId('handoff');
         run(
@@ -224,15 +316,17 @@ export function useLocalTreatmentVisit(
         ),
       reviewDocumentation: (decision) =>
         run(
-          (visit, now) =>
-            reviewWorkspaceDocumentation(visit, actor, decision, now),
+          (visit, now) => {
+            if (decision === 'ACCEPT') assertReviewedEntries(visit);
+            return reviewWorkspaceDocumentation(visit, actor, decision, now);
+          },
           decision === 'ACCEPT'
             ? 'Assistant documentation accepted.'
             : 'Documentation returned for correction.',
         ),
       completeVisit: () =>
-        run(
-          (visit, now) => completeWorkspaceVisit(visit, actor, now),
+        runRecord(
+          (data, now) => completeLocalTreatmentVisit(data, actor, now),
           'Visit completed and locked.',
         ),
       updatePeriodontalExamination: (update) =>
@@ -248,24 +342,28 @@ export function useLocalTreatmentVisit(
           'Periodontal examination confirmed.',
         ),
     };
-  }, [actor]);
+  }, [actor, state.data.planItems, state.data.sessions]);
+  const visit = useMemo(
+    () => ({
+      ...getLocalTreatmentVisit(state.data),
+      treatmentSessions: state.data.sessions.filter(
+        ({ visitId }) => visitId === state.data.currentVisitId,
+      ),
+    }),
+    [state.data],
+  );
   return {
-    ...state,
+    visit,
+    visits: state.data.visits,
+    planItems: state.data.planItems,
+    sessions: state.data.sessions,
+    feedback: state.feedback,
     actor,
     setActor,
     dentist,
     assistant: MOCK_ASSISTANT,
-    patient: MOCK_TREATMENT_PATIENT,
+    patient: { ...MOCK_TREATMENT_PATIENT, id: visit.patientId },
     actions,
     showFeedback,
   };
 }
-
-const treatmentActTransitionMessage = (status: TreatmentActStatus) =>
-  status === 'IN_PROGRESS'
-    ? 'Treatment act started.'
-    : status === 'COMPLETED'
-      ? 'Treatment act completed and updated on the odontogram.'
-      : status === 'CANCELLED'
-        ? 'Treatment act cancelled and removed from the projection.'
-        : 'Treatment act updated.';

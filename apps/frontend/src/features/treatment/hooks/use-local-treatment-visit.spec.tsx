@@ -20,6 +20,93 @@ const crown = {
 };
 
 describe('Local treatment visit', () => {
+  it('keeps SQL-shaped identities and assistant handoff origins across visits', () => {
+    const { result } = renderHook(() => useLocalTreatmentVisit(), {
+      wrapper: strictWrapper,
+    });
+    const planId = result.current.planItems[0].id;
+    act(() => result.current.actions.transitionAct(planId, 'IN_PROGRESS'));
+    const sessionId = result.current.sessions[0].id;
+    act(() =>
+      result.current.actions.closeSession(
+        sessionId,
+        'CONTINUE_LATER',
+        'Further treatment required.',
+      ),
+    );
+    act(() => result.current.actions.completeVisit());
+    const originalVisit = result.current.visits[0];
+    act(() => result.current.actions.createNextVisit());
+    const newVisitId = result.current.visit.id;
+    act(() => result.current.actions.transitionAct(planId, 'IN_PROGRESS'));
+    act(() =>
+      result.current.actions.closeSession(
+        result.current.sessions[1].id,
+        'TREATMENT_FINISHED',
+        'Remaining work completed.',
+      ),
+    );
+    expect(result.current.planItems).toHaveLength(1);
+    expect(result.current.sessions.map(({ planItemId }) => planItemId)).toEqual(
+      [planId, planId],
+    );
+    expect(result.current.visits[0]).toBe(originalVisit);
+    act(() =>
+      result.current.actions.assignDocumentation(
+        result.current.assistant.userId,
+        'Enter the additional crown plan.',
+      ),
+    );
+    const handoffId = result.current.visit.documentationHandoff?.id;
+    act(() => result.current.setActor(result.current.assistant));
+    act(() => result.current.actions.startDocumentation());
+    act(() => result.current.actions.recordAct(crown));
+    expect(result.current.planItems[1]).toMatchObject({
+      originVisitId: newVisitId,
+      originHandoffId: handoffId,
+      source: 'ASSISTANT_HANDOFF',
+      status: 'DRAFT',
+    });
+    act(() => result.current.actions.submitDocumentation());
+    act(() => result.current.setActor(result.current.dentist));
+    act(() => result.current.actions.reviewDocumentation('ACCEPT'));
+    expect(result.current.feedback?.variant).toBe('danger');
+    expect(result.current.visit.documentationHandoff?.status).toBe('SUBMITTED');
+    act(() =>
+      result.current.actions.approveAct(result.current.planItems[1].id),
+    );
+    act(() => result.current.actions.reviewDocumentation('ACCEPT'));
+    act(() => result.current.actions.completeVisit());
+    expect(result.current.visit.status).toBe('COMPLETED');
+  });
+
+  it('keeps plan creation scoped to a launched patient and dentist', () => {
+    const { result } = renderHook(() =>
+      useLocalTreatmentVisit({
+        patientId: 'patient-2',
+        doctorId: 'doctor-2',
+        appointmentId: null,
+        chairId: null,
+        queueEntryId: null,
+      }),
+    );
+    expect(result.current.planItems[0]).toMatchObject({
+      patientId: 'patient-2',
+      source: 'DOCTOR_DIRECT',
+      originHandoffId: null,
+    });
+    act(() =>
+      result.current.actions.transitionAct(
+        result.current.planItems[0].id,
+        'IN_PROGRESS',
+      ),
+    );
+    expect(result.current.sessions[0]).toMatchObject({
+      patientId: 'patient-2',
+      performedByUserId: 'doctor-2',
+    });
+  });
+
   it('retains queued writes and unique IDs when React replays updates', () => {
     const { result } = renderHook(() => useLocalTreatmentVisit(), {
       wrapper: strictWrapper,

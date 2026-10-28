@@ -65,6 +65,7 @@ export function TreatmentChartWorkspace({
             currentSession
             onApproveAct={actions.approveAct}
             onTransitionAct={actions.transitionAct}
+            onCloseSession={actions.closeSession}
           />
         </Col>
         <Col className={styles.detailsColumn}>
@@ -94,6 +95,7 @@ export function TreatmentChartWorkspace({
             onApproveFinding={actions.approveFinding}
             onRemoveFinding={actions.removeFinding}
             onTransitionAct={actions.transitionAct}
+            onCloseSession={actions.closeSession}
           />
         </Col>
       </Row>

@@ -1,6 +1,9 @@
 # Treatment handoff and longitudinal treatment plans
 
-Status: frontend and backend design requirements; implementation not started
+Status: original design requirements. Local frontend handoff and continuation
+are implemented; backend persistence and API integration remain pending. See
+[Treatment continuation across visits](./treatment-continuation-across-visits.md)
+for the refined status model and current implementation scope.
 
 ## Purpose
 
@@ -18,7 +21,7 @@ This document defines the treatment workflow where:
 
 The handoff is for the full visit. It is not a one-act assignment.
 
-## Current implementation assessment
+## Original implementation assessment (before local continuation)
 
 The current Treatment foundation supports the first part of this workflow:
 

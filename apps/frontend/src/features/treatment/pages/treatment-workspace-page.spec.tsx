@@ -197,9 +197,18 @@ describe('Treatment workspace page', () => {
 
     fireEvent.click(
       within(screen.getByRole('row', { name: /Crown/ })).getByRole('button', {
-        name: 'Done',
+        name: 'Start',
       }),
     );
+    fireEvent.click(
+      within(screen.getByRole('row', { name: /Crown/ })).getByRole('button', {
+        name: 'Close session',
+      }),
+    );
+    fireEvent.change(screen.getByLabelText('Session notes'), {
+      target: { value: 'Crown treatment completed in this visit.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Finish treatment' }));
 
     expect(screen.getByTestId('odontogram-projection').textContent).toContain(
       '"appearance":"existing","kind":"restoration"',
@@ -209,6 +218,69 @@ describe('Treatment workspace page', () => {
         'Treatment act completed and updated on the odontogram.',
       ),
     ).toBeTruthy();
+  });
+
+  it('continues an existing plan in a new visit and keeps the earlier visit read-only', async () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+    fireEvent.click(
+      within(screen.getByRole('row', { name: /Root canal filling/ })).getByRole(
+        'button',
+        { name: 'Start' },
+      ),
+    );
+    fireEvent.click(
+      within(screen.getByRole('row', { name: /Root canal filling/ })).getByRole(
+        'button',
+        { name: 'Close session' },
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Continue later' }),
+    ).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText('Session notes'), {
+      target: { value: 'Initial work recorded. Further treatment required.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue later' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      within(screen.getByRole('row', { name: /Root canal filling/ })).getByText(
+        'IN_PROGRESS',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Complete visit' }));
+    expect(screen.getByText('Completed')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'New visit' }));
+    expect(screen.getByLabelText('Clinical note')).toHaveProperty('value', '');
+    fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+    expect(
+      screen.getAllByRole('row', { name: /Root canal filling/ }),
+    ).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Continue in this visit' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Close session' }));
+    fireEvent.change(screen.getByLabelText('Session notes'), {
+      target: { value: 'Remaining treatment completed.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Finish treatment' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      within(screen.getByRole('row', { name: /Root canal filling/ })).getByText(
+        'COMPLETED',
+      ),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Visit'), {
+      target: { value: 'visit-demo' },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+    const historical = screen.getByRole('row', { name: /Root canal filling/ });
+    expect(within(historical).getByText('IN_PROGRESS')).toBeTruthy();
+    expect(within(historical).queryByRole('button')).toBeNull();
+    expect(screen.getByRole('button', { name: 'New visit' })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 
   it('reports an unavailable prosthesis subtype for a natural tooth', () => {

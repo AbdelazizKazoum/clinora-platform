@@ -5,6 +5,7 @@ import { Badge } from 'react-bootstrap';
 import type {
   TreatmentAct,
   TreatmentActStatus,
+  TreatmentSessionOutcome,
   TreatmentVisit,
 } from '../model/treatment';
 import type { MockTreatmentActor } from '../model/treatment-workspace';
@@ -18,13 +19,23 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
   actor,
   onApproveAct,
   onTransitionAct,
+  onCloseSession,
   projectionIssueIds,
   visit,
   currentSession = false,
 }: {
   readonly actor: MockTreatmentActor;
   readonly onApproveAct: (id: string) => void;
-  readonly onTransitionAct: (id: string, status: TreatmentActStatus) => void;
+  readonly onTransitionAct: (
+    id: string,
+    status: TreatmentActStatus,
+    reason?: string,
+  ) => void;
+  readonly onCloseSession: (
+    id: string,
+    outcome: TreatmentSessionOutcome,
+    note: string,
+  ) => void;
   readonly projectionIssueIds?: ReadonlySet<string>;
   readonly visit: TreatmentVisit;
   readonly currentSession?: boolean;
@@ -99,30 +110,48 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
             <TreatmentActActions
               act={row.original}
               actor={actor}
+              visit={visit}
               onApprove={onApproveAct}
               onTransition={onTransitionAct}
+              onCloseSession={onCloseSession}
             />
           );
         },
       },
     ],
-    [projectionIssueIds, actor, onApproveAct, onTransitionAct],
+    [
+      projectionIssueIds,
+      actor,
+      onApproveAct,
+      onTransitionAct,
+      onCloseSession,
+      visit,
+    ],
   );
 
   const data = useMemo(
     () =>
       currentSession
-        ? visit.acts.filter((act) => act.enteredByUserId === actor.userId)
+        ? visit.acts.filter(
+            (act) =>
+              act.status !== 'COMPLETED' ||
+              visit.treatmentSessions?.some(
+                (session) =>
+                  session.planItemId === act.id && session.visitId === visit.id,
+              ),
+          )
         : [...visit.acts],
-    [visit.acts, actor.userId, currentSession],
+    [visit.acts, visit.treatmentSessions, visit.id, currentSession],
   );
   return (
     <TreatmentRecordsTable
       data={data}
       columns={columns}
-      title={currentSession ? 'Current Session' : 'Treatment acts'}
+      title={currentSession ? 'Current visit treatment acts' : 'Treatment acts'}
       description={
-        currentSession ? 'Treatment acts added during this session' : undefined
+        currentSession
+          ? 'Plans and treatment sessions associated with this visit'
+          : undefined
       }
       headerAside={
         currentSession ? (

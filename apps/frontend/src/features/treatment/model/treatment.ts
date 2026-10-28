@@ -217,6 +217,38 @@ export interface TreatmentAct {
   updatedAt: Date;
 }
 
+/** Patient-level identity; visit.acts remains a compatibility chart snapshot. */
+export interface TreatmentPlanItem extends TreatmentAct {
+  readonly clinicId: string;
+  readonly patientId: string;
+  readonly originVisitId: string;
+  readonly originHandoffId: string | null;
+  readonly source: 'DOCTOR_DIRECT' | 'ASSISTANT_HANDOFF';
+  readonly approvedAt: Date | null;
+  readonly version: number;
+}
+
+export type TreatmentSessionOutcome = 'CONTINUE_LATER' | 'TREATMENT_FINISHED';
+
+export interface TreatmentSession {
+  readonly id: string;
+  readonly planItemId: string;
+  readonly visitId: string;
+  readonly clinicId: string;
+  readonly patientId: string;
+  readonly status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  readonly outcome: TreatmentSessionOutcome | null;
+  readonly note: string | null;
+  readonly performedByUserId: string;
+  readonly enteredByUserId: string;
+  readonly originHandoffId: string | null;
+  readonly planVersion: number;
+  readonly planSnapshot: TreatmentAct;
+  readonly startedAt: Date;
+  readonly closedAt: Date | null;
+  readonly version: number;
+}
+
 export interface DocumentationHandoff {
   id: string;
   status: DocumentationHandoffStatus;
@@ -238,6 +270,9 @@ export type TreatmentAuditAction =
   | 'FINDING_CONFIRMED'
   | 'ACT_APPROVED'
   | 'ACT_STATUS_CHANGED'
+  | 'TREATMENT_SESSION_STARTED'
+  | 'TREATMENT_SESSION_CLOSED'
+  | 'VISIT_COMPLETED'
   | 'DOCUMENTATION_ASSIGNED'
   | 'DOCUMENTATION_RETURNED'
   | 'DOCUMENTATION_ACCEPTED'
@@ -266,6 +301,8 @@ export interface TreatmentVisit {
   clinicalNotes: string | null;
   findings: readonly ClinicalFinding[];
   acts: readonly TreatmentAct[];
+  /** Read projection of separately stored sessions; not embedded persistence. */
+  readonly treatmentSessions?: readonly TreatmentSession[];
   readonly periodontalExamination?: PeriodontalExamination | null;
   readonly auditHistory?: readonly TreatmentAuditEntry[];
   documentationHandoff: DocumentationHandoff | null;

@@ -39,7 +39,8 @@ import {
   ActFormFields,
   type TreatmentEntryFieldsProps,
 } from './treatment-entry-fields';
-import { ActLifecycleButtons } from './treatment-act-actions';
+import { TreatmentActActions } from './treatment-act-actions';
+import type { TreatmentSessionOutcome } from '../model/treatment';
 import { ClinicalRecordDetails } from './clinical-record-details';
 import { ClinicalFindingActions } from './clinical-finding-actions';
 import { canRemoveTreatmentFinding } from '../model/treatment.rules';
@@ -62,7 +63,16 @@ export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
   readonly onApproveFinding: (id: string) => void;
   readonly onRemoveFinding: (id: string, reason?: string) => void;
   readonly onApproveAct: (id: string) => void;
-  readonly onTransitionAct: (id: string, status: TreatmentActStatus) => void;
+  readonly onTransitionAct: (
+    id: string,
+    status: TreatmentActStatus,
+    reason?: string,
+  ) => void;
+  readonly onCloseSession: (
+    id: string,
+    outcome: TreatmentSessionOutcome,
+    note: string,
+  ) => void;
 }
 
 export function ToothDetailsPanel(props: ToothDetailsPanelProps) {
@@ -272,20 +282,14 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
               />
             </div>
             {isAct ? (
-              record.status === 'DRAFT' && props.actor.role === 'doctor' ? (
-                <Button
-                  onClick={() => props.onApproveAct(record.id)}
-                  size="sm"
-                  variant="outline-success"
-                >
-                  Approve
-                </Button>
-              ) : props.actor.role === 'doctor' ? (
-                <ActLifecycleButtons
-                  act={record}
-                  onTransition={props.onTransitionAct}
-                />
-              ) : null
+              <TreatmentActActions
+                act={record}
+                actor={props.actor}
+                visit={props.visit}
+                onApprove={props.onApproveAct}
+                onTransition={props.onTransitionAct}
+                onCloseSession={props.onCloseSession}
+              />
             ) : (
               <ClinicalFindingActions
                 actor={props.actor}

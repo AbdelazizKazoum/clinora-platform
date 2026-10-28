@@ -1,91 +1,155 @@
-import { Button } from 'react-bootstrap';
+import { useState } from 'react';
+import { Button, Form, Modal } from 'react-bootstrap';
 import Icon from '@/components/wrappers/Icon';
-import type { TreatmentAct, TreatmentActStatus } from '../model/treatment';
+import type {
+  TreatmentAct,
+  TreatmentActStatus,
+  TreatmentSessionOutcome,
+  TreatmentVisit,
+} from '../model/treatment';
 import type { MockTreatmentActor } from '../model/treatment-workspace';
+import { canEditTreatmentDraft } from '../model/treatment.rules';
 
 export function TreatmentActActions({
   act,
   actor,
+  visit,
   onApprove,
   onTransition,
+  onCloseSession,
 }: {
   readonly act: TreatmentAct;
   readonly actor: MockTreatmentActor;
+  readonly visit: TreatmentVisit;
   readonly onApprove: (id: string) => void;
-  readonly onTransition: (id: string, status: TreatmentActStatus) => void;
+  readonly onTransition: (
+    id: string,
+    status: TreatmentActStatus,
+    reason?: string,
+  ) => void;
+  readonly onCloseSession: (
+    id: string,
+    outcome: TreatmentSessionOutcome,
+    note: string,
+  ) => void;
 }) {
-  return (
-    <div className="d-flex align-items-center justify-content-center gap-1">
-      {act.status === 'DRAFT' && actor.role === 'doctor' && (
-        <Button size="sm" variant="success" onClick={() => onApprove(act.id)}>
-          <Icon icon="check" className="me-1" />
-          Approve
-        </Button>
-      )}
-      {act.status === 'PLANNED' && actor.role === 'doctor' && (
-        <Button
-          size="sm"
-          variant="outline-primary"
-          onClick={() => onTransition(act.id, 'IN_PROGRESS')}
-        >
-          <Icon icon="play" className="me-1" />
-          Start
-        </Button>
-      )}
-      {(act.status === 'PLANNED' || act.status === 'IN_PROGRESS') &&
-        actor.role === 'doctor' && (
-          <>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => onTransition(act.id, 'COMPLETED')}
-            >
-              <Icon icon="check-circle" className="me-1" />
-              Done
-            </Button>
-            {act.status !== 'IN_PROGRESS' && (
-              <Button
-                size="sm"
-                variant="outline-danger"
-                onClick={() => onTransition(act.id, 'CANCELLED')}
-              >
-                <Icon icon="x" className="me-1" />
-                Cancel
-              </Button>
-            )}
-          </>
-        )}
-    </div>
+  const [dialog, setDialog] = useState<'close' | 'cancel' | null>(null);
+  const [note, setNote] = useState('');
+  if (
+    actor.role !== 'doctor' ||
+    !canEditTreatmentDraft(visit, actor.userId, actor.role)
+  )
+    return null;
+  const session = visit.treatmentSessions?.find(
+    (candidate) =>
+      candidate.planItemId === act.id && candidate.visitId === visit.id,
   );
-}
-
-export function ActLifecycleButtons({
-  act,
-  onTransition,
-}: {
-  readonly act: TreatmentAct;
-  readonly onTransition: (id: string, status: TreatmentActStatus) => void;
-}) {
-  if (act.status !== 'PLANNED' && act.status !== 'IN_PROGRESS') return null;
-
+  const active = session?.status === 'IN_PROGRESS';
+  const canStart =
+    ['PLANNED', 'IN_PROGRESS'].includes(act.status) &&
+    !session &&
+    ['IN_PROGRESS', 'READY_FOR_COMPLETION'].includes(visit.status);
+  const submit = (outcome: TreatmentSessionOutcome) => {
+    if (!note.trim()) return;
+    if (dialog === 'cancel') onTransition(act.id, 'CANCELLED', note);
+    else if (session) onCloseSession(session.id, outcome, note);
+    setDialog(null);
+    setNote('');
+  };
   return (
-    <div className="d-flex flex-wrap gap-1">
-      {act.status === 'PLANNED' && (
-        <Button
-          onClick={() => onTransition(act.id, 'IN_PROGRESS')}
-          size="sm"
-          variant="outline-primary"
-        >
-          Start
-        </Button>
-      )}
-      <Button
-        onClick={() => onTransition(act.id, 'COMPLETED')}
-        size="sm"
-        variant="success"
-      >
-        Done
-      </Button>
-    </div>
+    <>
+      <div className="d-flex flex-wrap align-items-center justify-content-center gap-1">
+        {act.status === 'DRAFT' && (
+          <Button size="sm" variant="success" onClick={() => onApprove(act.id)}>
+            <Icon icon="check" className="me-1" />
+            Approve
+          </Button>
+        )}
+        {canStart && (
+          <Button
+            size="sm"
+            variant="outline-primary"
+            onClick={() => onTransition(act.id, 'IN_PROGRESS')}
+          >
+            <Icon icon="play" className="me-1" />
+            {act.status === 'IN_PROGRESS' ? 'Continue in this visit' : 'Start'}
+          </Button>
+        )}
+        {active && (
+          <Button
+            size="sm"
+            variant="success"
+            onClick={() => setDialog('close')}
+          >
+            Close session
+          </Button>
+        )}
+        {['PLANNED', 'IN_PROGRESS'].includes(act.status) && !active && (
+          <Button
+            size="sm"
+            variant="outline-danger"
+            onClick={() => setDialog('cancel')}
+          >
+            Cancel
+          </Button>
+        )}
+        {session?.status === 'COMPLETED' &&
+          session.outcome === 'CONTINUE_LATER' &&
+          act.status === 'IN_PROGRESS' && (
+            <small className="text-muted">
+              Session closed · Continue in a later visit
+            </small>
+          )}
+      </div>
+      <Modal show={dialog !== null} onHide={() => setDialog(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {dialog === 'cancel'
+              ? 'Cancel treatment plan'
+              : 'Close treatment session'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group controlId={`session-note-${act.id}`}>
+            <Form.Label>
+              {dialog === 'cancel' ? 'Reason' : 'Session notes'}
+            </Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={4}
+              required
+              value={note}
+              onChange={(event) => setNote(event.currentTarget.value)}
+            />
+            <Form.Text>
+              {dialog === 'cancel'
+                ? 'Explain why this treatment is cancelled.'
+                : 'Record today’s work and what remains if treatment will continue.'}
+            </Form.Text>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setDialog(null)}>
+            Keep editing
+          </Button>
+          {dialog === 'close' && (
+            <Button
+              variant="outline-primary"
+              disabled={!note.trim()}
+              onClick={() => submit('CONTINUE_LATER')}
+            >
+              Continue later
+            </Button>
+          )}
+          <Button
+            variant={dialog === 'cancel' ? 'danger' : 'success'}
+            disabled={!note.trim()}
+            onClick={() => submit('TREATMENT_FINISHED')}
+          >
+            {dialog === 'cancel' ? 'Cancel plan' : 'Finish treatment'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 }
