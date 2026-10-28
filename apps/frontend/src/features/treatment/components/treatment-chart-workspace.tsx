@@ -17,6 +17,7 @@ import styles from './treatment-workspace.module.scss';
 export function TreatmentChartWorkspace({
   actor,
   actions,
+  removablePlanIds,
   canDocument,
   entry,
   projectionMode,
@@ -26,6 +27,7 @@ export function TreatmentChartWorkspace({
 }: {
   readonly actor: MockTreatmentActor;
   readonly actions: TreatmentVisitActions;
+  readonly removablePlanIds: ReadonlySet<string>;
   readonly canDocument: boolean;
   readonly entry: TreatmentEntryForm;
   readonly projectionMode: TreatmentProjectionMode;
@@ -66,6 +68,8 @@ export function TreatmentChartWorkspace({
             onApproveAct={actions.approveAct}
             onTransitionAct={actions.transitionAct}
             onCloseSession={actions.closeSession}
+            onRemoveAct={actions.removeAct}
+            removablePlanIds={removablePlanIds}
           />
         </Col>
         <Col className={styles.detailsColumn}>
@@ -96,6 +100,8 @@ export function TreatmentChartWorkspace({
             onRemoveFinding={actions.removeFinding}
             onTransitionAct={actions.transitionAct}
             onCloseSession={actions.closeSession}
+            onRemoveAct={actions.removeAct}
+            removablePlanIds={removablePlanIds}
           />
         </Col>
       </Row>

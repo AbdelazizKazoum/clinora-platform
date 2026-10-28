@@ -64,6 +64,10 @@ export function updateLocalTreatmentVisit(
       planItems.push(toPlanItem(act, next));
     } else {
       const plan = planItems[index];
+      if (plan.removedAt)
+        throw new Error(
+          'A removed treatment plan cannot be restored through a visit update.',
+        );
       if (!previous.acts.some(({ id }) => id === act.id))
         throw new Error('A treatment plan with this ID already exists.');
       assertPlanScope(plan, next);
@@ -256,6 +260,80 @@ export function closeLocalTreatmentSession(
   );
 }
 
+export function canRemoveLocalTreatmentPlan(
+  record: LocalTreatmentRecord,
+  actor: MockTreatmentActor,
+  planItemId: string,
+): boolean {
+  const visit = getLocalTreatmentVisit(record);
+  const plan = record.planItems.find(({ id }) => id === planItemId);
+  return Boolean(
+    actor.role === 'doctor' &&
+      actor.userId === visit.responsibleDentistId &&
+      !['COMPLETED', 'CANCELLED'].includes(visit.status) &&
+      plan &&
+      !plan.removedAt &&
+      plan.status === 'PLANNED' &&
+      plan.source === 'DOCTOR_DIRECT' &&
+      plan.enteredByUserId === actor.userId &&
+      plan.originVisitId === visit.id &&
+      plan.patientId === visit.patientId &&
+      plan.clinicId === visit.clinicId &&
+      !record.sessions.some((session) => session.planItemId === plan.id) &&
+      !record.visits.some(
+        (candidate) =>
+          ['COMPLETED', 'CANCELLED'].includes(candidate.status) &&
+          candidate.acts.some(({ id }) => id === plan.id),
+      ),
+  );
+}
+
+export function removeLocalTreatmentPlan(
+  record: LocalTreatmentRecord,
+  actor: MockTreatmentActor,
+  input: { readonly planItemId: string; readonly expectedVersion: number },
+  now: Date,
+): LocalTreatmentRecord {
+  const visit = getLocalTreatmentVisit(record);
+  assertDentist(visit, actor);
+  assertEditable(visit);
+  const plan = findPlan(record, input.planItemId, visit);
+  if (plan.version !== input.expectedVersion)
+    throw new Error('The treatment plan changed. Refresh before removing it.');
+  if (!canRemoveLocalTreatmentPlan(record, actor, plan.id)) {
+    throw new Error(
+      'Only never-started doctor plans from this editable visit can be removed. Use cancellation or correction with a reason for recorded treatment.',
+    );
+  }
+  return replaceVisit(
+    {
+      ...record,
+      planItems: record.planItems.map((candidate) =>
+        candidate.id === plan.id
+          ? {
+              ...plan,
+              removedAt: now,
+              removedByUserId: actor.userId,
+              updatedAt: now,
+              version: plan.version + 1,
+            }
+          : candidate,
+      ),
+    },
+    audit(
+      {
+        ...visit,
+        acts: visit.acts.filter(({ id }) => id !== plan.id),
+        updatedAt: now,
+      },
+      'ACT_REMOVED',
+      actor.userId,
+      plan.id,
+      now,
+    ),
+  );
+}
+
 export function transitionLocalTreatmentPlan(
   record: LocalTreatmentRecord,
   actor: MockTreatmentActor,
@@ -270,14 +348,12 @@ export function transitionLocalTreatmentPlan(
   const plan = findPlan(record, id, visit);
   if (!reason.trim())
     throw new Error('A reason is required to correct or cancel a plan.');
-  if (
-    record.sessions.some(
-      (session) =>
-        session.planItemId === id && session.status === 'IN_PROGRESS',
-    )
-  ) {
+  const activeSessions = record.sessions.filter(
+    (session) => session.planItemId === id && session.status === 'IN_PROGRESS',
+  );
+  if (activeSessions.some((session) => session.visitId !== visit.id)) {
     throw new Error(
-      'Close the treatment session before cancelling or correcting its plan.',
+      'Close the treatment session in its owning visit before cancelling or correcting its plan.',
     );
   }
   const transitioned = transitionWorkspaceAct(
@@ -287,10 +363,50 @@ export function transitionLocalTreatmentPlan(
     status,
     now,
   ).acts[0];
+  const sessions =
+    activeSessions.length === 0
+      ? record.sessions
+      : record.sessions.map(
+          (session): TreatmentSession =>
+            activeSessions.includes(session)
+              ? {
+                  ...session,
+                  status: 'CANCELLED',
+                  outcome: null,
+                  note: [
+                    session.note,
+                    `${status === 'ENTERED_IN_ERROR' ? 'Entry correction' : 'Cancellation'}: ${reason.trim()}`,
+                  ]
+                    .filter(Boolean)
+                    .join('\n\n'),
+                  closedAt: now,
+                  version: session.version + 1,
+                }
+              : session,
+        );
+  const auditedVisit = activeSessions.reduce(
+    (current, session) =>
+      audit(
+        current,
+        'TREATMENT_SESSION_CLOSED',
+        actor.userId,
+        session.id,
+        now,
+        reason.trim(),
+      ),
+    visit,
+  );
   return commitPlan(
-    record,
+    { ...record, sessions },
     { ...plan, ...transitioned, version: plan.version + 1 },
-    audit(visit, 'ACT_STATUS_CHANGED', actor.userId, id, now, reason.trim()),
+    audit(
+      auditedVisit,
+      'ACT_STATUS_CHANGED',
+      actor.userId,
+      id,
+      now,
+      reason.trim(),
+    ),
   );
 }
 
@@ -371,6 +487,7 @@ export function createNextLocalTreatmentVisit(
     acts: record.planItems
       .filter(
         (plan) =>
+          !plan.removedAt &&
           plan.clinicId === previous.clinicId &&
           plan.patientId === previous.patientId &&
           plan.status === 'COMPLETED',
@@ -424,6 +541,8 @@ function toPlanItem(
         ? 'DOCTOR_DIRECT'
         : 'ASSISTANT_HANDOFF',
     approvedAt: act.approvedByDentistId ? act.updatedAt : null,
+    removedAt: null,
+    removedByUserId: null,
     version: 1,
   };
 }
@@ -454,7 +573,9 @@ function findPlan(
   id: string,
   visit: TreatmentVisit,
 ): TreatmentPlanItem {
-  const plan = record.planItems.find((candidate) => candidate.id === id);
+  const plan = record.planItems.find(
+    (candidate) => candidate.id === id && !candidate.removedAt,
+  );
   if (!plan) throw new Error('Treatment plan was not found.');
   assertPlanScope(plan, visit);
   return plan;
@@ -515,7 +636,8 @@ function audit(
   action:
     | 'TREATMENT_SESSION_STARTED'
     | 'TREATMENT_SESSION_CLOSED'
-    | 'ACT_STATUS_CHANGED',
+    | 'ACT_STATUS_CHANGED'
+    | 'ACT_REMOVED',
   actorUserId: string,
   recordId: string,
   occurredAt: Date,

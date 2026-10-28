@@ -57,6 +57,7 @@ function TreatmentVisitWorkspace({
     visit,
     visits,
     planItems,
+    removablePlanIds,
     sessions,
     actor,
     setActor,
@@ -123,6 +124,7 @@ function TreatmentVisitWorkspace({
       />
       {activeTab === 'chart' && (
         <TreatmentChartWorkspace
+          removablePlanIds={removablePlanIds}
           actor={actor}
           actions={actions}
           canDocument={canDocument}
@@ -144,6 +146,7 @@ function TreatmentVisitWorkspace({
       )}
       {activeTab === 'treatment-plans' && (
         <TreatmentPlansWorkspace
+          removablePlanIds={removablePlanIds}
           actor={actor}
           actions={actions}
           planItems={planItems}

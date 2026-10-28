@@ -20,6 +20,47 @@ const crown = {
 };
 
 describe('Local treatment visit', () => {
+  it('removes unstarted plans from active lists and the chart without creating cancelled rows', () => {
+    const { result } = renderHook(() => useLocalTreatmentVisit(), {
+      wrapper: strictWrapper,
+    });
+    act(() => result.current.actions.recordAct(crown));
+    const plan = result.current.planItems.at(-1);
+    expect(plan).toBeDefined();
+    const id = plan?.id ?? '';
+    expect(result.current.removablePlanIds.has(id)).toBe(true);
+    act(() => result.current.actions.removeAct(id));
+    expect(
+      result.current.planItems.some((candidate) => candidate.id === id),
+    ).toBe(false);
+    expect(
+      result.current.visit.acts.some((candidate) => candidate.id === id),
+    ).toBe(false);
+    expect(result.current.removablePlanIds.has(id)).toBe(false);
+    expect(result.current.visit.auditHistory?.at(-1)?.action).toBe(
+      'ACT_REMOVED',
+    );
+    expect(result.current.feedback?.variant).toBe('success');
+  });
+
+  it('does not offer free removal again after a session closes for continuation', () => {
+    const { result } = renderHook(() => useLocalTreatmentVisit());
+    const id = result.current.planItems[0].id;
+    act(() => result.current.actions.transitionAct(id, 'IN_PROGRESS'));
+    expect(result.current.removablePlanIds.has(id)).toBe(false);
+    act(() =>
+      result.current.actions.closeSession(
+        result.current.sessions[0].id,
+        'CONTINUE_LATER',
+        'Further work required.',
+      ),
+    );
+    act(() => result.current.actions.removeAct(id));
+    expect(result.current.feedback?.variant).toBe('danger');
+    expect(result.current.planItems[0].status).toBe('IN_PROGRESS');
+    expect(result.current.sessions).toHaveLength(1);
+  });
+
   it('keeps SQL-shaped identities and assistant handoff origins across visits', () => {
     const { result } = renderHook(() => useLocalTreatmentVisit(), {
       wrapper: strictWrapper,

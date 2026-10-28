@@ -259,9 +259,14 @@ audit attribution rather than physical deletion.
 After submission, the assistant must not delete draft items. The dentist
 returns the handoff for correction or marks the item as entered in error.
 
-`PLANNED`, `IN_PROGRESS`, `PARTIALLY_COMPLETED`, and `COMPLETED` records must
-not be hard-deleted. Use cancellation or entered-in-error correction with a
-required reason.
+Doctor-created `PLANNED` items can be removed without a reason while their
+originating visit is editable and no session or finalized visit references
+them. Use soft removal with audit attribution, excluding them from the active
+chart, list, and timeline. **Start** is the boundary after which any removal
+requires cancellation or an entered-in-error correction with a reason.
+
+`IN_PROGRESS`, `PARTIALLY_COMPLETED`, `COMPLETED`, and finalized visit records
+must not be hard-deleted. Preserve all prior sessions and corrections.
 
 ## Multi-visit lifecycle
 

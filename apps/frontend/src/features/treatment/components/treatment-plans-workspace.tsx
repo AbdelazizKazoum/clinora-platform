@@ -11,6 +11,7 @@ import { TreatmentPlanTimeline } from './treatment-plan-timeline';
 export function TreatmentPlansWorkspace({
   visit,
   planItems,
+  removablePlanIds,
   sessions,
   actor,
   actions,
@@ -18,6 +19,7 @@ export function TreatmentPlansWorkspace({
 }: {
   readonly visit: TreatmentVisit;
   readonly planItems: readonly TreatmentPlanItem[];
+  readonly removablePlanIds: ReadonlySet<string>;
   readonly sessions: readonly TreatmentSession[];
   readonly actor: MockTreatmentActor;
   readonly actions: TreatmentVisitActions;
@@ -41,6 +43,8 @@ export function TreatmentPlansWorkspace({
         onApproveAct={actions.approveAct}
         onTransitionAct={actions.transitionAct}
         onCloseSession={actions.closeSession}
+        onRemoveAct={actions.removeAct}
+        removablePlanIds={removablePlanIds}
         projectionIssueIds={projectionIssueIds}
       />
       <TreatmentPlanTimeline

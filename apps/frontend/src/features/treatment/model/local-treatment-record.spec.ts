@@ -12,11 +12,13 @@ import {
 } from './treatment-workspace';
 import {
   assertReviewedEntries,
+  canRemoveLocalTreatmentPlan,
   closeLocalTreatmentSession,
   completeLocalTreatmentVisit,
   createLocalTreatmentRecord,
   createNextLocalTreatmentVisit,
   getLocalTreatmentVisit,
+  removeLocalTreatmentPlan,
   selectLocalTreatmentVisit,
   startLocalTreatmentSession,
   transitionLocalTreatmentPlan,
@@ -55,6 +57,182 @@ const close = (
   );
 
 describe('Local treatment continuation', () => {
+  it('soft-removes a never-started doctor plan with an audit entry and no cancellation reason', () => {
+    const record = makeRecord();
+    const plan = record.planItems[0];
+    expect(canRemoveLocalTreatmentPlan(record, MOCK_DENTIST, plan.id)).toBe(
+      true,
+    );
+    const removed = removeLocalTreatmentPlan(
+      record,
+      MOCK_DENTIST,
+      { planItemId: plan.id, expectedVersion: plan.version },
+      now,
+    );
+    expect(getLocalTreatmentVisit(removed).acts).toHaveLength(0);
+    expect(removed.planItems[0]).toMatchObject({
+      status: 'PLANNED',
+      removedAt: now,
+      removedByUserId: MOCK_DENTIST.userId,
+      version: 2,
+    });
+    expect(getLocalTreatmentVisit(removed).auditHistory?.at(-1)).toMatchObject({
+      action: 'ACT_REMOVED',
+      actorUserId: MOCK_DENTIST.userId,
+      recordId: plan.id,
+      reason: null,
+    });
+    expect(record.planItems[0].removedAt).toBeNull();
+    expect(record.visits[0].acts).toHaveLength(1);
+    expect(canRemoveLocalTreatmentPlan(removed, MOCK_DENTIST, plan.id)).toBe(
+      false,
+    );
+    expect(() => start(removed)).toThrow('not found');
+    expect(() =>
+      transitionLocalTreatmentPlan(
+        removed,
+        MOCK_DENTIST,
+        plan.id,
+        'CANCELLED',
+        'Do not restore.',
+        now,
+      ),
+    ).toThrow('not found');
+  });
+
+  it('rejects removal after any session, including closed, cancelled, and earlier-visit sessions', () => {
+    const record = makeRecord();
+    const started = start(record);
+    const closed = close(started);
+    for (const candidate of [
+      started,
+      closed,
+      {
+        ...record,
+        sessions: [
+          {
+            ...started.sessions[0],
+            visitId: 'earlier-visit',
+            status: 'CANCELLED' as const,
+          },
+        ],
+      },
+    ]) {
+      const plan = candidate.planItems[0];
+      expect(
+        canRemoveLocalTreatmentPlan(candidate, MOCK_DENTIST, plan.id),
+      ).toBe(false);
+      expect(() =>
+        removeLocalTreatmentPlan(
+          candidate,
+          MOCK_DENTIST,
+          { planItemId: plan.id, expectedVersion: plan.version },
+          now,
+        ),
+      ).toThrow('Only never-started doctor plans');
+    }
+  });
+
+  it('protects finalized visits, original finalized records, other scopes, and assistant entries from free removal', () => {
+    const record = makeRecord();
+    const plan = record.planItems[0];
+    const input = { planItemId: plan.id, expectedVersion: plan.version };
+    expect(() =>
+      removeLocalTreatmentPlan(record, MOCK_ASSISTANT, input, now),
+    ).toThrow('responsible dentist');
+    expect(() =>
+      removeLocalTreatmentPlan(
+        record,
+        { ...MOCK_DENTIST, userId: 'another-doctor' },
+        input,
+        now,
+      ),
+    ).toThrow('responsible dentist');
+    expect(() =>
+      removeLocalTreatmentPlan(
+        record,
+        MOCK_DENTIST,
+        { ...input, expectedVersion: 0 },
+        now,
+      ),
+    ).toThrow('changed');
+    const finalized = completeLocalTreatmentVisit(record, MOCK_DENTIST, now);
+    expect(() =>
+      removeLocalTreatmentPlan(finalized, MOCK_DENTIST, input, now),
+    ).toThrow('read-only');
+    const laterVisit = createNextLocalTreatmentVisit(
+      finalized,
+      MOCK_DENTIST,
+      'visit-2',
+      later,
+    );
+    expect(canRemoveLocalTreatmentPlan(laterVisit, MOCK_DENTIST, plan.id)).toBe(
+      false,
+    );
+    expect(() =>
+      removeLocalTreatmentPlan(laterVisit, MOCK_DENTIST, input, later),
+    ).toThrow('Only never-started doctor plans');
+    for (const fields of [
+      { patientId: 'another-patient' },
+      { clinicId: 'another-clinic' },
+      { source: 'ASSISTANT_HANDOFF' as const },
+      { enteredByUserId: MOCK_ASSISTANT.userId },
+      { status: 'CANCELLED' as const },
+    ]) {
+      expect(
+        canRemoveLocalTreatmentPlan(
+          { ...record, planItems: [{ ...plan, ...fields }] },
+          MOCK_DENTIST,
+          plan.id,
+        ),
+      ).toBe(false);
+    }
+    const referenced = {
+      ...record,
+      visits: [
+        ...record.visits,
+        {
+          ...record.visits[0],
+          id: 'finalized-reference',
+          status: 'COMPLETED' as const,
+        },
+      ],
+    };
+    expect(canRemoveLocalTreatmentPlan(referenced, MOCK_DENTIST, plan.id)).toBe(
+      false,
+    );
+  });
+
+  it('retains all session history when started treatment is cancelled or corrected with a reason', () => {
+    const closed = close(start(makeRecord()));
+    const plan = closed.planItems[0];
+    for (const status of ['CANCELLED', 'ENTERED_IN_ERROR'] as const) {
+      expect(() =>
+        transitionLocalTreatmentPlan(
+          closed,
+          MOCK_DENTIST,
+          plan.id,
+          status,
+          ' ',
+          now,
+        ),
+      ).toThrow('reason');
+      const changed = transitionLocalTreatmentPlan(
+        closed,
+        MOCK_DENTIST,
+        plan.id,
+        status,
+        'Clinical decision corrected.',
+        now,
+      );
+      expect(changed.planItems[0]).toMatchObject({ status, removedAt: null });
+      expect(changed.sessions).toBe(closed.sessions);
+      expect(changed.visits[0].auditHistory?.at(-1)?.reason).toBe(
+        'Clinical decision corrected.',
+      );
+    }
+  });
+
   it('continues the same plan across visits without rewriting earlier visits or sessions', () => {
     const started = start(makeRecord());
     expect(() =>
@@ -310,16 +488,52 @@ describe('Local treatment continuation', () => {
         now,
       ),
     ).toThrow('reason');
+    const started = start(record);
+    for (const status of ['CANCELLED', 'ENTERED_IN_ERROR'] as const) {
+      expect(() =>
+        transitionLocalTreatmentPlan(
+          started,
+          MOCK_DENTIST,
+          record.planItems[0].id,
+          status,
+          '',
+          now,
+        ),
+      ).toThrow('reason');
+      const stopped = transitionLocalTreatmentPlan(
+        started,
+        MOCK_DENTIST,
+        record.planItems[0].id,
+        status,
+        'Entry needs correction.',
+        now,
+      );
+      expect(stopped.planItems[0].status).toBe(status);
+      expect(stopped.sessions[0]).toMatchObject({
+        status: 'CANCELLED',
+        closedAt: now,
+        version: 2,
+      });
+      expect(stopped.sessions[0].note).toContain('Entry needs correction.');
+      expect(stopped.sessions[0].planSnapshot).toBe(
+        started.sessions[0].planSnapshot,
+      );
+      expect(started.sessions[0].status).toBe('IN_PROGRESS');
+    }
+    const foreignSession = {
+      ...started,
+      sessions: [{ ...started.sessions[0], visitId: 'another-visit' }],
+    };
     expect(() =>
       transitionLocalTreatmentPlan(
-        start(record),
+        foreignSession,
         MOCK_DENTIST,
         record.planItems[0].id,
         'CANCELLED',
-        'Treatment declined.',
+        'Stop treatment.',
         now,
       ),
-    ).toThrow('Close the treatment session');
+    ).toThrow('owning visit');
     const cancelled = transitionLocalTreatmentPlan(
       record,
       MOCK_DENTIST,

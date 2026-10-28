@@ -120,6 +120,31 @@ can still require dentist review before its visit is finalized.
 
 ## Status rules
 
+### Removal before Start
+
+For doctor-created acts, adding from the catalogue creates a `PLANNED` item;
+there is no additional confirmation step. **Start** creates its first session
+and changes the overall plan to `IN_PROGRESS`.
+
+- A responsible dentist can **Remove** their own never-started plan from its
+  originating visit while that visit remains editable, without a reason prompt.
+- Removal sets `removedAt` and `removedByUserId`, increments the plan version,
+  and records `ACT_REMOVED` in the visit audit. It does not create a cancelled
+  treatment. Removed items are excluded from active lists, chart snapshots,
+  and the treatment timeline.
+- Any session, including a closed or cancelled session from an earlier visit,
+  prevents free removal. Records referenced by finalized visits are protected.
+- Started plans can be cancelled or marked entered in error only with a reason.
+  An explicit cancellation/correction also closes any active session in the
+  current visit as `CANCELLED`, retaining its snapshot and recording the reason.
+  Previously closed sessions remain unchanged. An active session in another
+  visit must be resolved in its owning visit.
+- Finalized visits remain read-only. Assistant draft approval and handoff
+  review requirements are unchanged.
+
+SQL persistence must enforce these checks again and exclude soft-removed items
+from ordinary plan queries.
+
 ### Overall plan item
 
 ```text

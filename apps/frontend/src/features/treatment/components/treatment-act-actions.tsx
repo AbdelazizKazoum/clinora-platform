@@ -17,11 +17,15 @@ export function TreatmentActActions({
   onApprove,
   onTransition,
   onCloseSession,
+  canRemove,
+  onRemove,
 }: {
   readonly act: TreatmentAct;
   readonly actor: MockTreatmentActor;
   readonly visit: TreatmentVisit;
   readonly onApprove: (id: string) => void;
+  readonly canRemove: boolean;
+  readonly onRemove: (id: string) => void;
   readonly onTransition: (
     id: string,
     status: TreatmentActStatus,
@@ -33,7 +37,9 @@ export function TreatmentActActions({
     note: string,
   ) => void;
 }) {
-  const [dialog, setDialog] = useState<'close' | 'cancel' | null>(null);
+  const [dialog, setDialog] = useState<'close' | 'cancel' | 'error' | null>(
+    null,
+  );
   const [note, setNote] = useState('');
   if (
     actor.role !== 'doctor' ||
@@ -51,7 +57,12 @@ export function TreatmentActActions({
     ['IN_PROGRESS', 'READY_FOR_COMPLETION'].includes(visit.status);
   const submit = (outcome: TreatmentSessionOutcome) => {
     if (!note.trim()) return;
-    if (dialog === 'cancel') onTransition(act.id, 'CANCELLED', note);
+    if (dialog === 'cancel' || dialog === 'error')
+      onTransition(
+        act.id,
+        dialog === 'cancel' ? 'CANCELLED' : 'ENTERED_IN_ERROR',
+        note,
+      );
     else if (session) onCloseSession(session.id, outcome, note);
     setDialog(null);
     setNote('');
@@ -84,13 +95,32 @@ export function TreatmentActActions({
             Close session
           </Button>
         )}
-        {['PLANNED', 'IN_PROGRESS'].includes(act.status) && !active && (
+        {canRemove && (
+          <Button
+            size="sm"
+            variant="outline-danger"
+            onClick={() => onRemove(act.id)}
+          >
+            <Icon icon="trash-2" className="me-1" />
+            Remove
+          </Button>
+        )}
+        {['PLANNED', 'IN_PROGRESS'].includes(act.status) && !canRemove && (
           <Button
             size="sm"
             variant="outline-danger"
             onClick={() => setDialog('cancel')}
           >
             Cancel
+          </Button>
+        )}
+        {['IN_PROGRESS', 'COMPLETED'].includes(act.status) && (
+          <Button
+            size="sm"
+            variant="outline-secondary"
+            onClick={() => setDialog('error')}
+          >
+            Correct
           </Button>
         )}
         {session?.status === 'COMPLETED' &&
@@ -106,13 +136,15 @@ export function TreatmentActActions({
           <Modal.Title>
             {dialog === 'cancel'
               ? 'Cancel treatment plan'
-              : 'Close treatment session'}
+              : dialog === 'error'
+                ? 'Correct treatment entry'
+                : 'Close treatment session'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group controlId={`session-note-${act.id}`}>
             <Form.Label>
-              {dialog === 'cancel' ? 'Reason' : 'Session notes'}
+              {dialog === 'close' ? 'Session notes' : 'Reason'}
             </Form.Label>
             <Form.Control
               as="textarea"
@@ -122,9 +154,11 @@ export function TreatmentActActions({
               onChange={(event) => setNote(event.currentTarget.value)}
             />
             <Form.Text>
-              {dialog === 'cancel'
-                ? 'Explain why this treatment is cancelled.'
-                : 'Record today’s work and what remains if treatment will continue.'}
+              {dialog === 'error'
+                ? 'Explain why this entry was recorded incorrectly. Its treatment history will be retained.'
+                : dialog === 'cancel'
+                  ? 'Explain why this treatment is cancelled.'
+                  : 'Record today’s work and what remains if treatment will continue.'}
             </Form.Text>
           </Form.Group>
         </Modal.Body>
@@ -142,11 +176,15 @@ export function TreatmentActActions({
             </Button>
           )}
           <Button
-            variant={dialog === 'cancel' ? 'danger' : 'success'}
+            variant={dialog === 'close' ? 'success' : 'danger'}
             disabled={!note.trim()}
             onClick={() => submit('TREATMENT_FINISHED')}
           >
-            {dialog === 'cancel' ? 'Cancel plan' : 'Finish treatment'}
+            {dialog === 'cancel'
+              ? 'Cancel plan'
+              : dialog === 'error'
+                ? 'Mark entered in error'
+                : 'Finish treatment'}
           </Button>
         </Modal.Footer>
       </Modal>

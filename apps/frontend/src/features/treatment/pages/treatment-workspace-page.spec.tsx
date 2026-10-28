@@ -29,6 +29,79 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  it('removes a catalogue plan before Start without a reason or cancelled row', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));
+    fireEvent.change(screen.getByLabelText('Treatment act'), {
+      target: { value: 'CROWN' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment act' }));
+    const row = screen.getByRole('row', { name: /Crown/ });
+    expect(within(row).queryByRole('button', { name: 'Cancel' })).toBeNull();
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('row', { name: /Crown/ })).toBeNull();
+    expect(screen.getByText('Unstarted treatment plan removed.')).toBeTruthy();
+    expect(
+      screen.getByTestId('odontogram-projection').textContent,
+    ).not.toContain('"kind":"restoration"');
+    fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+    expect(screen.queryByRole('row', { name: /Crown/ })).toBeNull();
+    expect(screen.queryByText('CANCELLED')).toBeNull();
+    expect(screen.queryByText('Crown', { selector: 'strong' })).toBeNull();
+  });
+
+  it('requires a cancellation reason immediately after Start and preserves the cancelled session', async () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+    const row = () => screen.getByRole('row', { name: /Root canal filling/ });
+    fireEvent.click(within(row()).getByRole('button', { name: 'Start' }));
+    expect(within(row()).queryByRole('button', { name: 'Remove' })).toBeNull();
+    fireEvent.click(within(row()).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Cancel plan' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    fireEvent.change(screen.getByLabelText('Reason'), {
+      target: { value: 'Patient declined further treatment.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel plan' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(within(row()).getByText('CANCELLED')).toBeTruthy();
+    expect(
+      screen.getByText('Cancellation: Patient declined further treatment.'),
+    ).toBeTruthy();
+  });
+
+  it('requires a correction reason for completed treatment and retains its session notes', async () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+    const row = () => screen.getByRole('row', { name: /Root canal filling/ });
+    fireEvent.click(within(row()).getByRole('button', { name: 'Start' }));
+    fireEvent.click(
+      within(row()).getByRole('button', { name: 'Close session' }),
+    );
+    fireEvent.change(screen.getByLabelText('Session notes'), {
+      target: { value: 'Treatment entered as completed.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Finish treatment' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(within(row()).queryByRole('button', { name: 'Remove' })).toBeNull();
+    fireEvent.click(within(row()).getByRole('button', { name: 'Correct' }));
+    expect(
+      screen.getByRole('button', { name: 'Mark entered in error' }),
+    ).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText('Reason'), {
+      target: { value: 'Entry recorded against the wrong tooth.' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Mark entered in error' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(within(row()).getByText('ENTERED_IN_ERROR')).toBeTruthy();
+    expect(screen.getByText('Treatment entered as completed.')).toBeTruthy();
+  });
+
   it('retains unsent handoff text across tabs and shows the assigned text to the assistant', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));

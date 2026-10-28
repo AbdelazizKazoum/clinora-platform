@@ -20,11 +20,15 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
   onApproveAct,
   onTransitionAct,
   onCloseSession,
+  onRemoveAct,
+  removablePlanIds,
   projectionIssueIds,
   visit,
   currentSession = false,
 }: {
   readonly actor: MockTreatmentActor;
+  readonly onRemoveAct: (id: string) => void;
+  readonly removablePlanIds: ReadonlySet<string>;
   readonly onApproveAct: (id: string) => void;
   readonly onTransitionAct: (
     id: string,
@@ -114,6 +118,8 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
               onApprove={onApproveAct}
               onTransition={onTransitionAct}
               onCloseSession={onCloseSession}
+              onRemove={onRemoveAct}
+              canRemove={removablePlanIds.has(row.original.id)}
             />
           );
         },
@@ -125,6 +131,8 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
       onApproveAct,
       onTransitionAct,
       onCloseSession,
+      onRemoveAct,
+      removablePlanIds,
       visit,
     ],
   );

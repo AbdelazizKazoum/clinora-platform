@@ -225,6 +225,8 @@ export interface TreatmentPlanItem extends TreatmentAct {
   readonly originHandoffId: string | null;
   readonly source: 'DOCTOR_DIRECT' | 'ASSISTANT_HANDOFF';
   readonly approvedAt: Date | null;
+  readonly removedAt: Date | null;
+  readonly removedByUserId: string | null;
   readonly version: number;
 }
 
@@ -267,6 +269,7 @@ export type TreatmentAuditAction =
   | 'FINDING_REMOVED'
   | 'FINDING_ENTERED_IN_ERROR'
   | 'ACT_RECORDED'
+  | 'ACT_REMOVED'
   | 'FINDING_CONFIRMED'
   | 'ACT_APPROVED'
   | 'ACT_STATUS_CHANGED'

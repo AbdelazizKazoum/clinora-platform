@@ -63,6 +63,8 @@ export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
   readonly onApproveFinding: (id: string) => void;
   readonly onRemoveFinding: (id: string, reason?: string) => void;
   readonly onApproveAct: (id: string) => void;
+  readonly onRemoveAct: (id: string) => void;
+  readonly removablePlanIds: ReadonlySet<string>;
   readonly onTransitionAct: (
     id: string,
     status: TreatmentActStatus,
@@ -289,6 +291,8 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
                 onApprove={props.onApproveAct}
                 onTransition={props.onTransitionAct}
                 onCloseSession={props.onCloseSession}
+                onRemove={props.onRemoveAct}
+                canRemove={props.removablePlanIds.has(record.id)}
               />
             ) : (
               <ClinicalFindingActions

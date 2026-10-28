@@ -37,11 +37,13 @@ import {
 
 import {
   assertReviewedEntries,
+  canRemoveLocalTreatmentPlan,
   closeLocalTreatmentSession,
   completeLocalTreatmentVisit,
   createLocalTreatmentRecord,
   createNextLocalTreatmentVisit,
   getLocalTreatmentVisit,
+  removeLocalTreatmentPlan,
   selectLocalTreatmentVisit,
   startLocalTreatmentSession,
   transitionLocalTreatmentPlan,
@@ -62,6 +64,7 @@ export interface TreatmentVisitActions {
   readonly approveFinding: (id: string) => void;
   readonly removeFinding: (id: string, reason?: string) => void;
   readonly approveAct: (id: string) => void;
+  readonly removeAct: (id: string) => void;
   readonly transitionAct: (
     id: string,
     status: TreatmentActStatus,
@@ -259,6 +262,20 @@ export function useLocalTreatmentVisit(
           (visit, now) => approveWorkspaceAct(visit, actor, id, now),
           'Treatment act approved.',
         ),
+      removeAct: (id) => {
+        const expectedVersion =
+          state.data.planItems.find((plan) => plan.id === id)?.version ?? -1;
+        runRecord(
+          (data, now) =>
+            removeLocalTreatmentPlan(
+              data,
+              actor,
+              { planItemId: id, expectedVersion },
+              now,
+            ),
+          'Unstarted treatment plan removed.',
+        );
+      },
       transitionAct: (id, status, reason) => {
         if (status === 'IN_PROGRESS') {
           const sessionId = nextId('session');
@@ -352,10 +369,26 @@ export function useLocalTreatmentVisit(
     }),
     [state.data],
   );
+  const planItems = useMemo(
+    () => state.data.planItems.filter((plan) => !plan.removedAt),
+    [state.data.planItems],
+  );
+  const removablePlanIds = useMemo(
+    () =>
+      new Set(
+        planItems
+          .filter((plan) =>
+            canRemoveLocalTreatmentPlan(state.data, actor, plan.id),
+          )
+          .map(({ id }) => id),
+      ),
+    [state.data, actor, planItems],
+  );
   return {
     visit,
     visits: state.data.visits,
-    planItems: state.data.planItems,
+    planItems,
+    removablePlanIds,
     sessions: state.data.sessions,
     feedback: state.feedback,
     actor,
