@@ -1,4 +1,3 @@
-import { Badge, Button, Card, CardBody, CardHeader } from 'react-bootstrap';
 import type {
   TreatmentPlanItem,
   TreatmentSession,
@@ -7,8 +6,7 @@ import type {
 import type { MockTreatmentActor } from '../model/treatment-workspace';
 import type { TreatmentVisitActions } from '../hooks/use-local-treatment-visit';
 import { TreatmentActsTable } from './treatment-acts-table';
-import { getTreatmentActOption } from '../model/treatment-catalogue';
-import { formatTarget } from './treatment-presentation';
+import { TreatmentPlanTimeline } from './treatment-plan-timeline';
 
 export function TreatmentPlansWorkspace({
   visit,
@@ -45,83 +43,12 @@ export function TreatmentPlansWorkspace({
         onCloseSession={actions.closeSession}
         projectionIssueIds={projectionIssueIds}
       />
-      <Card className="mt-3">
-        <CardHeader>
-          <h5 className="mb-0">Patient treatment timeline · All visits</h5>
-        </CardHeader>
-        <CardBody>
-          {plans.map((plan) => {
-            const history = sessions.filter(
-              (session) => session.planItemId === plan.id,
-            );
-            return (
-              <details key={plan.id} className="border rounded p-3 mb-2">
-                <summary>
-                  <strong>
-                    {getTreatmentActOption(plan.code)?.label ?? plan.code}
-                  </strong>
-                  {' · '}
-                  {formatTarget(plan.target.toothNumbers, plan.target.surfaces)}
-                  {' · '}
-                  {plan.id}
-                </summary>
-                <p className="text-muted mt-2 mb-2">
-                  Origin: {plan.originVisitId} ·{' '}
-                  {plan.source === 'DOCTOR_DIRECT'
-                    ? 'Doctor entry'
-                    : 'Assistant handoff'}
-                  {plan.originHandoffId ? ` · ${plan.originHandoffId}` : ''}
-                </p>
-                {history.length === 0 && (
-                  <p className="text-muted mb-0">No treatment sessions yet.</p>
-                )}
-                <ol className="mb-0">
-                  {history.map((session) => (
-                    <li key={session.id} className="mb-3">
-                      <Button
-                        variant="link"
-                        className="p-0 me-2"
-                        onClick={() => actions.selectVisit(session.visitId)}
-                      >
-                        {session.visitId}
-                      </Button>
-                      <Badge
-                        bg={
-                          session.status === 'IN_PROGRESS'
-                            ? 'warning'
-                            : 'secondary'
-                        }
-                      >
-                        {session.status === 'IN_PROGRESS'
-                          ? 'Session in progress'
-                          : session.outcome === 'CONTINUE_LATER'
-                            ? 'Session closed · Further treatment required'
-                            : 'Treatment finished'}
-                      </Badge>
-                      <small className="text-muted d-block mt-1">
-                        {session.startedAt.toLocaleString('en-GB')} · Treating
-                        clinician: {session.performedByUserId}
-                        {' · '}Plan version {session.planVersion}
-                      </small>
-                      {session.note && (
-                        <p
-                          className="mb-0 mt-1"
-                          style={{ whiteSpace: 'pre-wrap' }}
-                        >
-                          {session.note}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            );
-          })}
-          {plans.length === 0 && (
-            <p className="text-muted mb-0">No treatment plans recorded.</p>
-          )}
-        </CardBody>
-      </Card>
+      <TreatmentPlanTimeline
+        plans={plans}
+        sessions={sessions}
+        currentVisitId={visit.id}
+        onSelectVisit={actions.selectVisit}
+      />
     </>
   );
 }
