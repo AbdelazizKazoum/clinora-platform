@@ -7,6 +7,7 @@ export {
   staffStatusDotClassNames,
   staffStatusLabels,
   type StaffMember,
+  type StaffDirectoryMember,
   type StaffRole,
   type StaffStatus,
 } from './staff';

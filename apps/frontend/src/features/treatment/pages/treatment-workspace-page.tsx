@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Alert } from 'react-bootstrap';
+import { useSession } from 'next-auth/react';
 import PageBreadcrumb from '@/components/PageBreadcrumb';
+import { useStaffDirectory } from '@/features/staff';
 import { PatientVisitHeader } from '../components/patient-visit-header';
 import {
   TreatmentWorkspaceTabs,
@@ -18,6 +20,7 @@ import { useLocalTreatmentVisit } from '../hooks/use-local-treatment-visit';
 import { useTreatmentEntryForm } from '../hooks/use-treatment-entry-form';
 import type { TreatmentLaunchContext } from '../model/treatment';
 import { canEditTreatmentDraft } from '../model/treatment.rules';
+import type { MockTreatmentActor } from '../model/treatment-workspace';
 import {
   buildTreatmentWorkflowProjection,
   type TreatmentProjectionMode,
@@ -70,6 +73,41 @@ function TreatmentVisitWorkspace({
   } = workspace;
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('chart');
   const [handoffInstruction, setHandoffInstruction] = useState('');
+  const [handoffAssistantId, setHandoffAssistantId] = useState('');
+  const { data: session, status: sessionStatus } = useSession();
+  const clinicId = session?.user.clinicId;
+  const directory = useStaffDirectory(
+    sessionStatus === 'authenticated' ? clinicId : undefined,
+  );
+  const assistants: readonly MockTreatmentActor[] = (directory.data ?? [])
+    .filter(
+      (member) =>
+        member.clinicId === clinicId &&
+        member.role === 'DENTAL_ASSISTANT' &&
+        member.status === 'active' &&
+        member.isActive &&
+        member.userId !== dentist.userId &&
+        Boolean(member.userId),
+    )
+    .map((member) => ({
+      userId: member.userId,
+      name: member.fullName,
+      role: 'dental_assistant',
+    }));
+  const assignedAssistantId = visit.documentationHandoff?.assignedToAssistantId;
+  const assignedAssistantName = directory.data?.find(
+    (member) =>
+      member.clinicId === clinicId && member.userId === assignedAssistantId,
+  )?.fullName;
+  const previewAssistant = assignedAssistantId
+    ? {
+        userId: assignedAssistantId,
+        name: assignedAssistantName ?? 'Assigned assistant',
+        role: 'dental_assistant' as const,
+      }
+    : (assistants.find(
+        (candidate) => candidate.userId === handoffAssistantId,
+      ) ?? assistant);
   const [projectionMode, setProjectionMode] =
     useState<TreatmentProjectionMode>('combined');
   // All three projections are built together; switching mode only selects one.
@@ -96,7 +134,7 @@ function TreatmentVisitWorkspace({
       <PatientVisitHeader
         actor={actor}
         dentist={dentist}
-        assistant={assistant}
+        assistant={previewAssistant}
         patient={patient}
         onActorChange={setActor}
         visit={visit}
@@ -167,7 +205,21 @@ function TreatmentVisitWorkspace({
       {activeTab === 'handoff' && (
         <DocumentationHandoffPanel
           actor={actor}
-          assistant={assistant}
+          assistants={assistants}
+          assignedAssistantName={assignedAssistantName ?? null}
+          selectedAssistantId={handoffAssistantId}
+          onAssistantChange={setHandoffAssistantId}
+          assistantsLoading={sessionStatus === 'loading' || directory.isLoading}
+          assistantsError={
+            sessionStatus !== 'loading' && !clinicId
+              ? 'A signed-in clinic is required to load assistants.'
+              : directory.isError
+                ? 'Unable to load the clinic assistant list.'
+                : null
+          }
+          onRetryAssistants={() => {
+            void directory.refetch();
+          }}
           actions={actions}
           instruction={handoffInstruction}
           onInstructionChange={setHandoffInstruction}

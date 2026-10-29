@@ -50,6 +50,40 @@ describe(StaffFacade.name, () => {
     ).resolves.toEqual({ items: [] });
   });
 
+  it('returns only directory fields without staff contact or administrative details', async () => {
+    const directoryMember = {
+      clinicId: '10000000-0000-4000-8000-000000000001',
+      userId: 'assistant-1',
+      firstName: 'Yasmine',
+      lastName: 'Alaoui',
+      role: 'DENTAL_ASSISTANT',
+      status: 'active',
+      isActive: true,
+    };
+    clinicClient.listStaffMembers.mockResolvedValue({
+      items: [
+        {
+          ...directoryMember,
+          id: 'staff-1',
+          email: 'private@example.test',
+          phone: 'private',
+          specialization: '',
+          avatar: '',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+    });
+    await expect(
+      new StaffFacade(clinicClient).listStaffDirectory({
+        clinicId: directoryMember.clinicId,
+      }),
+    ).resolves.toEqual({ items: [directoryMember] });
+    expect(clinicClient.listStaffMembers).toHaveBeenCalledWith({
+      clinicId: directoryMember.clinicId,
+    });
+  });
+
   it('normalizes omitted empty staff lists for the HTTP contract', async () => {
     const facade = new StaffFacade(clinicClient);
     clinicClient.listStaffMembers.mockResolvedValue(

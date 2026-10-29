@@ -5,6 +5,23 @@ are implemented; backend persistence and API integration remain pending. See
 [Treatment continuation across visits](./treatment-continuation-across-visits.md)
 for the refined status model and current implementation scope.
 
+The handoff assistant picker reads the signed-in clinic's staff directory through
+`GET /clinics/:clinicId/staff/directory`. This read-only endpoint permits admins,
+doctors, and dental assistants within their authenticated clinic scope and returns
+names, user IDs, roles, and availability without staff contact details. Staff
+management routes remain restricted to admins. The picker lists active dental
+assistants and requires an explicit choice before assignment. Directory data comes
+from the backend; the handoff assignment itself still uses the local treatment
+workspace until treatment persistence is integrated.
+
+For local development, run `pnpm exec node tools/dev/seed-demo-assistants.cjs --seed`
+after starting the clinic and auth services. This adds Yasmine Alaoui, Amine
+Bennani, and Nora Idrissi to the default clinic through `CreateStaffMember`,
+including their auth identities. Existing demo accounts are left untouched.
+Omit `--seed` to preview/check the roster. `DEMO_CLINIC_ID` selects another local
+clinic; `DEMO_ASSISTANT_PASSWORD` optionally sets the password for newly created
+accounts. Otherwise each account receives a random password that is not logged.
+
 ## Purpose
 
 This document defines the treatment workflow where:

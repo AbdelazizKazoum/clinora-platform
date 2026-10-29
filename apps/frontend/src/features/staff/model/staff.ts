@@ -28,6 +28,11 @@ export interface StaffMember {
   updatedAt: Date;
 }
 
+export type StaffDirectoryMember = Pick<
+  StaffMember,
+  'clinicId' | 'userId' | 'fullName' | 'role' | 'status' | 'isActive'
+>;
+
 export const staffRoleLabels = {
   SECRETARY: 'Secretary',
   DENTAL_ASSISTANT: 'Dental Assistant',

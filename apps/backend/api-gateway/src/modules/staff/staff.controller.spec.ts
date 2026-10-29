@@ -33,12 +33,14 @@ describe(StaffController.name, () => {
     Pick<
       StaffFacade,
       | 'listStaffMembers'
+      | 'listStaffDirectory'
       | 'createStaffMember'
       | 'getStaffMember'
       | 'updateStaffMember'
     >
   > = {
     listStaffMembers: jest.fn(),
+    listStaffDirectory: jest.fn(),
     createStaffMember: jest.fn(),
     getStaffMember: jest.fn(),
     updateStaffMember: jest.fn(),
@@ -57,6 +59,14 @@ describe(StaffController.name, () => {
       items: [staffMember],
     });
     expect(facade.listStaffMembers).toHaveBeenCalledWith({ clinicId });
+  });
+
+  it('delegates the read-only directory with the clinic path parameter', async () => {
+    facade.listStaffDirectory.mockResolvedValue({ items: [] });
+    await expect(controller.listStaffDirectory(clinicId)).resolves.toEqual({
+      items: [],
+    });
+    expect(facade.listStaffDirectory).toHaveBeenCalledWith({ clinicId });
   });
 
   it('delegates staff creation without creating auth work in the gateway', async () => {

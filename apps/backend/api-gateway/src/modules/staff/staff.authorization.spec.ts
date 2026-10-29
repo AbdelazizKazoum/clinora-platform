@@ -26,7 +26,9 @@ const staffRouteHandlers = [
   'updateStaffMember',
 ] as const satisfies readonly (keyof StaffController)[];
 
-type StaffRouteHandler = (typeof staffRouteHandlers)[number];
+type StaffRouteHandler =
+  | (typeof staffRouteHandlers)[number]
+  | 'listStaffDirectory';
 
 const adminUser = createUser('admin', clinicId);
 
@@ -80,6 +82,44 @@ function authorizeStaffRoute(
 }
 
 describe(`${StaffController.name} authorization`, () => {
+  it.each(['admin', 'doctor', 'dental_assistant'] as const)(
+    'allows %s to read the directory only within their clinic',
+    (role) => {
+      expect(
+        authorizeStaffRoute('listStaffDirectory', {
+          user: createUser(role, clinicId),
+          params: { clinicId },
+        }),
+      ).toBe(true);
+      expect(() =>
+        authorizeStaffRoute('listStaffDirectory', {
+          user: createUser(role, otherClinicId),
+          params: { clinicId },
+        }),
+      ).toThrow(ForbiddenException);
+    },
+  );
+
+  it.each(['secretary', 'patient'] as const)(
+    'denies directory access for %s',
+    (role) => {
+      expect(() =>
+        authorizeStaffRoute('listStaffDirectory', {
+          user: createUser(role, clinicId),
+          params: { clinicId },
+        }),
+      ).toThrow(ForbiddenException);
+    },
+  );
+
+  it('requires authentication to read the directory', () => {
+    expect(() =>
+      authorizeStaffRoute('listStaffDirectory', {
+        params: { clinicId },
+      }),
+    ).toThrow(UnauthorizedException);
+  });
+
   it('protects every staff route with JWT, admin role, and clinic scope guards', () => {
     const guards = Reflect.getMetadata(
       GUARDS_METADATA,

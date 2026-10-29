@@ -20,3 +20,18 @@ export interface StaffMemberResponseDto {
 export interface ListStaffMembersResponseDto {
   items?: StaffMemberResponseDto[];
 }
+
+export type StaffDirectoryMemberResponseDto = Pick<
+  StaffMemberResponseDto,
+  | 'clinicId'
+  | 'userId'
+  | 'firstName'
+  | 'lastName'
+  | 'role'
+  | 'status'
+  | 'isActive'
+>;
+
+export interface ListStaffDirectoryResponseDto {
+  items?: StaffDirectoryMemberResponseDto[];
+}

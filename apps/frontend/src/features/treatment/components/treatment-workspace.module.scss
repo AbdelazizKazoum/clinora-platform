@@ -224,44 +224,6 @@
   display: grid;
 }
 
-.handoffFlow {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 1.5rem;
-}
-
-.handoffStep,
-.handoffStepActive {
-  align-items: center;
-  color: var(--bs-secondary-color);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  text-align: center;
-}
-
-.handoffStep span,
-.handoffStepActive span {
-  align-items: center;
-  background: var(--bs-secondary-bg);
-  border-radius: 50%;
-  display: flex;
-  font-weight: 600;
-  height: 2rem;
-  justify-content: center;
-  width: 2rem;
-}
-
-.handoffStepActive {
-  color: var(--bs-primary);
-}
-
-.handoffStepActive span {
-  background: var(--bs-primary);
-  color: var(--bs-white);
-}
-
 @media (max-width: 767.98px) {
   .actorSelect {
     min-width: 100%;
@@ -273,9 +235,6 @@
     gap: 0.75rem;
   }
 
-  .handoffFlow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 1599.98px) {

@@ -6,6 +6,7 @@ export {
   staffStatusBadgeClassNames,
   staffStatusLabels,
   type StaffMember,
+  type StaffDirectoryMember,
   type StaffRole,
   type StaffStatus,
 } from './model';
@@ -14,5 +15,6 @@ export {
   useStaffMembers,
   useUpdateStaffMember,
 } from './hooks';
+export { useStaffDirectory } from './hooks/queries/use-staff-directory';
 export { default as CreateStaffPage } from './pages/create-staff-page';
 export { default as StaffPage } from './pages/staff-page';

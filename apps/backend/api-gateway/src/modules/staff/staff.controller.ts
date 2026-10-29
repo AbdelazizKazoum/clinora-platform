@@ -20,11 +20,8 @@ import { JwtAuthGuard } from '@common/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@common/auth/guards/roles.guard';
 import type { JwtPayload } from '@common/auth/jwt-payload';
 
-import {
-  CreateStaffMemberDto,
-  UpdateStaffMemberDto,
-} from './dto/staff.dto';
-import { StaffFacade } from './staff.facade';
+import { CreateStaffMemberDto, UpdateStaffMemberDto } from './dto/staff.dto';
+import { StaffFacade, type StaffDirectoryMemberReply } from './staff.facade';
 
 @Controller('clinics/:clinicId/staff')
 @Roles('admin')
@@ -37,6 +34,14 @@ export class StaffController {
     @Param('clinicId', ParseUUIDPipe) clinicId: string,
   ): Promise<StaffMembersReply> {
     return this.staff.listStaffMembers({ clinicId });
+  }
+
+  @Get('directory')
+  @Roles('admin', 'doctor', 'dental_assistant')
+  listStaffDirectory(
+    @Param('clinicId', ParseUUIDPipe) clinicId: string,
+  ): Promise<{ items: StaffDirectoryMemberReply[] }> {
+    return this.staff.listStaffDirectory({ clinicId });
   }
 
   @Post()

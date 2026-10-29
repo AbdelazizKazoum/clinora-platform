@@ -8,8 +8,73 @@ import {
 } from '@testing-library/react';
 
 import { Odontogram, type OdontogramTooth } from '@/features/odontogram';
+import { useSession } from 'next-auth/react';
+import { useStaffDirectory, type StaffDirectoryMember } from '@/features/staff';
 
 import { TreatmentWorkspacePage } from './treatment-workspace-page';
+
+jest.mock('next-auth/react', () => ({ useSession: jest.fn() }));
+jest.mock('@/features/staff', () => ({ useStaffDirectory: jest.fn() }));
+
+const clinicId = 'clinic-roster';
+const assistant = (
+  overrides: Partial<StaffDirectoryMember> = {},
+): StaffDirectoryMember => ({
+  clinicId,
+  userId: 'assistant-demo',
+  fullName: 'Yasmine Alaoui',
+  role: 'DENTAL_ASSISTANT',
+  status: 'active',
+  isActive: true,
+  ...overrides,
+});
+const staffDirectory = [
+  assistant(),
+  assistant({ userId: 'assistant-2', fullName: 'Amine Bennani' }),
+  assistant({ userId: 'doctor-2', fullName: 'Other Doctor', role: 'DOCTOR' }),
+  assistant({
+    userId: 'inactive',
+    fullName: 'Inactive Assistant',
+    status: 'inactive',
+    isActive: false,
+  }),
+  assistant({
+    userId: 'leave',
+    fullName: 'Assistant On Leave',
+    status: 'on-leave',
+  }),
+  assistant({
+    userId: 'disabled',
+    fullName: 'Disabled Assistant',
+    isActive: false,
+  }),
+  assistant({
+    userId: 'elsewhere',
+    fullName: 'Other Clinic Assistant',
+    clinicId: 'other-clinic',
+  }),
+];
+const refetchDirectory = jest.fn();
+
+function mockDirectory(
+  overrides: Partial<ReturnType<typeof useStaffDirectory>> = {},
+) {
+  jest.mocked(useStaffDirectory).mockReturnValue({
+    data: staffDirectory,
+    error: null,
+    isError: false,
+    isLoading: false,
+    isFetching: false,
+    refetch: refetchDirectory,
+    ...overrides,
+  } as ReturnType<typeof useStaffDirectory>);
+}
+
+function selectAssistant(userId = 'assistant-demo') {
+  fireEvent.change(screen.getByLabelText('Assign to assistant'), {
+    target: { value: userId },
+  });
+}
 
 jest.mock('@/features/odontogram', () => {
   const actual = jest.requireActual('@/features/odontogram');
@@ -30,6 +95,142 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  beforeEach(() => {
+    refetchDirectory.mockReset();
+    jest.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      data: {
+        expires: '2099-01-01T00:00:00.000Z',
+        user: {
+          id: 'doctor-demo',
+          clinicId,
+          role: 'doctor',
+          fullName: 'Dr. Sara Benali',
+          email: 'doctor@example.test',
+        },
+      },
+      update: jest.fn(),
+    });
+    mockDirectory();
+  });
+
+  it('lists active clinic assistants and requires a choice before assigning', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    expect(useStaffDirectory).toHaveBeenCalledWith(clinicId);
+    const select = screen.getByLabelText('Assign to assistant');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Select a dental assistant', 'Yasmine Alaoui', 'Amine Bennani']);
+    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+      target: { value: 'Record findings for review.' },
+    });
+    expect(
+      screen.getByRole('button', { name: 'Assign handoff' }),
+    ).toHaveProperty('disabled', true);
+  });
+
+  it('retains the selected assistant across tabs and lets that assistant start the handoff', () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    selectAssistant('assistant-2');
+    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+      target: { value: 'Record the crown plan for review.' },
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /Clinical findings/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    expect(screen.getByLabelText('Assign to assistant')).toHaveProperty(
+      'value',
+      'assistant-2',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Assign to Amine Bennani' }),
+    );
+    expect(
+      screen.getByText('Amine Bennani', { selector: 'strong' }),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText('Assign to assistant')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Demo actor'), {
+      target: { value: 'assistant' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Start documentation' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Submit for review' }),
+    ).toBeTruthy();
+  });
+
+  it.each([
+    {
+      state: 'loading',
+      query: { data: undefined, isLoading: true },
+      message: 'Loading clinic assistants...',
+    },
+    {
+      state: 'empty',
+      query: { data: [] },
+      message: 'No active dental assistants are available in this clinic.',
+    },
+    {
+      state: 'failed',
+      query: { isError: true },
+      message: 'Unable to load the clinic assistant list.',
+    },
+  ])(
+    'blocks assignment when the assistant list is $state',
+    ({ query, message }) => {
+      mockDirectory(query);
+      render(<TreatmentWorkspacePage />);
+      fireEvent.click(
+        screen.getByRole('tab', { name: /Documentation handoff/ }),
+      );
+      fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+        target: { value: 'Record findings.' },
+      });
+      expect(screen.getByText(message)).toBeTruthy();
+      expect(screen.getByLabelText('Assign to assistant')).toHaveProperty(
+        'disabled',
+        true,
+      );
+      expect(
+        screen.getByRole('button', { name: 'Assign handoff' }),
+      ).toHaveProperty('disabled', true);
+      if (query.isError) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Retry assistant list' }),
+        );
+        expect(refetchDirectory).toHaveBeenCalledTimes(1);
+      }
+    },
+  );
+
+  it('blocks assignment if the selected assistant becomes inactive', () => {
+    const { rerender } = render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    selectAssistant('assistant-2');
+    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+      target: { value: 'Record findings.' },
+    });
+    mockDirectory({
+      data: staffDirectory.map((member) =>
+        member.userId === 'assistant-2'
+          ? { ...member, status: 'inactive', isActive: false }
+          : member,
+      ),
+    });
+    rerender(<TreatmentWorkspacePage />);
+    expect(screen.getByLabelText('Assign to assistant')).toHaveProperty(
+      'value',
+      '',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Assign handoff' }),
+    ).toHaveProperty('disabled', true);
+  });
+
   it('charts crowns on teeth 18 and 17 together and permits replacement on both', () => {
     render(<TreatmentWorkspacePage />);
     const onSelectionChange = jest
@@ -202,6 +403,7 @@ describe('Treatment workspace page', () => {
   it('retains unsent handoff text across tabs and shows the assigned text to the assistant', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    selectAssistant();
     const assign = screen.getByRole('button', { name: /Assign to Yasmine/ });
     expect(assign).toHaveProperty('disabled', true);
     fireEvent.change(screen.getByLabelText('Doctor instructions'), {
@@ -562,6 +764,7 @@ describe('Treatment workspace page', () => {
   it('supports assistant drafts, dentist approval, and visit completion', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
+    selectAssistant();
     fireEvent.change(screen.getByLabelText('Doctor instructions'), {
       target: { value: 'Record the clinical findings from today for review.' },
     });

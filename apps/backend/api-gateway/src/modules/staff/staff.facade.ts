@@ -25,6 +25,17 @@ import {
   type ClinicServiceClient,
 } from '../../clients/clinic/clinic-service.client';
 
+export type StaffDirectoryMemberReply = Pick<
+  StaffMemberReply,
+  | 'clinicId'
+  | 'userId'
+  | 'firstName'
+  | 'lastName'
+  | 'role'
+  | 'status'
+  | 'isActive'
+>;
+
 @Injectable()
 export class StaffFacade {
   constructor(
@@ -32,9 +43,7 @@ export class StaffFacade {
     private readonly clinicClient: ClinicServiceClient,
   ) {}
 
-  getStaffMember(
-    request: GetStaffMemberRequest,
-  ): Promise<StaffMemberReply> {
+  getStaffMember(request: GetStaffMemberRequest): Promise<StaffMemberReply> {
     return this.execute(() => this.clinicClient.getStaffMember(request));
   }
 
@@ -47,6 +56,33 @@ export class StaffFacade {
 
     return {
       items: reply.items ?? [],
+    };
+  }
+
+  async listStaffDirectory(
+    request: ListStaffMembersRequest,
+  ): Promise<{ items: StaffDirectoryMemberReply[] }> {
+    const reply = await this.listStaffMembers(request);
+    return {
+      items: reply.items.map(
+        ({
+          clinicId,
+          userId,
+          firstName,
+          lastName,
+          role,
+          status,
+          isActive,
+        }) => ({
+          clinicId,
+          userId,
+          firstName,
+          lastName,
+          role,
+          status,
+          isActive,
+        }),
+      ),
     };
   }
 
