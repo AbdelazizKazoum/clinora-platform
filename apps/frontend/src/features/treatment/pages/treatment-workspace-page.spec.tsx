@@ -29,6 +29,40 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  it('explains missing crown prerequisites and allows replacement after confirming the existing crown', async () => {
+    render(<TreatmentWorkspacePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));
+    fireEvent.change(screen.getByLabelText('Treatment act'), {
+      target: { value: 'CROWN_REPLACEMENT' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment act' }));
+    const modal = screen.getByRole('dialog', {
+      name: 'Cannot plan crown replacement',
+    });
+    expect(
+      within(modal).getByText(/No existing crown is documented on teeth 16/),
+    ).toBeTruthy();
+    expect(screen.queryByRole('row', { name: /Crown replacement/ })).toBeNull();
+    fireEvent.click(within(modal).getByRole('button', { name: 'I understand' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chart finding' }));
+    fireEvent.change(screen.getByLabelText('Finding'), {
+      target: { value: 'EXISTING_FIXED_RESTORATION' },
+    });
+    fireEvent.change(screen.getByLabelText('Clinical detail'), {
+      target: { value: 'CROWN' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm finding' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment act' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('row', { name: /Crown replacement/ })).toBeTruthy();
+    expect(screen.getByTestId('odontogram-projection').textContent).toContain(
+      'crown-replacement',
+    );
+  });
+
   it('removes a catalogue plan before Start without a reason or cancelled row', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));

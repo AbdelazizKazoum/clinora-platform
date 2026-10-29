@@ -27,6 +27,7 @@ import {
 } from '../model/treatment-materials';
 import { validateProsthesisActForTeeth } from '../model/treatment-prosthesis-validation';
 import { validateBridgeActForTeeth } from '../model/treatment-bridge-validation';
+import { validateCrownReplacementForTeeth } from '../model/treatment-crown-validation';
 import type {
   TreatmentFeedback,
   TreatmentVisitActions,
@@ -69,6 +70,10 @@ export function useTreatmentEntryForm({
     actLabel: string;
   } | null>(null);
   const [bridgeValidationError, setBridgeValidationError] = useState<{
+    reason: string;
+    requirement: string;
+  } | null>(null);
+  const [crownValidationError, setCrownValidationError] = useState<{
     reason: string;
     requirement: string;
   } | null>(null);
@@ -169,6 +174,16 @@ export function useTreatmentEntryForm({
         message: `${selectedAct.label} requires at least one tooth surface. Please select surfaces above.`,
         variant: 'warning',
       });
+    }
+    if (actCode === 'CROWN_REPLACEMENT') {
+      const validation = validateCrownReplacementForTeeth(
+        selection.selectedToothPositions,
+        data,
+      );
+      if (!validation.valid) {
+        setCrownValidationError(validation);
+        return;
+      }
     }
     if (selectedAct.target === 'bridge') {
       const bridgeValidation = validateBridgeActForTeeth(
@@ -342,6 +357,8 @@ export function useTreatmentEntryForm({
     onCloseProsthesisValidationError: closeProsthesisValidationError,
     bridgeValidationError,
     onCloseBridgeValidationError: closeBridgeValidationError,
+    crownValidationError,
+    onCloseCrownValidationError: () => setCrownValidationError(null),
   };
 }
 

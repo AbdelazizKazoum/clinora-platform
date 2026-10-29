@@ -12,6 +12,7 @@ import { TreatmentActsTable } from './treatment-acts-table';
 import { ToothDetailsPanel } from './tooth-details-panel';
 import { ProsthesisRequirementModal } from './prosthesis-requirement-modal';
 import { BridgeRequirementModal } from './bridge-requirement-modal';
+import { CrownRequirementModal } from './crown-requirement-modal';
 import styles from './treatment-workspace.module.scss';
 
 export function TreatmentChartWorkspace({
@@ -43,6 +44,8 @@ export function TreatmentChartWorkspace({
     onCloseProsthesisValidationError,
     bridgeValidationError,
     onCloseBridgeValidationError,
+    crownValidationError,
+    onCloseCrownValidationError,
     ...fields
   } = entry;
   const projection = workflow.projections[projectionMode];
@@ -120,6 +123,14 @@ export function TreatmentChartWorkspace({
           requirement={bridgeValidationError.requirement}
           show={true}
           onClose={onCloseBridgeValidationError}
+        />
+      )}
+      {crownValidationError && (
+        <CrownRequirementModal
+          reason={crownValidationError.reason}
+          requirement={crownValidationError.requirement}
+          show={true}
+          onClose={onCloseCrownValidationError}
         />
       )}
     </>

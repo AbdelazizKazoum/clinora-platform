@@ -22,6 +22,7 @@ import type {
   TreatmentAct,
   TreatmentVisit,
 } from './treatment';
+import { hasExistingCrown } from './treatment-crown-validation';
 
 export interface TreatmentOdontogramProjectionIssue {
   readonly recordId: string;
@@ -895,13 +896,7 @@ const projectAct = (
       );
     for (const position of targets) {
       const tooth = getProjectionTooth(teeth, position);
-      const hasExistingRestoration = tooth.conditions.some(
-        (condition) =>
-          condition.kind === 'restoration' &&
-          condition.restoration === 'crown' &&
-          condition.appearance === 'existing',
-      );
-      if (!hasExistingRestoration) {
+      if (!hasExistingCrown(tooth)) {
         addIssue(
           issues,
           act.id,
