@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -6,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 
-import { Odontogram } from '@/features/odontogram';
+import { Odontogram, type OdontogramTooth } from '@/features/odontogram';
 
 import { TreatmentWorkspacePage } from './treatment-workspace-page';
 
@@ -29,6 +30,66 @@ jest.mock('@/components/PageBreadcrumb', () => ({
 }));
 
 describe('Treatment workspace page', () => {
+  it('charts crowns on teeth 18 and 17 together and permits replacement on both', () => {
+    render(<TreatmentWorkspacePage />);
+    const onSelectionChange = jest
+      .mocked(Odontogram)
+      .mock.calls.at(-1)?.[0].onSelectionChange;
+    expect(onSelectionChange).toBeDefined();
+    act(() =>
+      onSelectionChange?.({
+        activeToothPosition: 18,
+        selectedToothPositions: [18, 17],
+      }),
+    );
+    fireEvent.change(screen.getByLabelText('Finding'), {
+      target: { value: 'EXISTING_FIXED_RESTORATION' },
+    });
+    fireEvent.change(screen.getByLabelText('Restoration material'), {
+      target: { value: 'METAL' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm finding' }));
+    const teeth: readonly OdontogramTooth[] = JSON.parse(
+      screen.getByTestId('odontogram-projection').textContent ?? '[]',
+    );
+    for (const position of [18, 17]) {
+      expect(
+        teeth.find((tooth) => tooth.position === position)?.conditions,
+      ).toContainEqual({
+        kind: 'restoration',
+        restoration: 'crown',
+        material: 'metal',
+        appearance: 'existing',
+      });
+    }
+    expect(
+      teeth.find((tooth) => tooth.position === 16)?.conditions,
+    ).not.toContainEqual(
+      expect.objectContaining({ kind: 'restoration', restoration: 'crown' }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));
+    fireEvent.change(screen.getByLabelText('Treatment act'), {
+      target: { value: 'CROWN_REPLACEMENT' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Plan treatment act' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('row', { name: /Crown replacement/ })).toBeTruthy();
+    const replacedTeeth: readonly OdontogramTooth[] = JSON.parse(
+      screen.getByTestId('odontogram-projection').textContent ?? '[]',
+    );
+    for (const position of [18, 17]) {
+      expect(
+        replacedTeeth.find((tooth) => tooth.position === position)?.conditions,
+      ).toContainEqual(
+        expect.objectContaining({
+          state: 'crown-replacement',
+          appearance: 'planned',
+        }),
+      );
+    }
+  });
+
   it('explains missing crown prerequisites and allows replacement after confirming the existing crown', async () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Plan treatment' }));
@@ -43,7 +104,9 @@ describe('Treatment workspace page', () => {
       within(modal).getByText(/No existing crown is documented on teeth 16/),
     ).toBeTruthy();
     expect(screen.queryByRole('row', { name: /Crown replacement/ })).toBeNull();
-    fireEvent.click(within(modal).getByRole('button', { name: 'I understand' }));
+    fireEvent.click(
+      within(modal).getByRole('button', { name: 'I understand' }),
+    );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     fireEvent.click(screen.getByRole('button', { name: 'Chart finding' }));

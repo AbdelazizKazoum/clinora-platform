@@ -34,8 +34,9 @@ const chart = (
 
 function setup(data: OdontogramData) {
   const actions = { recordAct: jest.fn(), recordFinding: jest.fn() };
+  const showFeedback = jest.fn();
   const { result } = renderHook(() =>
-    useTreatmentEntryForm({ actions, data, showFeedback: jest.fn() }),
+    useTreatmentEntryForm({ actions, data, showFeedback }),
   );
   act(() => {
     result.current.setSelection({
@@ -44,8 +45,130 @@ function setup(data: OdontogramData) {
     });
     result.current.onActCodeChange('CROWN_REPLACEMENT');
   });
-  return { result, actions };
+  return { result, actions, showFeedback };
 }
+
+describe('Finding selection scope', () => {
+  it('records an existing crown on every selected tooth with the same material and note', () => {
+    const { result, actions } = setup(chart());
+    act(() => {
+      result.current.onFindingCodeChange('EXISTING_FIXED_RESTORATION');
+      result.current.onRestorationMaterialChange('METAL');
+      result.current.onNoteChange('Existing metal crowns.');
+    });
+    act(() => result.current.onAddFinding());
+    expect(actions.recordFinding).toHaveBeenCalledTimes(1);
+    expect(actions.recordFinding).toHaveBeenCalledWith({
+      code: 'EXISTING_FIXED_RESTORATION',
+      details: [
+        { key: 'RESTORATION_TYPE', value: 'CROWN' },
+        { key: 'RESTORATION_MATERIAL', value: 'METAL' },
+      ],
+      note: 'Existing metal crowns.',
+      target: {
+        arch: null,
+        kind: 'TOOTH',
+        periodontalSites: [],
+        surfaces: [],
+        toothNumbers: [18, 17],
+      },
+    });
+    expect(result.current.note).toBe('');
+  });
+
+  it('uses the selected surfaces and severity for caries on every selected tooth', () => {
+    const { result, actions } = setup(chart());
+    act(() => {
+      result.current.onFindingCodeChange('CARIES');
+      result.current.onFindingDetailChange('5');
+      result.current.onSurfacesChange(['mesial', 'occlusal']);
+    });
+    act(() => result.current.onAddFinding());
+    expect(actions.recordFinding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'CARIES',
+        details: expect.arrayContaining([
+          { key: 'ICDAS_CARS_SEVERITY', value: 5 },
+        ]),
+        target: expect.objectContaining({
+          kind: 'TOOTH_SURFACE',
+          surfaces: ['MESIAL', 'OCCLUSAL'],
+          toothNumbers: [18, 17],
+        }),
+      }),
+    );
+  });
+
+  it('keeps periodontal probing specific to the active tooth and chosen site', () => {
+    const { result, actions } = setup(chart());
+    act(() => {
+      result.current.onFindingCodeChange('PERIODONTAL_MEASUREMENT');
+      result.current.onFindingDetailChange('6');
+      result.current.onPeriodontalSiteChange('ML');
+    });
+    act(() => result.current.onAddFinding());
+    expect(actions.recordFinding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'PERIODONTAL_MEASUREMENT',
+        details: [{ key: 'PROBING_DEPTH_MM', value: 6 }],
+        target: expect.objectContaining({
+          kind: 'PERIODONTAL_SITE',
+          periodontalSites: ['ML'],
+          toothNumbers: [18],
+        }),
+      }),
+    );
+  });
+
+  it('records an existing bridge as one complete validated span', () => {
+    const { result, actions } = setup({
+      teeth: chart().teeth.map((tooth) =>
+        tooth.position === 18 ? { ...tooth, base: 'missing' } : tooth,
+      ),
+    });
+    act(() => result.current.onFindingCodeChange('EXISTING_FIXED_RESTORATION'));
+    act(() => result.current.onFindingDetailChange('BRIDGE'));
+    act(() => result.current.onAddFinding());
+    expect(actions.recordFinding).toHaveBeenCalledTimes(1);
+    expect(actions.recordFinding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({
+          kind: 'BRIDGE_SPAN',
+          toothNumbers: [18, 17],
+        }),
+      }),
+    );
+  });
+
+  it('still rejects an existing bridge when the selected span has no missing tooth', () => {
+    const { result, actions, showFeedback } = setup(chart());
+    act(() => result.current.onFindingCodeChange('EXISTING_FIXED_RESTORATION'));
+    act(() => result.current.onFindingDetailChange('BRIDGE'));
+    act(() => result.current.onAddFinding());
+    expect(actions.recordFinding).not.toHaveBeenCalled();
+    expect(showFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'warning',
+        message: expect.stringContaining('at least one missing tooth'),
+      }),
+    );
+  });
+
+  it('requires a selection instead of recording against a stale active tooth', () => {
+    const { result, actions, showFeedback } = setup(chart());
+    act(() =>
+      result.current.setSelection({
+        activeToothPosition: 18,
+        selectedToothPositions: [],
+      }),
+    );
+    act(() => result.current.onAddFinding());
+    expect(actions.recordFinding).not.toHaveBeenCalled();
+    expect(showFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'warning' }),
+    );
+  });
+});
 
 describe('Crown replacement entry prerequisites', () => {
   it('blocks healthy teeth 18 and 17 and retains the form after dismissal', () => {

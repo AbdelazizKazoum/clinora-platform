@@ -81,7 +81,11 @@ export function useTreatmentEntryForm({
   const selectedFinding = getClinicalFindingOption(findingCode);
   const selectedAct = getTreatmentActOption(actCode);
   const addFinding = () => {
-    if (!activeTooth || !selectedFinding) {
+    if (
+      !activeTooth ||
+      !selectedFinding ||
+      selection.selectedToothPositions.length === 0
+    ) {
       return showFeedback({
         message: 'Please select a tooth and a clinical finding.',
         variant: 'warning',
@@ -140,9 +144,11 @@ export function useTreatmentEntryForm({
         note: note.trim() || null,
         target: buildTarget(
           findingTarget,
-          findingTarget === 'bridge'
-            ? selection.selectedToothPositions
-            : [activeTooth],
+          // Match the source chart: ordinary findings use the full selection,
+          // while periodontal measurements belong to one tooth and site.
+          findingTarget === 'periodontal'
+            ? [activeTooth]
+            : selection.selectedToothPositions,
           surfaces,
           periodontalSite,
         ),
