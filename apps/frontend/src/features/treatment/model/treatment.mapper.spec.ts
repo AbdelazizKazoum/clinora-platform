@@ -1,7 +1,6 @@
 import type { TreatmentVisitResponseDto } from '../api/dto/treatment-response.dto';
 import { mapTreatmentVisitFromDto } from './treatment.mapper';
 import {
-  canApproveTreatmentDocumentation,
   canEditTreatmentDraft,
   parseTreatmentLaunchContext,
 } from './treatment.rules';
@@ -44,7 +43,7 @@ const dto: TreatmentVisitResponseDto = {
     id: 'handoff-1',
     status: 'SUBMITTED',
     assignedByDentistId: 'dentist-1',
-    assignedToAssistantId: 'assistant-1',
+    assignedToUserId: 'assistant-1',
     note: '',
     reviewNote: '',
     revision: 1,
@@ -61,6 +60,55 @@ const dto: TreatmentVisitResponseDto = {
 };
 
 describe('Treatment frontend model', () => {
+  it('maps secretariat assignments and completion attribution without inventing approval', () => {
+    const handoff = dto.documentationHandoff;
+    if (!handoff) throw new Error('Missing handoff fixture');
+    const visit = mapTreatmentVisitFromDto({
+      ...dto,
+      status: 'COMPLETED',
+      completedByUserId: 'secretary-1',
+      documentationHandoff: {
+        ...handoff,
+        status: 'COMPLETED',
+        assignedToUserId: 'secretary-1',
+        assignedToRole: 'SECRETARY',
+        completedAt: dto.updatedAt,
+        completedByUserId: 'secretary-1',
+      },
+    });
+    expect(visit.documentationHandoff).toMatchObject({
+      assignedToUserId: 'secretary-1',
+      assignedToRole: 'secretary',
+      completedByUserId: 'secretary-1',
+      completedAt: new Date(dto.updatedAt),
+    });
+    expect(visit.completedByUserId).toBe('secretary-1');
+    expect(visit.responsibleDentistId).toBe('dentist-1');
+  });
+
+  it('reads the legacy assistant assignment field and rejects unsupported assignee roles', () => {
+    const handoff = dto.documentationHandoff;
+    if (!handoff) throw new Error('Missing handoff fixture');
+    const legacy = {
+      ...handoff,
+      assignedToUserId: undefined,
+      assignedToAssistantId: 'legacy-assistant',
+    };
+    expect(
+      mapTreatmentVisitFromDto({ ...dto, documentationHandoff: legacy })
+        .documentationHandoff,
+    ).toMatchObject({
+      assignedToUserId: 'legacy-assistant',
+      assignedToRole: 'dental_assistant',
+    });
+    expect(() =>
+      mapTreatmentVisitFromDto({
+        ...dto,
+        documentationHandoff: { ...handoff, assignedToRole: 'ADMIN' },
+      }),
+    ).toThrow('assignee role');
+  });
+
   it('maps transport strings into typed dates and nullable domain values', () => {
     const visit = mapTreatmentVisitFromDto(dto);
 
@@ -97,12 +145,8 @@ describe('Treatment frontend model', () => {
     expect(
       canEditTreatmentDraft(visit, 'assistant-1', 'dental_assistant'),
     ).toBe(true);
-    expect(
-      canApproveTreatmentDocumentation(visit, 'assistant-1', 'admin'),
-    ).toBe(false);
-    expect(canApproveTreatmentDocumentation(visit, 'dentist-1', 'doctor')).toBe(
-      true,
-    );
+    expect(canEditTreatmentDraft(visit, 'assistant-1', 'admin')).toBe(false);
+    expect(canEditTreatmentDraft(visit, 'dentist-1', 'doctor')).toBe(true);
   });
 
   it('parses the existing waiting-room launch handoff without owning it', () => {

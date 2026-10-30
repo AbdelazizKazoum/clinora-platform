@@ -15,6 +15,7 @@ export const TREATMENT_VISIT_STATUSES = [
 export const DOCUMENTATION_HANDOFF_STATUSES = [
   'ASSIGNED',
   'IN_PROGRESS',
+  'COMPLETED',
   'SUBMITTED',
   'RETURNED',
   'ACCEPTED',
@@ -42,7 +43,11 @@ export type DocumentationHandoffStatus =
   (typeof DOCUMENTATION_HANDOFF_STATUSES)[number];
 export type TreatmentActStatus = (typeof TREATMENT_ACT_STATUSES)[number];
 export type ClinicalFindingStatus = (typeof CLINICAL_FINDING_STATUSES)[number];
-export type TreatmentActorRole = 'DOCTOR' | 'DENTAL_ASSISTANT' | 'ADMIN';
+export type TreatmentActorRole =
+  | 'DOCTOR'
+  | 'DENTAL_ASSISTANT'
+  | 'SECRETARY'
+  | 'ADMIN';
 export type TreatmentTargetKind =
   | 'MOUTH'
   | 'ARCH'
@@ -108,7 +113,10 @@ export interface DocumentationHandoff {
   readonly id: string;
   readonly status: DocumentationHandoffStatus;
   readonly assignedByDentistId: string;
-  readonly assignedToAssistantId: string;
+  readonly assignedToUserId: string;
+  readonly assignedToRole?: 'DENTAL_ASSISTANT' | 'SECRETARY';
+  readonly completedAt?: Date | null;
+  readonly completedByUserId?: string | null;
   readonly note: string | null;
   readonly reviewNote: string | null;
   readonly revision: number;
@@ -133,6 +141,7 @@ export interface TreatmentVisit {
   readonly documentationHandoff: DocumentationHandoff | null;
   readonly startedAt: Date | null;
   readonly completedAt: Date | null;
+  readonly completedByUserId?: string | null;
   readonly cancelledAt: Date | null;
   readonly cancellationReason: string | null;
   readonly createdAt: Date;
@@ -199,7 +208,7 @@ export function createTreatmentVisit(
 export type TreatmentDomainErrorCode =
   | 'CLINICAL_AUTHORITY_REQUIRED'
   | 'DOCUMENTATION_ASSIGNMENT_REQUIRED'
-  | 'INVALID_LIFECYCLE_TRANSITION' 
+  | 'INVALID_LIFECYCLE_TRANSITION'
   | 'INVALID_TREATMENT_VISIT'
   | 'UNRESOLVED_CLINICAL_DRAFTS';
 

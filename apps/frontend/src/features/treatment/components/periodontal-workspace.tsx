@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Alert, Badge, Button, Card, CardBody, CardHeader, Col, FormControl, FormLabel, FormSelect, Row } from 'react-bootstrap';
+import { Alert, Badge, Card, CardBody, CardHeader, Col, FormControl, FormLabel, FormSelect, Row } from 'react-bootstrap';
 
 import type { MockTreatmentActor } from '../model/treatment-workspace';
 import type { TreatmentVisit } from '../model/treatment';
@@ -40,7 +40,6 @@ export interface PeriodontalWorkspaceProps {
   readonly actor: MockTreatmentActor;
   readonly canDocument: boolean;
   readonly onExaminationChange: (update: PeriodontalExaminationUpdater) => void;
-  readonly onApproveExamination: () => void;
   readonly visit: TreatmentVisit;
 }
 
@@ -50,10 +49,8 @@ const TOOTH_POSITIONS = [
 ] as const;
 
 export function PeriodontalWorkspace({
-  actor,
   canDocument,
   onExaminationChange: apply,
-  onApproveExamination: approve,
   visit,
 }: PeriodontalWorkspaceProps) {
   const [toothNumber, setToothNumber] = useState<number>(16);
@@ -102,7 +99,7 @@ export function PeriodontalWorkspace({
               <Badge bg={implant ? 'info' : 'secondary'}>
                 {implant ? 'Implant tooth' : isMissingTooth(visit, toothNumber) ? 'Missing tooth' : 'Natural tooth'}
               </Badge>
-              {!canDocument && <small className="text-muted">Active dentist or assistant assignment required.</small>}
+              {!canDocument && <small className="text-muted">Responsible doctor or active documentation assignment required.</small>}
             </div>
 
             <div className="table-responsive">
@@ -139,9 +136,7 @@ export function PeriodontalWorkspace({
 
             <PeriodontalArchChart examination={examination} />
 
-            {actor.role === 'doctor' && examination?.status === 'DRAFT' && (
-              <Button className="mt-3" onClick={approve} variant="success">Confirm periodontal examination</Button>
-            )}
+
           </CardBody>
         </Card>
       </Col>

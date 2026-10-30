@@ -26,13 +26,3 @@ export const recordStatusVariant = (status: string) =>
       : status === 'CANCELLED' || status === 'ENTERED_IN_ERROR'
         ? 'danger'
         : 'primary';
-
-export const handoffStatusReached = (
-  current: string | undefined,
-  target: string,
-) => {
-  const order = ['ASSIGNED', 'IN_PROGRESS', 'SUBMITTED', 'ACCEPTED'];
-  if (current === 'RETURNED')
-    return target === 'ASSIGNED' || target === 'IN_PROGRESS';
-  return current ? order.indexOf(current) >= order.indexOf(target) : false;
-};

@@ -95,9 +95,10 @@ export function TreatmentPlanTimeline({
                     />
                     {plan.source === 'DOCTOR_DIRECT'
                       ? 'Doctor entry'
-                      : 'Assistant handoff'}
+                      : 'Staff handoff'}
                   </span>
                   <span>Origin: {plan.originVisitId}</span>
+                  <span>Recorded by: {plan.enteredByUserId}</span>
                   <span className="text-muted">Plan {plan.id}</span>
                   {plan.originHandoffId && (
                     <span className="text-muted">

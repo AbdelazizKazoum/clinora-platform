@@ -17,6 +17,7 @@ export const TREATMENT_VISIT_STATUSES = [
 export const DOCUMENTATION_HANDOFF_STATUSES = [
   'ASSIGNED',
   'IN_PROGRESS',
+  'COMPLETED',
   'SUBMITTED',
   'RETURNED',
   'ACCEPTED',
@@ -184,7 +185,7 @@ export interface TreatmentCatalogueEntry {
   readonly display: string;
   readonly allowedTargets: readonly TreatmentTargetKind[];
   readonly supportedDetailKeys: readonly ClinicalDetailKey[];
-  readonly requiresDentistApproval: true;
+  readonly requiresDentistApproval: false;
 }
 
 const act = (
@@ -199,7 +200,7 @@ const act = (
   display,
   allowedTargets,
   supportedDetailKeys,
-  requiresDentistApproval: true,
+  requiresDentistApproval: false,
 });
 
 /**
@@ -457,7 +458,12 @@ export interface DocumentationHandoffReply {
   id: string;
   status: string;
   assignedByDentistId: string;
-  assignedToAssistantId: string;
+  assignedToUserId: string;
+  assignedToRole?: 'DENTAL_ASSISTANT' | 'SECRETARY';
+  completedAt?: string;
+  completedByUserId?: string;
+  /** @deprecated Read compatibility only. */
+  assignedToAssistantId?: string;
   note: string;
   reviewNote: string;
   revision: number;
@@ -482,6 +488,7 @@ export interface TreatmentVisitReply {
   documentationHandoff?: DocumentationHandoffReply;
   startedAt: string;
   completedAt: string;
+  completedByUserId?: string;
   cancelledAt: string;
   cancellationReason: string;
   createdAt: string;
@@ -547,7 +554,10 @@ export interface TransitionTreatmentActRequest
 export interface AssignVisitDocumentationRequest
   extends GetTreatmentVisitRequest {
   actorUserId: string;
-  assistantId: string;
+  /** @deprecated New clients send assigneeUserId and assigneeRole. */
+  assistantId?: string;
+  assigneeUserId: string;
+  assigneeRole: 'DENTAL_ASSISTANT' | 'SECRETARY';
   note?: string;
 }
 

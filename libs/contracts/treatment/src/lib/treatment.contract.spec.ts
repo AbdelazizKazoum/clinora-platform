@@ -29,7 +29,7 @@ describe('treatment contract', () => {
     expect(new Set(TREATMENT_ACT_CODES).size).toBe(TREATMENT_ACT_CODES.length);
     expect(
       SUPPORTED_TREATMENT_ACT_CATALOGUE.every(
-        ({ requiresDentistApproval }) => requiresDentistApproval,
+        ({ requiresDentistApproval }) => !requiresDentistApproval,
       ),
     ).toBe(true);
   });

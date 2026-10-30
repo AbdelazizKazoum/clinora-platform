@@ -13,13 +13,11 @@ import { ClinicalFindingActions } from './clinical-finding-actions';
 
 export function ClinicalFindingsTable({
   actor,
-  onApproveFinding,
   onRemoveFinding,
   projectionIssueIds,
   visit,
 }: {
   readonly actor: MockTreatmentActor;
-  readonly onApproveFinding: (id: string) => void;
   readonly onRemoveFinding: (id: string, reason?: string) => void;
   readonly projectionIssueIds: ReadonlySet<string>;
   readonly visit: TreatmentVisit;
@@ -88,7 +86,6 @@ export function ClinicalFindingsTable({
           <ClinicalFindingActions
             actor={actor}
             finding={row.original}
-            onApprove={onApproveFinding}
             onRemove={onRemoveFinding}
             canRemove={canRemoveTreatmentFinding(
               visit,
@@ -100,7 +97,7 @@ export function ClinicalFindingsTable({
         ),
       },
     ],
-    [projectionIssueIds, actor, onApproveFinding, onRemoveFinding, visit],
+    [projectionIssueIds, actor, onRemoveFinding, visit],
   );
 
   const data = useMemo(

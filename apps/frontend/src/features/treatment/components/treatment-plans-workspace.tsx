@@ -40,7 +40,6 @@ export function TreatmentPlansWorkspace({
       <TreatmentActsTable
         actor={actor}
         visit={historical ? visit : { ...visit, acts: plans }}
-        onApproveAct={actions.approveAct}
         onTransitionAct={actions.transitionAct}
         onCloseSession={actions.closeSession}
         onRemoveAct={actions.removeAct}

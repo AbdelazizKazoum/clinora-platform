@@ -13,6 +13,7 @@ export function PatientVisitHeader({
   actor,
   dentist,
   assistant,
+  secretary,
   patient,
   onActorChange,
   visit,
@@ -20,6 +21,7 @@ export function PatientVisitHeader({
   readonly actor: MockTreatmentActor;
   readonly dentist: MockTreatmentActor;
   readonly assistant: MockTreatmentActor;
+  readonly secretary: MockTreatmentActor;
   readonly patient: TreatmentPatientSummary;
   readonly onActorChange: (actor: MockTreatmentActor) => void;
   readonly visit: TreatmentVisit;
@@ -75,14 +77,23 @@ export function PatientVisitHeader({
                 onActorChange(
                   event.currentTarget.value === 'assistant'
                     ? assistant
-                    : dentist,
+                    : event.currentTarget.value === 'secretary'
+                      ? secretary
+                      : dentist,
                 )
               }
               size="sm"
-              value={actor.role === 'doctor' ? 'doctor' : 'assistant'}
+              value={
+                actor.role === 'doctor'
+                  ? 'doctor'
+                  : actor.role === 'secretary'
+                    ? 'secretary'
+                    : 'assistant'
+              }
             >
               <option value="doctor">Dentist · {dentist.name}</option>
               <option value="assistant">Assistant · {assistant.name}</option>
+              <option value="secretary">Secretariat · {secretary.name}</option>
             </FormSelect>
             <small className="text-muted d-block mt-1">Demo role preview</small>
           </div>

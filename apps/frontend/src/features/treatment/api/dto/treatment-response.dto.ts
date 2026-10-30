@@ -44,7 +44,11 @@ export interface DocumentationHandoffResponseDto {
   id: string;
   status: string;
   assignedByDentistId: string;
-  assignedToAssistantId: string;
+  assignedToUserId?: string;
+  assignedToRole?: string;
+  assignedToAssistantId?: string;
+  completedAt?: string;
+  completedByUserId?: string;
   note: string;
   reviewNote: string;
   revision: number;
@@ -69,6 +73,7 @@ export interface TreatmentVisitResponseDto {
   documentationHandoff?: DocumentationHandoffResponseDto;
   startedAt: string;
   completedAt: string;
+  completedByUserId?: string;
   cancelledAt: string;
   cancellationReason: string;
   createdAt: string;

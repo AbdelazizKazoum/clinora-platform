@@ -1,5 +1,8 @@
 import type { MockTreatmentActor } from '../model/treatment-workspace';
-import type { TreatmentPatientSummary, TreatmentVisit } from '../model/treatment';
+import type {
+  TreatmentPatientSummary,
+  TreatmentVisit,
+} from '../model/treatment';
 
 const createdAt = new Date('2026-08-13T09:30:00.000Z');
 
@@ -13,6 +16,12 @@ export const MOCK_ASSISTANT: MockTreatmentActor = {
   name: 'Yasmine Alaoui',
   role: 'dental_assistant',
   userId: 'assistant-demo',
+};
+
+export const MOCK_SECRETARY: MockTreatmentActor = {
+  name: 'Salma Idrissi',
+  role: 'secretary',
+  userId: 'secretary-demo',
 };
 
 export const MOCK_TREATMENT_PATIENT: TreatmentPatientSummary = {

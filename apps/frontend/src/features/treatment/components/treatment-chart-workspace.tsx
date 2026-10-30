@@ -68,7 +68,6 @@ export function TreatmentChartWorkspace({
             actor={actor}
             visit={visit}
             currentSession
-            onApproveAct={actions.approveAct}
             onTransitionAct={actions.transitionAct}
             onCloseSession={actions.closeSession}
             onRemoveAct={actions.removeAct}
@@ -98,8 +97,6 @@ export function TreatmentChartWorkspace({
             canDocument={canDocument}
             visit={visit}
             selectedToothCount={selection.selectedToothPositions.length}
-            onApproveAct={actions.approveAct}
-            onApproveFinding={actions.approveFinding}
             onRemoveFinding={actions.removeFinding}
             onTransitionAct={actions.transitionAct}
             onCloseSession={actions.closeSession}

@@ -6,9 +6,6 @@ import {
 import {
   assignWorkspaceDocumentation,
   recordWorkspaceAct,
-  reviewWorkspaceDocumentation,
-  startWorkspaceDocumentation,
-  submitWorkspaceDocumentation,
 } from './treatment-workspace';
 import {
   assertReviewedEntries,
@@ -129,7 +126,7 @@ describe('Local treatment continuation', () => {
           { planItemId: plan.id, expectedVersion: plan.version },
           now,
         ),
-      ).toThrow('Only never-started doctor plans');
+      ).toThrow('Only your never-started plans');
     }
   });
 
@@ -139,7 +136,7 @@ describe('Local treatment continuation', () => {
     const input = { planItemId: plan.id, expectedVersion: plan.version };
     expect(() =>
       removeLocalTreatmentPlan(record, MOCK_ASSISTANT, input, now),
-    ).toThrow('responsible dentist');
+    ).toThrow('assignment');
     expect(() =>
       removeLocalTreatmentPlan(
         record,
@@ -147,7 +144,7 @@ describe('Local treatment continuation', () => {
         input,
         now,
       ),
-    ).toThrow('responsible dentist');
+    ).toThrow('assignment');
     expect(() =>
       removeLocalTreatmentPlan(
         record,
@@ -171,11 +168,10 @@ describe('Local treatment continuation', () => {
     );
     expect(() =>
       removeLocalTreatmentPlan(laterVisit, MOCK_DENTIST, input, later),
-    ).toThrow('Only never-started doctor plans');
+    ).toThrow('Only your never-started plans');
     for (const fields of [
       { patientId: 'another-patient' },
       { clinicId: 'another-clinic' },
-      { source: 'ASSISTANT_HANDOFF' as const },
       { enteredByUserId: MOCK_ASSISTANT.userId },
       { status: 'CANCELLED' as const },
     ]) {
@@ -327,7 +323,7 @@ describe('Local treatment continuation', () => {
     };
     expect(() =>
       startLocalTreatmentSession(record, MOCK_ASSISTANT, input, now),
-    ).toThrow('responsible dentist');
+    ).toThrow('assignment');
     expect(() =>
       startLocalTreatmentSession(
         record,
@@ -335,7 +331,7 @@ describe('Local treatment continuation', () => {
         input,
         now,
       ),
-    ).toThrow('responsible dentist');
+    ).toThrow('assignment');
     expect(() =>
       startLocalTreatmentSession(
         record,
@@ -352,7 +348,7 @@ describe('Local treatment continuation', () => {
     ] as const) {
       expect(() =>
         start({ ...record, planItems: [{ ...record.planItems[0], status }] }),
-      ).toThrow('approved, active');
+      ).toThrow('active treatment');
     }
     for (const scope of [
       { clinicId: 'another-clinic' },
@@ -427,21 +423,18 @@ describe('Local treatment continuation', () => {
     ).toThrow('Complete the open visit');
   });
 
-  it('retains handoff origins and blocks finalization until drafts and handoff review are resolved', () => {
+  it('retains handoff provenance and allows the assigned user to finalize without review', () => {
     const assigned = updateLocalTreatmentVisit(makeRecord(), (visit) =>
       assignWorkspaceDocumentation(
         visit,
         MOCK_DENTIST,
         MOCK_ASSISTANT.userId,
         'handoff-1',
-        'Plan the requested treatment.',
+        'Record the requested treatment.',
         now,
       ),
     );
-    const started = updateLocalTreatmentVisit(assigned, (visit) =>
-      startWorkspaceDocumentation(visit, MOCK_ASSISTANT, now),
-    );
-    const drafted = updateLocalTreatmentVisit(started, (visit) =>
+    const documented = updateLocalTreatmentVisit(assigned, (visit) =>
       recordWorkspaceAct(
         visit,
         MOCK_ASSISTANT,
@@ -454,26 +447,24 @@ describe('Local treatment continuation', () => {
         now,
       ),
     );
-    expect(drafted.planItems[1]).toMatchObject({
-      source: 'ASSISTANT_HANDOFF',
+    expect(documented.planItems[1]).toMatchObject({
+      source: 'STAFF_HANDOFF',
       originHandoffId: 'handoff-1',
-      status: 'DRAFT',
+      status: 'PLANNED',
     });
     expect(() =>
-      assertReviewedEntries(getLocalTreatmentVisit(drafted)),
-    ).toThrow('draft clinical');
-    expect(() =>
-      completeLocalTreatmentVisit(assigned, MOCK_DENTIST, now),
-    ).toThrow('handoff');
-    const submitted = updateLocalTreatmentVisit(started, (visit) =>
-      submitWorkspaceDocumentation(visit, MOCK_ASSISTANT, now),
+      assertReviewedEntries(getLocalTreatmentVisit(documented)),
+    ).not.toThrow();
+    const completed = completeLocalTreatmentVisit(
+      documented,
+      MOCK_ASSISTANT,
+      now,
     );
-    const accepted = updateLocalTreatmentVisit(submitted, (visit) =>
-      reviewWorkspaceDocumentation(visit, MOCK_DENTIST, 'ACCEPT', now),
-    );
-    expect(
-      completeLocalTreatmentVisit(accepted, MOCK_DENTIST, now).visits[0].status,
-    ).toBe('COMPLETED');
+    expect(completed.visits[0]).toMatchObject({
+      status: 'COMPLETED',
+      completedByUserId: MOCK_ASSISTANT.userId,
+      documentationHandoff: { status: 'COMPLETED' },
+    });
   });
 
   it('requires a correction reason and never cancels an open session implicitly', () => {

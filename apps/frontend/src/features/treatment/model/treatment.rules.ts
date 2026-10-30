@@ -22,9 +22,12 @@ export const canEditTreatmentDraft = (
 
   const handoff = visit.documentationHandoff;
   return Boolean(
-    role === 'dental_assistant' &&
-      handoff?.assignedToAssistantId === userId &&
-      ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'].includes(handoff.status),
+    (role === 'dental_assistant' || role === 'secretary') &&
+      handoff?.assignedToUserId === userId &&
+      (handoff.assignedToRole ?? 'dental_assistant') === role &&
+      ['ASSIGNED', 'IN_PROGRESS', 'RETURNED', 'SUBMITTED'].includes(
+        handoff.status,
+      ),
   );
 };
 
@@ -46,17 +49,9 @@ export const canRemoveTreatmentFinding = (
   }
 
   return (
-    finding.status === 'CONFIRMED' &&
-    role === 'doctor' &&
-    visit.responsibleDentistId === userId
+    finding.status === 'CONFIRMED' && canEditTreatmentDraft(visit, userId, role)
   );
 };
-
-export const canApproveTreatmentDocumentation = (
-  visit: TreatmentVisit,
-  userId: string,
-  role: TreatmentWorkspaceRole,
-): boolean => role === 'doctor' && visit.responsibleDentistId === userId;
 
 export const parseTreatmentLaunchContext = (
   input: URLSearchParams,

@@ -17,7 +17,6 @@ import { ClinicalRecordDetails } from './clinical-record-details';
 
 export const TreatmentActsTable = memo(function TreatmentActsTable({
   actor,
-  onApproveAct,
   onTransitionAct,
   onCloseSession,
   onRemoveAct,
@@ -29,7 +28,6 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
   readonly actor: MockTreatmentActor;
   readonly onRemoveAct: (id: string) => void;
   readonly removablePlanIds: ReadonlySet<string>;
-  readonly onApproveAct: (id: string) => void;
   readonly onTransitionAct: (
     id: string,
     status: TreatmentActStatus,
@@ -108,6 +106,21 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
         ),
       },
       {
+        accessorKey: 'enteredByUserId',
+        header: 'Recorded by',
+        cell: ({ row }) => (
+          <div className="fs-sm text-muted">
+            {row.original.enteredByUserId === actor.userId
+              ? actor.name
+              : row.original.enteredByUserId}
+            <small className="d-block">
+              Doctor:{' '}
+              {row.original.performedByUserId ?? visit.responsibleDentistId}
+            </small>
+          </div>
+        ),
+      },
+      {
         header: 'Actions',
         cell: ({ row }: { row: { original: TreatmentAct } }) => {
           return (
@@ -115,7 +128,6 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
               act={row.original}
               actor={actor}
               visit={visit}
-              onApprove={onApproveAct}
               onTransition={onTransitionAct}
               onCloseSession={onCloseSession}
               onRemove={onRemoveAct}
@@ -128,7 +140,6 @@ export const TreatmentActsTable = memo(function TreatmentActsTable({
     [
       projectionIssueIds,
       actor,
-      onApproveAct,
       onTransitionAct,
       onCloseSession,
       onRemoveAct,

@@ -14,7 +14,6 @@ export function TreatmentActActions({
   act,
   actor,
   visit,
-  onApprove,
   onTransition,
   onCloseSession,
   canRemove,
@@ -23,7 +22,6 @@ export function TreatmentActActions({
   readonly act: TreatmentAct;
   readonly actor: MockTreatmentActor;
   readonly visit: TreatmentVisit;
-  readonly onApprove: (id: string) => void;
   readonly canRemove: boolean;
   readonly onRemove: (id: string) => void;
   readonly onTransition: (
@@ -41,11 +39,7 @@ export function TreatmentActActions({
     null,
   );
   const [note, setNote] = useState('');
-  if (
-    actor.role !== 'doctor' ||
-    !canEditTreatmentDraft(visit, actor.userId, actor.role)
-  )
-    return null;
+  if (!canEditTreatmentDraft(visit, actor.userId, actor.role)) return null;
   const session = visit.treatmentSessions?.find(
     (candidate) =>
       candidate.planItemId === act.id && candidate.visitId === visit.id,
@@ -70,12 +64,6 @@ export function TreatmentActActions({
   return (
     <>
       <div className="d-flex flex-wrap align-items-center justify-content-center gap-1">
-        {act.status === 'DRAFT' && (
-          <Button size="sm" variant="success" onClick={() => onApprove(act.id)}>
-            <Icon icon="check" className="me-1" />
-            Approve
-          </Button>
-        )}
         {canStart && (
           <Button
             size="sm"

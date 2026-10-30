@@ -1,16 +1,4 @@
-// Adapted from Ubold's wizard and ticket-assignment patterns. Global theme
-// classes own appearance; this module only handles the handoff's layout.
-.progress {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.step {
-  cursor: default;
-  height: 100%;
-  text-align: start;
-}
-
+// Layout only; appearance follows the workspace theme.
 .notes {
   min-height: 13rem;
   resize: vertical;
@@ -27,11 +15,5 @@
     border-top: 1px dashed var(--theme-border-color);
     padding-inline-start: 0;
     padding-top: 1.5rem;
-  }
-}
-
-@media (max-width: 767.98px) {
-  .progress {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

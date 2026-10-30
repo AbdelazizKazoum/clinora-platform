@@ -30,6 +30,11 @@ const assistant = (
 });
 const staffDirectory = [
   assistant(),
+  assistant({
+    userId: 'secretary-demo',
+    fullName: 'Salma Idrissi',
+    role: 'SECRETARY',
+  }),
   assistant({ userId: 'assistant-2', fullName: 'Amine Bennani' }),
   assistant({ userId: 'doctor-2', fullName: 'Other Doctor', role: 'DOCTOR' }),
   assistant({
@@ -71,7 +76,7 @@ function mockDirectory(
 }
 
 function selectAssistant(userId = 'assistant-demo') {
-  fireEvent.change(screen.getByLabelText('Assign to assistant'), {
+  fireEvent.change(screen.getByLabelText('Assign to staff member'), {
     target: { value: userId },
   });
 }
@@ -118,12 +123,17 @@ describe('Treatment workspace page', () => {
     render(<TreatmentWorkspacePage />);
     fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
     expect(useStaffDirectory).toHaveBeenCalledWith(clinicId);
-    const select = screen.getByLabelText('Assign to assistant');
+    const select = screen.getByLabelText('Assign to staff member');
     expect(
       within(select)
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toEqual(['Select a dental assistant', 'Yasmine Alaoui', 'Amine Bennani']);
+    ).toEqual([
+      'Select an assistant or secretariat user',
+      'Yasmine Alaoui · Dental assistant',
+      'Salma Idrissi · Secretariat',
+      'Amine Bennani · Dental assistant',
+    ]);
     fireEvent.change(screen.getByLabelText('Doctor instructions'), {
       target: { value: 'Record findings for review.' },
     });
@@ -141,7 +151,7 @@ describe('Treatment workspace page', () => {
     });
     fireEvent.click(screen.getByRole('tab', { name: /Clinical findings/ }));
     fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
-    expect(screen.getByLabelText('Assign to assistant')).toHaveProperty(
+    expect(screen.getByLabelText('Assign to staff member')).toHaveProperty(
       'value',
       'assistant-2',
     );
@@ -151,33 +161,32 @@ describe('Treatment workspace page', () => {
     expect(
       screen.getByText('Amine Bennani', { selector: 'strong' }),
     ).toBeTruthy();
-    expect(screen.queryByLabelText('Assign to assistant')).toBeNull();
+    expect(screen.queryByLabelText('Assign to staff member')).toBeNull();
     fireEvent.change(screen.getByLabelText('Demo actor'), {
       target: { value: 'assistant' },
     });
     fireEvent.click(
       screen.getByRole('button', { name: 'Start documentation' }),
     );
-    expect(
-      screen.getByRole('button', { name: 'Submit for review' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Complete visit' })).toBeTruthy();
   });
 
   it.each([
     {
       state: 'loading',
       query: { data: undefined, isLoading: true },
-      message: 'Loading clinic assistants...',
+      message: 'Loading clinic staff...',
     },
     {
       state: 'empty',
       query: { data: [] },
-      message: 'No active dental assistants are available in this clinic.',
+      message:
+        'No active assistants or secretariat users are available in this clinic.',
     },
     {
       state: 'failed',
       query: { isError: true },
-      message: 'Unable to load the clinic assistant list.',
+      message: 'Unable to load the clinic staff list.',
     },
   ])(
     'blocks assignment when the assistant list is $state',
@@ -191,7 +200,7 @@ describe('Treatment workspace page', () => {
         target: { value: 'Record findings.' },
       });
       expect(screen.getByText(message)).toBeTruthy();
-      expect(screen.getByLabelText('Assign to assistant')).toHaveProperty(
+      expect(screen.getByLabelText('Assign to staff member')).toHaveProperty(
         'disabled',
         true,
       );
@@ -200,7 +209,7 @@ describe('Treatment workspace page', () => {
       ).toHaveProperty('disabled', true);
       if (query.isError) {
         fireEvent.click(
-          screen.getByRole('button', { name: 'Retry assistant list' }),
+          screen.getByRole('button', { name: 'Retry staff list' }),
         );
         expect(refetchDirectory).toHaveBeenCalledTimes(1);
       }
@@ -222,7 +231,7 @@ describe('Treatment workspace page', () => {
       ),
     });
     rerender(<TreatmentWorkspacePage />);
-    expect(screen.getByLabelText('Assign to assistant')).toHaveProperty(
+    expect(screen.getByLabelText('Assign to staff member')).toHaveProperty(
       'value',
       '',
     );
@@ -426,7 +435,7 @@ describe('Treatment workspace page', () => {
 
     expect(screen.getByText('Assigned')).toBeTruthy();
     expect(screen.getByText('In progress')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Complete visit' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Complete visit' })).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Demo actor'), {
       target: { value: 'assistant' },
     });
@@ -761,46 +770,59 @@ describe('Treatment workspace page', () => {
     expect(screen.queryByLabelText('Additional clinical detail')).toBeNull();
   });
 
-  it('supports assistant drafts, dentist approval, and visit completion', () => {
-    render(<TreatmentWorkspacePage />);
-    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
-    selectAssistant();
-    fireEvent.change(screen.getByLabelText('Doctor instructions'), {
-      target: { value: 'Record the clinical findings from today for review.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Assign to Yasmine/ }));
-    fireEvent.change(screen.getByLabelText('Demo actor'), {
-      target: { value: 'assistant' },
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Start documentation' }),
-    );
-    fireEvent.click(
-      screen.getByRole('tab', { name: /Odontogram & tooth details/ }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Add draft finding' }));
-    expect(
-      screen.getByText('Draft finding added for dentist review.'),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    fireEvent.change(screen.getByLabelText('Demo actor'), {
-      target: { value: 'doctor' },
-    });
-    fireEvent.click(screen.getByRole('tab', { name: /Clinical findings/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    fireEvent.click(screen.getByRole('tab', { name: /Documentation handoff/ }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Accept documentation' }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Complete visit' }));
-    expect(screen.getByText('Visit completed and locked.')).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole('tab', { name: /Odontogram & tooth details/ }),
-    );
-    expect(screen.getByLabelText('Clinical note')).toHaveProperty(
-      'disabled',
-      true,
-    );
-  });
+  it.each([
+    { id: 'assistant-demo', role: 'assistant', name: 'Yasmine' },
+    { id: 'secretary-demo', role: 'secretary', name: 'Salma' },
+  ])(
+    'allows assigned $role documentation and completion without approval',
+    ({ id, role, name }) => {
+      render(<TreatmentWorkspacePage />);
+      fireEvent.click(
+        screen.getByRole('tab', { name: /Documentation handoff/ }),
+      );
+      expect(screen.queryByLabelText('Handoff progress')).toBeNull();
+      selectAssistant(id);
+      fireEvent.change(screen.getByLabelText('Doctor instructions'), {
+        target: { value: 'Record today’s treatment and findings.' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: new RegExp(`Assign to ${name}`) }),
+      );
+      fireEvent.change(screen.getByLabelText('Demo actor'), {
+        target: { value: role },
+      });
+      fireEvent.click(
+        screen.getByRole('tab', { name: /Odontogram & tooth details/ }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm finding' }));
+      expect(
+        screen.getByText('Clinical finding confirmed and added to the chart.'),
+      ).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Complete visit' }));
+      expect(screen.getByText('Visit completed and locked.')).toBeTruthy();
+      expect(screen.getByLabelText('Clinical note')).toHaveProperty(
+        'disabled',
+        true,
+      );
+    },
+  );
+
+  it.each(['assistant', 'secretary'])(
+    'blocks an unassigned %s from documenting',
+    (role) => {
+      render(<TreatmentWorkspacePage />);
+      fireEvent.change(screen.getByLabelText('Demo actor'), {
+        target: { value: role },
+      });
+      expect(
+        screen.getByRole('button', { name: 'Confirm finding' }),
+      ).toHaveProperty('disabled', true);
+      expect(
+        screen.queryByRole('button', { name: 'Complete visit' }),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole('tab', { name: /Treatment plans/ }));
+      expect(screen.queryByRole('button', { name: 'Start' })).toBeNull();
+    },
+  );
 });

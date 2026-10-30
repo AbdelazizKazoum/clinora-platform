@@ -105,19 +105,13 @@ describe('Local treatment visit', () => {
     expect(result.current.planItems[1]).toMatchObject({
       originVisitId: newVisitId,
       originHandoffId: handoffId,
-      source: 'ASSISTANT_HANDOFF',
-      status: 'DRAFT',
+      source: 'STAFF_HANDOFF',
+      status: 'PLANNED',
     });
-    act(() => result.current.actions.submitDocumentation());
-    act(() => result.current.setActor(result.current.dentist));
-    act(() => result.current.actions.reviewDocumentation('ACCEPT'));
-    expect(result.current.feedback?.variant).toBe('danger');
-    expect(result.current.visit.documentationHandoff?.status).toBe('SUBMITTED');
-    act(() =>
-      result.current.actions.approveAct(result.current.planItems[1].id),
-    );
-    act(() => result.current.actions.reviewDocumentation('ACCEPT'));
     act(() => result.current.actions.completeVisit());
+    expect(result.current.visit.completedByUserId).toBe(
+      result.current.assistant.userId,
+    );
     expect(result.current.visit.status).toBe('COMPLETED');
   });
 

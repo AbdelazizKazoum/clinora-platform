@@ -66,6 +66,7 @@ function TreatmentVisitWorkspace({
     setActor,
     dentist,
     assistant,
+    secretary,
     patient,
     actions,
     feedback,
@@ -83,7 +84,7 @@ function TreatmentVisitWorkspace({
     .filter(
       (member) =>
         member.clinicId === clinicId &&
-        member.role === 'DENTAL_ASSISTANT' &&
+        (member.role === 'DENTAL_ASSISTANT' || member.role === 'SECRETARY') &&
         member.status === 'active' &&
         member.isActive &&
         member.userId !== dentist.userId &&
@@ -92,9 +93,9 @@ function TreatmentVisitWorkspace({
     .map((member) => ({
       userId: member.userId,
       name: member.fullName,
-      role: 'dental_assistant',
+      role: member.role === 'SECRETARY' ? 'secretary' : 'dental_assistant',
     }));
-  const assignedAssistantId = visit.documentationHandoff?.assignedToAssistantId;
+  const assignedAssistantId = visit.documentationHandoff?.assignedToUserId;
   const assignedAssistantName = directory.data?.find(
     (member) =>
       member.clinicId === clinicId && member.userId === assignedAssistantId,
@@ -103,7 +104,7 @@ function TreatmentVisitWorkspace({
     ? {
         userId: assignedAssistantId,
         name: assignedAssistantName ?? 'Assigned assistant',
-        role: 'dental_assistant' as const,
+        role: visit.documentationHandoff?.assignedToRole ?? 'dental_assistant',
       }
     : (assistants.find(
         (candidate) => candidate.userId === handoffAssistantId,
@@ -134,7 +135,14 @@ function TreatmentVisitWorkspace({
       <PatientVisitHeader
         actor={actor}
         dentist={dentist}
-        assistant={previewAssistant}
+        assistant={
+          previewAssistant.role === 'dental_assistant'
+            ? previewAssistant
+            : assistant
+        }
+        secretary={
+          previewAssistant.role === 'secretary' ? previewAssistant : secretary
+        }
         patient={patient}
         onActorChange={setActor}
         visit={visit}
@@ -176,7 +184,6 @@ function TreatmentVisitWorkspace({
       {activeTab === 'findings' && (
         <ClinicalFindingsTable
           actor={actor}
-          onApproveFinding={actions.approveFinding}
           onRemoveFinding={actions.removeFinding}
           projectionIssueIds={projectionIssueIds}
           visit={visit}
@@ -198,7 +205,6 @@ function TreatmentVisitWorkspace({
           actor={actor}
           canDocument={canDocument}
           onExaminationChange={actions.updatePeriodontalExamination}
-          onApproveExamination={actions.approvePeriodontalExamination}
           visit={visit}
         />
       )}
@@ -212,9 +218,9 @@ function TreatmentVisitWorkspace({
           assistantsLoading={sessionStatus === 'loading' || directory.isLoading}
           assistantsError={
             sessionStatus !== 'loading' && !clinicId
-              ? 'A signed-in clinic is required to load assistants.'
+              ? 'A signed-in clinic is required to load staff.'
               : directory.isError
-                ? 'Unable to load the clinic assistant list.'
+                ? 'Unable to load the clinic staff list.'
                 : null
           }
           onRetryAssistants={() => {

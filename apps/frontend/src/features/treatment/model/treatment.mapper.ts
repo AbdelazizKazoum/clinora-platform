@@ -56,20 +56,20 @@ const mapTarget = (dto: ClinicalTargetResponseDto): ClinicalTarget => ({
   ) as ToothSurface[],
   periodontalSites:
     dto.kind === 'FURCATION_ENTRANCE'
-      ? dto.periodontalSites.map((value) =>
+      ? (dto.periodontalSites.map((value) =>
           enumValue(
             value,
             ['MESIAL', 'DISTAL', 'BUCCAL', 'LINGUAL'] as const,
             'furcation entrance',
           ),
-        ) as FurcationEntrance[]
-      : dto.periodontalSites.map((value) =>
+        ) as FurcationEntrance[])
+      : (dto.periodontalSites.map((value) =>
           enumValue(
             value,
             ['MB', 'B', 'DB', 'ML', 'L', 'DL'] as const,
             'periodontal site',
           ),
-        ) as PeriodontalSite[],
+        ) as PeriodontalSite[]),
 });
 
 const mapDetail = (dto: ClinicalDetailResponseDto): ClinicalDetail => {
@@ -121,7 +121,18 @@ const mapHandoff = (
     'documentation handoff status',
   ),
   assignedByDentistId: dto.assignedByDentistId,
-  assignedToAssistantId: dto.assignedToAssistantId,
+  assignedToUserId: dto.assignedToUserId || dto.assignedToAssistantId || '',
+  assignedToRole: dto.assignedToRole
+    ? enumValue(
+        dto.assignedToRole,
+        ['DENTAL_ASSISTANT', 'SECRETARY'] as const,
+        'assignee role',
+      ) === 'SECRETARY'
+      ? 'secretary'
+      : 'dental_assistant'
+    : 'dental_assistant',
+  completedAt: dateStringToDate(dto.completedAt ?? ''),
+  completedByUserId: emptyStringToNull(dto.completedByUserId ?? ''),
   note: emptyStringToNull(dto.note),
   reviewNote: emptyStringToNull(dto.reviewNote),
   revision: dto.revision,
@@ -150,6 +161,7 @@ export const mapTreatmentVisitFromDto = (
     : null,
   startedAt: dateStringToDate(dto.startedAt),
   completedAt: dateStringToDate(dto.completedAt),
+  completedByUserId: emptyStringToNull(dto.completedByUserId ?? ''),
   cancelledAt: dateStringToDate(dto.cancelledAt),
   cancellationReason: emptyStringToNull(dto.cancellationReason),
   createdAt: new Date(dto.createdAt),

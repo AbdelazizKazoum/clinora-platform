@@ -8,15 +8,12 @@ import type { ClinicalFinding } from '../model/treatment';
 import type { MockTreatmentActor } from '../model/treatment-workspace';
 
 export function ClinicalFindingActions({
-  actor,
   finding,
-  onApprove,
   onRemove,
   canRemove,
 }: {
   readonly actor: MockTreatmentActor;
   readonly finding: ClinicalFinding;
-  readonly onApprove: (id: string) => void;
   readonly onRemove: (id: string, reason?: string) => void;
   readonly canRemove: boolean;
 }) {
@@ -44,16 +41,6 @@ export function ClinicalFindingActions({
   return (
     <>
       <div className="d-flex align-items-center justify-content-center gap-1">
-        {finding.status === 'DRAFT' && actor.role === 'doctor' && (
-          <Button
-            size="sm"
-            variant="success"
-            onClick={() => onApprove(finding.id)}
-          >
-            <Icon icon="check" className="me-1" />
-            Approve
-          </Button>
-        )}
         {canRemove && (
           <Button
             aria-label={`Remove ${finding.code} finding`}

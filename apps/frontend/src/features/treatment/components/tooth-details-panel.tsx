@@ -60,9 +60,7 @@ export interface ToothDetailsPanelProps extends TreatmentEntryFieldsProps {
   readonly onNoteChange: (value: string) => void;
   readonly onAddFinding: () => void;
   readonly onAddAct: () => void;
-  readonly onApproveFinding: (id: string) => void;
   readonly onRemoveFinding: (id: string, reason?: string) => void;
-  readonly onApproveAct: (id: string) => void;
   readonly onRemoveAct: (id: string) => void;
   readonly removablePlanIds: ReadonlySet<string>;
   readonly onTransitionAct: (
@@ -83,9 +81,10 @@ export function ToothDetailsPanel(props: ToothDetailsPanelProps) {
     mode === 'finding'
       ? props.selectedFinding?.capability
       : props.selectedAct?.capability;
-  const isMultiToothAct = 
-    mode === 'act' && 
-    (props.selectedAct?.target === 'bridge' || props.selectedAct?.target === 'arch');
+  const isMultiToothAct =
+    mode === 'act' &&
+    (props.selectedAct?.target === 'bridge' ||
+      props.selectedAct?.target === 'arch');
   const capabilityPresentation = isMultiToothAct
     ? 'visual'
     : selectedCapability
@@ -202,12 +201,8 @@ export function ToothDetailsPanel(props: ToothDetailsPanelProps) {
                     icon={mode === 'finding' ? 'plus' : 'clipboard-plus'}
                   />
                   {mode === 'finding'
-                    ? props.actor.role === 'doctor'
-                      ? 'Confirm finding'
-                      : 'Add draft finding'
-                    : props.actor.role === 'doctor'
-                      ? 'Plan treatment act'
-                      : 'Add draft treatment act'}
+                    ? 'Confirm finding'
+                    : 'Plan treatment act'}
                 </Button>
                 {capabilityPresentation === 'not-available' ? (
                   <small className="text-warning d-block text-center mt-2">
@@ -288,7 +283,6 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
                 act={record}
                 actor={props.actor}
                 visit={props.visit}
-                onApprove={props.onApproveAct}
                 onTransition={props.onTransitionAct}
                 onCloseSession={props.onCloseSession}
                 onRemove={props.onRemoveAct}
@@ -298,7 +292,6 @@ function ToothRecordSummary(props: ToothDetailsPanelProps) {
               <ClinicalFindingActions
                 actor={props.actor}
                 finding={record}
-                onApprove={props.onApproveFinding}
                 onRemove={props.onRemoveFinding}
                 canRemove={canRemoveTreatmentFinding(
                   props.visit,

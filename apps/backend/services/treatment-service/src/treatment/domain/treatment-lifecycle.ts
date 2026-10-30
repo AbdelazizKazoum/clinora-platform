@@ -62,9 +62,10 @@ const assertAssignedAssistant = (
 ): DocumentationHandoff => {
   const handoff = visit.documentationHandoff;
   if (
-    actor.role !== 'DENTAL_ASSISTANT' ||
+    (actor.role !== 'DENTAL_ASSISTANT' && actor.role !== 'SECRETARY') ||
     !handoff ||
-    handoff.assignedToAssistantId !== actor.userId
+    handoff.assignedToUserId !== actor.userId ||
+    (handoff.assignedToRole ?? 'DENTAL_ASSISTANT') !== actor.role
   ) {
     throw new TreatmentDomainError(
       'DOCUMENTATION_ASSIGNMENT_REQUIRED',
@@ -88,11 +89,13 @@ export const canActorEditDraftDocumentation = (
 
   const handoff = visit.documentationHandoff;
   return Boolean(
-    actor.role === 'DENTAL_ASSISTANT' &&
-      handoff?.assignedToAssistantId === actor.userId &&
+    (actor.role === 'DENTAL_ASSISTANT' || actor.role === 'SECRETARY') &&
+      handoff?.assignedToUserId === actor.userId &&
+      (handoff.assignedToRole ?? 'DENTAL_ASSISTANT') === actor.role &&
       (handoff.status === 'ASSIGNED' ||
         handoff.status === 'IN_PROGRESS' ||
-        handoff.status === 'RETURNED'),
+        handoff.status === 'RETURNED' ||
+        handoff.status === 'SUBMITTED'),
   );
 };
 
@@ -102,7 +105,9 @@ const assertActorCanRecordDraft = (
 ): void => {
   assertVisitEditable(visit);
   if (
-    visit.status !== 'IN_PROGRESS' ||
+    !['IN_PROGRESS', 'READY_FOR_COMPLETION', 'AWAITING_REVIEW'].includes(
+      visit.status,
+    ) ||
     !canActorEditDraftDocumentation(visit, actor)
   ) {
     throw new TreatmentDomainError(
@@ -132,17 +137,15 @@ export const recordClinicalFinding = (
     );
   }
 
-  const enteredByDentist =
-    actor.role === 'DOCTOR' && actor.userId === visit.responsibleDentistId;
   const finding: ClinicalFinding = {
     id: input.id,
     code: input.code,
-    status: enteredByDentist ? 'CONFIRMED' : 'DRAFT',
+    status: 'CONFIRMED',
     target: input.target,
     details: input.details ?? [],
     note: input.note ?? null,
     enteredByUserId: actor.userId,
-    verifiedByUserId: enteredByDentist ? actor.userId : null,
+    verifiedByUserId: actor.userId,
     createdAt: now,
     updatedAt: now,
   };
@@ -161,8 +164,7 @@ export const transitionClinicalFinding = (
   nextStatus: Exclude<ClinicalFindingStatus, 'DRAFT'>,
   now: Date,
 ): TreatmentVisit => {
-  assertResponsibleDentist(visit, actor);
-  assertVisitEditable(visit);
+  assertActorCanRecordDraft(visit, actor);
   const finding = visit.findings.find(({ id }) => id === findingId);
   if (!finding || !FINDING_TRANSITIONS[finding.status].includes(nextStatus)) {
     throw new TreatmentDomainError(
@@ -213,7 +215,7 @@ export const recordTreatmentAct = (
   const treatmentAct: TreatmentAct = {
     id: input.id,
     code: input.code,
-    status: enteredByDentist ? 'PLANNED' : 'DRAFT',
+    status: 'PLANNED',
     target: input.target,
     details: input.details ?? [],
     note: input.note ?? null,
@@ -252,23 +254,13 @@ export const markVisitReadyForCompletion = (
   actor: TreatmentActor,
   now: Date,
 ): TreatmentVisit => {
-  assertResponsibleDentist(visit, actor);
+  assertActorCanRecordDraft(visit, actor);
   if (visit.status !== 'IN_PROGRESS') {
     throw new TreatmentDomainError(
       'INVALID_LIFECYCLE_TRANSITION',
       'Only an in-progress visit can be marked ready.',
     );
   }
-  if (
-    visit.documentationHandoff &&
-    visit.documentationHandoff.status !== 'ACCEPTED'
-  ) {
-    throw new TreatmentDomainError(
-      'INVALID_LIFECYCLE_TRANSITION',
-      'Delegated documentation must be accepted before completion.',
-    );
-  }
-
   return { ...visit, status: 'READY_FOR_COMPLETION', updatedAt: now };
 };
 
@@ -277,7 +269,8 @@ export const assignVisitDocumentation = (
   actor: TreatmentActor,
   input: {
     readonly handoffId: string;
-    readonly assistantId: string;
+    readonly assigneeUserId: string;
+    readonly assigneeRole: 'DENTAL_ASSISTANT' | 'SECRETARY';
     readonly note?: string | null;
   },
   now: Date,
@@ -290,15 +283,30 @@ export const assignVisitDocumentation = (
       'Documentation can only be delegated during an in-progress visit.',
     );
   }
-  if (!input.assistantId.trim() || input.assistantId === actor.userId) {
+  if (!input.assigneeUserId.trim() || input.assigneeUserId === actor.userId) {
     throw new TreatmentDomainError(
       'INVALID_TREATMENT_VISIT',
-      'A different dental assistant must be assigned.',
+      'A different assistant or secretariat user must be assigned.',
+    );
+  }
+  const instruction = input.note?.trim();
+  if (!instruction) {
+    throw new TreatmentDomainError(
+      'INVALID_TREATMENT_VISIT',
+      'Doctor instructions are required.',
+    );
+  }
+  if (!['DENTAL_ASSISTANT', 'SECRETARY'].includes(input.assigneeRole)) {
+    throw new TreatmentDomainError(
+      'INVALID_TREATMENT_VISIT',
+      'Unsupported documentation assignee role.',
     );
   }
   if (
     visit.documentationHandoff &&
-    !['ACCEPTED', 'CANCELLED'].includes(visit.documentationHandoff.status)
+    !['COMPLETED', 'ACCEPTED', 'CANCELLED'].includes(
+      visit.documentationHandoff.status,
+    )
   ) {
     throw new TreatmentDomainError(
       'INVALID_LIFECYCLE_TRANSITION',
@@ -312,8 +320,11 @@ export const assignVisitDocumentation = (
       id: input.handoffId,
       status: 'ASSIGNED',
       assignedByDentistId: actor.userId,
-      assignedToAssistantId: input.assistantId,
-      note: input.note ?? null,
+      assignedToUserId: input.assigneeUserId,
+      assignedToRole: input.assigneeRole,
+      completedAt: null,
+      completedByUserId: null,
+      note: instruction,
       reviewNote: null,
       revision: 1,
       assignedAt: now,
@@ -346,70 +357,6 @@ export const startVisitDocumentation = (
   };
 };
 
-export const submitVisitDocumentation = (
-  visit: TreatmentVisit,
-  actor: TreatmentActor,
-  note: string | null,
-  now: Date,
-): TreatmentVisit => {
-  assertVisitEditable(visit);
-  const handoff = assertAssignedAssistant(visit, actor);
-  if (handoff.status !== 'IN_PROGRESS') {
-    throw new TreatmentDomainError(
-      'INVALID_LIFECYCLE_TRANSITION',
-      'Documentation must be in progress before submission.',
-    );
-  }
-
-  return {
-    ...visit,
-    status: 'AWAITING_REVIEW',
-    documentationHandoff: {
-      ...handoff,
-      status: 'SUBMITTED',
-      note: note ?? handoff.note,
-      submittedAt: now,
-    },
-    updatedAt: now,
-  };
-};
-
-export const reviewVisitDocumentation = (
-  visit: TreatmentVisit,
-  actor: TreatmentActor,
-  decision: 'ACCEPT' | 'RETURN',
-  reviewNote: string | null,
-  now: Date,
-): TreatmentVisit => {
-  assertResponsibleDentist(visit, actor);
-  const handoff = visit.documentationHandoff;
-  if (visit.status !== 'AWAITING_REVIEW' || handoff?.status !== 'SUBMITTED') {
-    throw new TreatmentDomainError(
-      'INVALID_LIFECYCLE_TRANSITION',
-      'Only submitted documentation can be reviewed.',
-    );
-  }
-  if (decision === 'RETURN' && !reviewNote?.trim()) {
-    throw new TreatmentDomainError(
-      'INVALID_TREATMENT_VISIT',
-      'A review note is required when documentation is returned.',
-    );
-  }
-
-  return {
-    ...visit,
-    status: decision === 'ACCEPT' ? 'READY_FOR_COMPLETION' : 'IN_PROGRESS',
-    documentationHandoff: {
-      ...handoff,
-      status: decision === 'ACCEPT' ? 'ACCEPTED' : 'RETURNED',
-      reviewNote,
-      revision: decision === 'RETURN' ? handoff.revision + 1 : handoff.revision,
-      reviewedAt: now,
-    },
-    updatedAt: now,
-  };
-};
-
 export const transitionTreatmentAct = (
   visit: TreatmentVisit,
   actor: TreatmentActor,
@@ -417,8 +364,7 @@ export const transitionTreatmentAct = (
   nextStatus: TreatmentActStatus,
   now: Date,
 ): TreatmentVisit => {
-  assertResponsibleDentist(visit, actor);
-  assertVisitEditable(visit);
+  assertActorCanRecordDraft(visit, actor);
   const act = visit.acts.find(({ id }) => id === actId);
   if (!act || !ACT_TRANSITIONS[act.status].includes(nextStatus)) {
     throw new TreatmentDomainError(
@@ -432,10 +378,14 @@ export const transitionTreatmentAct = (
     status: nextStatus,
     approvedByDentistId:
       nextStatus === 'PLANNED' || nextStatus === 'COMPLETED'
-        ? actor.userId
+        ? actor.role === 'DOCTOR'
+          ? actor.userId
+          : act.approvedByDentistId
         : act.approvedByDentistId,
     performedByUserId:
-      nextStatus === 'COMPLETED' ? actor.userId : act.performedByUserId,
+      nextStatus === 'COMPLETED'
+        ? visit.responsibleDentistId
+        : act.performedByUserId,
     updatedAt: now,
   };
 
@@ -453,13 +403,7 @@ export const completeTreatmentVisit = (
   actor: TreatmentActor,
   now: Date,
 ): TreatmentVisit => {
-  assertResponsibleDentist(visit, actor);
-  if (visit.status !== 'READY_FOR_COMPLETION') {
-    throw new TreatmentDomainError(
-      'INVALID_LIFECYCLE_TRANSITION',
-      'The visit must be reviewed and ready before completion.',
-    );
-  }
+  assertActorCanRecordDraft(visit, actor);
   const hasDraftFinding = visit.findings.some(
     ({ status }) => status === 'DRAFT',
   );
@@ -477,6 +421,17 @@ export const completeTreatmentVisit = (
     ...visit,
     status: 'COMPLETED',
     completedAt: now,
+    completedByUserId: actor.userId,
+    documentationHandoff:
+      visit.documentationHandoff &&
+      visit.documentationHandoff.status !== 'CANCELLED'
+        ? {
+            ...visit.documentationHandoff,
+            status: 'COMPLETED',
+            completedAt: now,
+            completedByUserId: actor.userId,
+          }
+        : visit.documentationHandoff,
     updatedAt: now,
   };
 };
@@ -489,8 +444,7 @@ export const cancelTreatmentVisit = (
 ): TreatmentVisit => {
   assertVisitEditable(visit);
   const authorized =
-    actor.role === 'ADMIN' ||
-    (actor.role === 'DOCTOR' && actor.userId === visit.responsibleDentistId);
+    actor.role === 'ADMIN' || canActorEditDraftDocumentation(visit, actor);
   if (!authorized) {
     throw new TreatmentDomainError(
       'CLINICAL_AUTHORITY_REQUIRED',

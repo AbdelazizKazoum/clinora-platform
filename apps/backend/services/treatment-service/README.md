@@ -7,5 +7,7 @@ the next vertical slice. The public boundary for those adapters is defined in
 `@clinora/contracts-treatment`.
 
 The domain keeps clinical findings separate from treatment acts and keeps
-assistant data entry separate from dentist approval. No file in this service
+documentation authorship separate from clinical performance. Assigned assistants
+and secretariat users can document and complete their assigned visit directly,
+without a doctor approval step. Unassigned users cannot change that visit. No file in this service
 depends on the odontogram renderer.

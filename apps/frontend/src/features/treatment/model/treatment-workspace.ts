@@ -16,12 +16,18 @@ import {
   createEmptyPeriodontalExamination,
   type PeriodontalExamination,
 } from './periodontal';
-import type { TreatmentWorkspaceRole } from './treatment.rules';
+import {
+  canEditTreatmentDraft,
+  type TreatmentWorkspaceRole,
+} from './treatment.rules';
 
 export interface MockTreatmentActor {
   readonly userId: string;
   readonly name: string;
-  readonly role: Extract<TreatmentWorkspaceRole, 'doctor' | 'dental_assistant'>;
+  readonly role: Extract<
+    TreatmentWorkspaceRole,
+    'doctor' | 'dental_assistant' | 'secretary'
+  >;
 }
 
 export type RecordWorkspaceFindingInput = TypedClinicalFindingInput;
@@ -50,7 +56,6 @@ export const recordWorkspaceFinding = (
 ): TreatmentVisit => {
   assertCanDocument(visit, actor);
   validateTreatmentInput(input);
-  const dentistEntry = actor.role === 'doctor';
   const finding: ClinicalFinding = {
     code: input.code,
     createdAt: now,
@@ -58,17 +63,23 @@ export const recordWorkspaceFinding = (
     enteredByUserId: actor.userId,
     id: input.id,
     note: input.note ?? null,
-    status: dentistEntry ? 'CONFIRMED' : 'DRAFT',
+    status: 'CONFIRMED',
     target: input.target,
     updatedAt: now,
-    verifiedByUserId: dentistEntry ? actor.userId : null,
+    verifiedByUserId: actor.userId,
   };
 
-  return withAudit({
-    ...visit,
-    findings: [...visit.findings, finding],
-    updatedAt: now,
-  }, 'FINDING_RECORDED', actor.userId, finding.id, now);
+  return withAudit(
+    {
+      ...visit,
+      findings: [...visit.findings, finding],
+      updatedAt: now,
+    },
+    'FINDING_RECORDED',
+    actor.userId,
+    finding.id,
+    now,
+  );
 };
 
 export const recordWorkspaceAct = (
@@ -89,35 +100,18 @@ export const recordWorkspaceAct = (
     id: input.id,
     note: input.note ?? null,
     performedByUserId: null,
-    status: dentistEntry ? 'PLANNED' : 'DRAFT',
+    status: 'PLANNED',
     target: input.target,
     updatedAt: now,
   };
 
-  return withAudit({ ...visit, acts: [...visit.acts, act], updatedAt: now }, 'ACT_RECORDED', actor.userId, act.id, now);
-};
-
-export const approveWorkspaceFinding = (
-  visit: TreatmentVisit,
-  dentist: MockTreatmentActor,
-  findingId: string,
-  now: Date,
-): TreatmentVisit => {
-  assertResponsibleDentist(visit, dentist);
-  return withAudit({
-    ...visit,
-    findings: visit.findings.map((finding) =>
-      finding.id === findingId
-        ? {
-            ...finding,
-            status: 'CONFIRMED',
-            updatedAt: now,
-            verifiedByUserId: dentist.userId,
-          }
-        : finding,
-    ),
-    updatedAt: now,
-  }, 'FINDING_CONFIRMED', dentist.userId, findingId, now);
+  return withAudit(
+    { ...visit, acts: [...visit.acts, act], updatedAt: now },
+    'ACT_RECORDED',
+    actor.userId,
+    act.id,
+    now,
+  );
 };
 
 export const removeWorkspaceFinding = (
@@ -134,10 +128,7 @@ export const removeWorkspaceFinding = (
 
   if (finding.status === 'DRAFT') {
     assertCanDocument(visit, actor);
-    if (
-      actor.role === 'dental_assistant' &&
-      finding.enteredByUserId !== actor.userId
-    ) {
+    if (actor.role !== 'doctor' && finding.enteredByUserId !== actor.userId) {
       throw new Error('An assistant can only remove their own draft finding.');
     }
 
@@ -154,8 +145,7 @@ export const removeWorkspaceFinding = (
     );
   }
 
-  assertVisitEditable(visit);
-  assertResponsibleDentist(visit, actor);
+  assertCanDocument(visit, actor);
   const removalReason = reason?.trim();
   if (!removalReason) {
     throw new Error('A reason is required to remove a confirmed finding.');
@@ -182,29 +172,6 @@ export const removeWorkspaceFinding = (
   );
 };
 
-export const approveWorkspaceAct = (
-  visit: TreatmentVisit,
-  dentist: MockTreatmentActor,
-  actId: string,
-  now: Date,
-): TreatmentVisit => {
-  assertResponsibleDentist(visit, dentist);
-  return {
-    ...visit,
-    acts: visit.acts.map((act) =>
-      act.id === actId
-        ? {
-            ...act,
-            approvedByDentistId: dentist.userId,
-            status: 'PLANNED',
-            updatedAt: now,
-          }
-        : act,
-    ),
-    updatedAt: now,
-  };
-};
-
 export const updateWorkspacePeriodontalExamination = (
   visit: TreatmentVisit,
   actor: MockTreatmentActor,
@@ -216,40 +183,24 @@ export const updateWorkspacePeriodontalExamination = (
     visit.periodontalExamination ??
     createEmptyPeriodontalExamination(actor.userId, now);
   const next = update(current);
-  return withAudit({
-    ...visit,
-    periodontalExamination: {
-      ...next,
-      enteredByUserId: current.enteredByUserId,
-      status: actor.role === 'doctor' ? 'CONFIRMED' : 'DRAFT',
+  return withAudit(
+    {
+      ...visit,
+      periodontalExamination: {
+        ...next,
+        enteredByUserId: current.enteredByUserId,
+        status: 'CONFIRMED',
+        updatedAt: now,
+        verifiedByDentistId:
+          actor.role === 'doctor' ? actor.userId : current.verifiedByDentistId,
+      },
       updatedAt: now,
-      verifiedByDentistId:
-        actor.role === 'doctor' ? actor.userId : current.verifiedByDentistId,
     },
-    updatedAt: now,
-  }, 'PERIODONTAL_UPDATED', actor.userId, null, now);
-};
-
-export const approveWorkspacePeriodontalExamination = (
-  visit: TreatmentVisit,
-  dentist: MockTreatmentActor,
-  now: Date,
-): TreatmentVisit => {
-  assertResponsibleDentist(visit, dentist);
-  const examination = visit.periodontalExamination;
-  if (examination === null || examination === undefined) {
-    throw new Error('No periodontal examination is available for approval.');
-  }
-  return withAudit({
-    ...visit,
-    periodontalExamination: {
-      ...examination,
-      status: 'CONFIRMED',
-      updatedAt: now,
-      verifiedByDentistId: dentist.userId,
-    },
-    updatedAt: now,
-  }, 'PERIODONTAL_CONFIRMED', dentist.userId, null, now);
+    'PERIODONTAL_UPDATED',
+    actor.userId,
+    null,
+    now,
+  );
 };
 
 export const transitionWorkspaceAct = (
@@ -259,8 +210,7 @@ export const transitionWorkspaceAct = (
   nextStatus: TreatmentActStatus,
   now: Date,
 ): TreatmentVisit => {
-  assertResponsibleDentist(visit, dentist);
-  assertVisitEditable(visit);
+  assertCanDocument(visit, dentist);
   const act = visit.acts.find(({ id }) => id === actId);
   if (!act || !ACT_TRANSITIONS[act.status].includes(nextStatus)) {
     throw new Error(`Treatment act cannot transition to ${nextStatus}.`);
@@ -270,21 +220,31 @@ export const transitionWorkspaceAct = (
     ...act,
     approvedByDentistId:
       nextStatus === 'PLANNED' || nextStatus === 'COMPLETED'
-        ? dentist.userId
+        ? dentist.role === 'doctor'
+          ? dentist.userId
+          : act.approvedByDentistId
         : act.approvedByDentistId,
     performedByUserId:
-      nextStatus === 'COMPLETED' ? dentist.userId : act.performedByUserId,
+      nextStatus === 'COMPLETED'
+        ? visit.responsibleDentistId
+        : act.performedByUserId,
     status: nextStatus,
     updatedAt: now,
   };
 
-  return withAudit({
-    ...visit,
-    acts: visit.acts.map((candidate) =>
-      candidate.id === actId ? updatedAct : candidate,
-    ),
-    updatedAt: now,
-  }, 'ACT_STATUS_CHANGED', dentist.userId, actId, now);
+  return withAudit(
+    {
+      ...visit,
+      acts: visit.acts.map((candidate) =>
+        candidate.id === actId ? updatedAct : candidate,
+      ),
+      updatedAt: now,
+    },
+    'ACT_STATUS_CHANGED',
+    dentist.userId,
+    actId,
+    now,
+  );
 };
 
 export const assignWorkspaceDocumentation = (
@@ -294,6 +254,7 @@ export const assignWorkspaceDocumentation = (
   handoffId: string,
   instruction: string,
   now: Date,
+  assigneeRole: 'dental_assistant' | 'secretary' = 'dental_assistant',
 ): TreatmentVisit => {
   assertResponsibleDentist(visit, dentist);
   assertVisitEditable(visit);
@@ -303,18 +264,21 @@ export const assignWorkspaceDocumentation = (
     );
   }
   if (!assistantId.trim() || assistantId === dentist.userId) {
-    throw new Error('A different dental assistant must be assigned.');
+    throw new Error(
+      'A different assistant or secretariat user must be assigned.',
+    );
   }
   const note = instruction.trim();
   if (!note) {
-    throw new Error(
-      'Enter instructions for the assistant before assigning the handoff.',
-    );
+    throw new Error('Enter doctor instructions before assigning the handoff.');
   }
   const handoff: DocumentationHandoff = {
     assignedAt: now,
     assignedByDentistId: dentist.userId,
-    assignedToAssistantId: assistantId,
+    assignedToUserId: assistantId,
+    assignedToRole: assigneeRole,
+    completedAt: null,
+    completedByUserId: null,
     id: handoffId,
     note,
     reviewNote: null,
@@ -342,65 +306,23 @@ export const startWorkspaceDocumentation = (
   assistant: MockTreatmentActor,
   now: Date,
 ): TreatmentVisit => {
+  assertCanDocument(visit, assistant);
   const handoff = assertAssignedAssistant(visit, assistant);
   if (handoff.status !== 'ASSIGNED' && handoff.status !== 'RETURNED') {
     throw new Error('This documentation assignment cannot be started.');
   }
-  return {
-    ...visit,
-    documentationHandoff: { ...handoff, status: 'IN_PROGRESS' },
-    status: 'IN_PROGRESS',
-    updatedAt: now,
-  };
-};
-
-export const submitWorkspaceDocumentation = (
-  visit: TreatmentVisit,
-  assistant: MockTreatmentActor,
-  now: Date,
-): TreatmentVisit => {
-  const handoff = assertAssignedAssistant(visit, assistant);
-  if (handoff.status !== 'IN_PROGRESS') {
-    throw new Error('Start the documentation before submitting it.');
-  }
-  return {
-    ...visit,
-    documentationHandoff: {
-      ...handoff,
-      status: 'SUBMITTED',
-      submittedAt: now,
+  return withAudit(
+    {
+      ...visit,
+      documentationHandoff: { ...handoff, status: 'IN_PROGRESS' },
+      status: 'IN_PROGRESS',
+      updatedAt: now,
     },
-    status: 'AWAITING_REVIEW',
-    updatedAt: now,
-  };
-};
-
-export const reviewWorkspaceDocumentation = (
-  visit: TreatmentVisit,
-  dentist: MockTreatmentActor,
-  decision: 'ACCEPT' | 'RETURN',
-  now: Date,
-): TreatmentVisit => {
-  assertResponsibleDentist(visit, dentist);
-  const handoff = visit.documentationHandoff;
-  if (handoff?.status !== 'SUBMITTED') {
-    throw new Error('Only submitted documentation can be reviewed.');
-  }
-  const reviewNote = decision === 'RETURN'
-    ? 'Please review the selected teeth and clinical details.'
-    : null;
-  return withAudit({
-    ...visit,
-    documentationHandoff: {
-      ...handoff,
-      reviewNote,
-      reviewedAt: now,
-      revision: decision === 'RETURN' ? handoff.revision + 1 : handoff.revision,
-      status: decision === 'ACCEPT' ? 'ACCEPTED' : 'RETURNED',
-    },
-    status: decision === 'ACCEPT' ? 'READY_FOR_COMPLETION' : 'IN_PROGRESS',
-    updatedAt: now,
-  }, decision === 'ACCEPT' ? 'DOCUMENTATION_ACCEPTED' : 'DOCUMENTATION_RETURNED', dentist.userId, null, now, reviewNote);
+    'DOCUMENTATION_STARTED',
+    assistant.userId,
+    handoff.id,
+    now,
+  );
 };
 
 export const completeWorkspaceVisit = (
@@ -408,10 +330,7 @@ export const completeWorkspaceVisit = (
   dentist: MockTreatmentActor,
   now: Date,
 ): TreatmentVisit => {
-  assertResponsibleDentist(visit, dentist);
-  if (visit.status !== 'READY_FOR_COMPLETION') {
-    throw new Error('Review the clinical record before completing the visit.');
-  }
+  assertCanDocument(visit, dentist);
   if (
     visit.findings.some(({ status }) => status === 'DRAFT') ||
     visit.acts.some(
@@ -431,7 +350,23 @@ export const completeWorkspaceVisit = (
     throw new Error('Approve or resolve all draft clinical entries first.');
   }
   return withAudit(
-    { ...visit, completedAt: now, status: 'COMPLETED', updatedAt: now },
+    {
+      ...visit,
+      completedAt: now,
+      completedByUserId: dentist.userId,
+      status: 'COMPLETED',
+      updatedAt: now,
+      documentationHandoff:
+        visit.documentationHandoff &&
+        visit.documentationHandoff.status !== 'CANCELLED'
+          ? {
+              ...visit.documentationHandoff,
+              status: 'COMPLETED',
+              completedAt: now,
+              completedByUserId: dentist.userId,
+            }
+          : visit.documentationHandoff,
+    },
     'VISIT_COMPLETED',
     dentist.userId,
     null,
@@ -439,23 +374,13 @@ export const completeWorkspaceVisit = (
   );
 };
 
-const assertCanDocument = (
+export const assertCanDocument = (
   visit: TreatmentVisit,
   actor: MockTreatmentActor,
 ): void => {
-  if (visit.status === 'COMPLETED' || visit.status === 'CANCELLED') {
-    throw new Error('This visit is read-only.');
-  }
-  if (actor.role === 'doctor' && actor.userId === visit.responsibleDentistId) {
-    return;
-  }
-  const handoff = visit.documentationHandoff;
-  if (
-    actor.role !== 'dental_assistant' ||
-    handoff?.assignedToAssistantId !== actor.userId ||
-    !['ASSIGNED', 'IN_PROGRESS', 'RETURNED'].includes(handoff.status)
-  ) {
-    throw new Error('An active assistant assignment is required.');
+  assertVisitEditable(visit);
+  if (!canEditTreatmentDraft(visit, actor.userId, actor.role)) {
+    throw new Error('An active documentation assignment is required.');
   }
 };
 
@@ -502,9 +427,10 @@ const assertAssignedAssistant = (
 ): DocumentationHandoff => {
   const handoff = visit.documentationHandoff;
   if (
-    actor.role !== 'dental_assistant' ||
+    (actor.role !== 'dental_assistant' && actor.role !== 'secretary') ||
     !handoff ||
-    handoff.assignedToAssistantId !== actor.userId
+    handoff.assignedToUserId !== actor.userId ||
+    (handoff.assignedToRole ?? 'dental_assistant') !== actor.role
   ) {
     throw new Error('This assistant is not assigned to the visit.');
   }

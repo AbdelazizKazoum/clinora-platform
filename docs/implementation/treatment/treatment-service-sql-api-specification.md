@@ -2,7 +2,9 @@
 
 Status: implementation blueprint; database and endpoints are not implemented by this document.
 
-Reviewed against the repository on 2026-10-28.
+Updated for the direct documentation business workflow on 2026-10-30.
+
+**Business change:** an assigned dental assistant or secretariat user documents the doctor’s work directly, with no submission, doctor review, or approval gate. This revision supersedes older handoff/approval descriptions in linked historical documents. The application remains a local preview plus backend domain foundation; persistence and deployed endpoints are separate implementation work.
 
 ## 1. Purpose and authority
 
@@ -110,36 +112,22 @@ A visit is an encounter/documentation record. A session records work on one plan
 
 ### 3.1 Visits and documentation
 
-Persist current visit statuses exactly:
+New workflow: `DRAFT` → `IN_PROGRESS` → `COMPLETED` (or explicit cancellation). The doctor starts a visit, writes the treatment performed and remaining work in the handoff note, and assigns an active clinic assistant or secretariat user. Assignment leaves the visit open. The assigned user records the structured acts/findings and completes the visit directly. There is no doctor approval or handoff review stepper.
 
-`DRAFT`, `IN_PROGRESS`, `AWAITING_REVIEW`, `READY_FOR_COMPLETION`, `COMPLETED`, `CANCELLED`.
+`AWAITING_REVIEW` and `READY_FOR_COMPLETION` remain legacy read-compatible values, not required steps for new records. Legacy unresolved assignments can be migrated to the new editable documentation workflow, retaining original history. Never infer that a doctor approved legacy drafts.
 
-| Trigger | Visit result | Handoff result |
-| --- | --- | --- |
-| Create encounter | `DRAFT` | None |
-| Start encounter | `IN_PROGRESS` | None or existing assignment |
-| Doctor assigns documentation | Remains open, usually `IN_PROGRESS` | `ASSIGNED` |
-| Assigned assistant starts | Remains open | `IN_PROGRESS` |
-| Assistant submits | `AWAITING_REVIEW` | `SUBMITTED` |
-| Doctor returns documentation | `IN_PROGRESS` | `RETURNED`, required review text |
-| Doctor accepts documentation | `READY_FOR_COMPLETION` | `ACCEPTED` |
-| Doctor completes encounter | `COMPLETED` | None, `ACCEPTED`, or `CANCELLED` |
+Completing a visit requires either its responsible doctor or its currently assigned staff user, an editable visit, no unresolved legacy drafts, and no open current-visit treatment sessions. Completion marks the active handoff `COMPLETED` atomically. Ongoing patient plans can remain `PLANNED`/`IN_PROGRESS` after today's sessions close.
 
-The doctor leaving the workspace or finishing the chairside consultation does **not** mean the visit is documentation-complete. An unresolved handoff keeps the visit open. There is currently no implemented `AWAITING_DOCUMENTATION` visit status. Build the assistant queue from handoff status and assignment, rather than pretending such a visit status exists.
+The doctor finishing chairside work does not mean structured documentation is complete. Optional `consultation_ended_at` records that distinction without setting visit completion. Direct doctor documentation still works without a handoff.
 
-Required backend addition: nullable `consultation_ended_at` can record the doctor ending the consultation while documentation is pending. Expose an explicit command for it if the product needs that action. It must not close sessions automatically or set `COMPLETED`. A future `AWAITING_DOCUMENTATION` status would require an explicit contract/UI migration.
-
-Completing a visit requires the responsible dentist, an editable visit, resolved draft findings/acts/periodontal examination, no unresolved handoff, and no open sessions in that visit. Future work in `PLANNED` or `IN_PROGRESS` on patient-level plans does **not** block visit completion after current sessions have been closed.
-
-Direct doctor documentation does not require an assistant handoff. A visit can complete directly from an editable state when all completion guards pass.
+Store attribution at both levels: the visit retains `responsible_dentist_id`, handoff assignment/history, and `completed_by_user_id`; every act retains immutable `entered_by_user_id`, origin visit/handoff, and clinical performer. Session entry/closure and all later edits retain their own actor IDs and audit events. A single visit-level “entered by” cannot represent multiple contributors.
 
 ### 3.2 Plans: Start is the clinical action
 
 | Action | Before | After | Meaning |
 | --- | --- | --- | --- |
-| Doctor adds catalogue act | No item | `PLANNED` | Proposed care, approved by that doctor; not performed |
-| Assistant records act under handoff | No item | `DRAFT` | Unapproved documentation |
-| Responsible dentist approves draft | `DRAFT` | `PLANNED` | Dentist approval; not treatment start or patient consent |
+| Doctor adds catalogue act | No item | `PLANNED` | Structured proposal; not automatically performed |
+| Assigned assistant/secretariat records act | No item | `PLANNED` | Takes effect directly with its real author and handoff provenance |
 | Start session | `PLANNED` or `IN_PROGRESS` | `IN_PROGRESS` | Open session in the current visit |
 | Close session, continue later | `IN_PROGRESS` | `IN_PROGRESS` | Work recorded; more visits needed |
 | Close session, treatment finished | `IN_PROGRESS` | `COMPLETED` | Final treatment outcome recorded |
@@ -147,12 +135,12 @@ Direct doctor documentation does not require an assistant handoff. A visit can c
 | Cancel | Eligible nonterminal item | `CANCELLED` | Required cancellation reason |
 | Correct erroneous entry | Existing item, including completed | `ENTERED_IN_ERROR` | Required correction reason; retain history |
 
-Do not add a separate Confirm step for doctor-created plans. Do not allow a generic status update to mark an act completed without a session/outcome.
+Do not add an approval step for doctor-created or assigned-staff plans. Recording a plan still does not mean it was performed; use sessions/outcomes to record actual work. Do not allow a generic status update to mark an act completed without a session/outcome.
 
 **Removal eligibility must be checked by the server in a transaction:**
 
-1. Actor is the responsible doctor for the editable origin visit and the author of the direct item.
-2. Source is `DOCTOR_DIRECT`, status is `PLANNED`, and item is not already removed.
+1. Actor is the responsible doctor or currently assigned assistant/secretariat user in the editable origin visit, and is the item author.
+2. Status is `PLANNED` and item is not already removed; both direct and delegated sources qualify.
 3. Same clinic and patient, current visit equals `origin_visit_id`.
 4. No session exists for this plan in any visit, including cancelled sessions.
 5. No finalized visit snapshot references the plan.
@@ -161,7 +149,7 @@ Removal sets `removed_at`, `removed_by_user_id`, increments version, and records
 
 Once a session exists, free removal is forbidden. Cancellation/correction requires a nonblank reason. If a session is open in the current visit, close it as `CANCELLED` in the same transaction, with `outcome = NULL`, preserving its initial snapshot and previous note. Append the cancellation/correction explanation and write both audit entries. An open session in another visit produces a conflict; resolve it in that visit. Completed plans support correction, not cancellation.
 
-Draft assistant entries are handled through the draft review/discard workflow and audited separately; the direct-plan Remove permission above must not grant arbitrary removal of another user's draft or signed records.
+New delegated entries are not drafts. Keep legacy draft values for historical compatibility and migrate them explicitly with audit before finalization; do not fabricate a dentist approval. Remove never grants permission to erase another author’s or finalized records.
 
 ### 3.3 Sessions and longitudinal care
 
@@ -169,7 +157,7 @@ Session statuses: `IN_PROGRESS`, `COMPLETED`, `CANCELLED`.
 
 Closed successful outcomes: `CONTINUE_LATER`, `TREATMENT_FINISHED`.
 
-- Start requires an approved, nonremoved, nonterminal plan, a responsible doctor, and an editable current visit (`IN_PROGRESS` or `READY_FOR_COMPLETION`).
+- Start requires a nonremoved, active plan and either the responsible doctor or currently assigned assistant/secretariat user in an editable visit. Do not require `approved_by_dentist_id` for delegated entries.
 - At most one open session per plan across all visits.
 - Preserve the local rule: at most one noncancelled session per plan per visit. A cancelled session may be retried with a new session ID.
 - Store an immutable plan snapshot and plan version when starting. Never rewrite that snapshot after later plan changes.
@@ -183,15 +171,17 @@ Current local data is limited to one open workspace visit per patient. Do not ad
 
 ### 3.4 Handoffs
 
-Handoff statuses: `ASSIGNED`, `IN_PROGRESS`, `SUBMITTED`, `RETURNED`, `ACCEPTED`, `CANCELLED`.
+New handoff statuses: `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`. Legacy `SUBMITTED`, `RETURNED`, `ACCEPTED` are historical compatibility values, not new workflow steps.
 
-The doctor enters required free-text instructions and selects an authorized assistant in the same clinic. One visit may have historical handoffs, but only one unresolved handoff at a time. The handoff covers the visit, even when it produces several plans.
+The responsible doctor supplies required instructions and chooses one authorized active clinic user with role `DENTAL_ASSISTANT` or `SECRETARY`. Store neutral `assigned_to_user_id` plus `assigned_to_role`. The handoff covers the whole visit, including multiple plans. Only one active assignment may exist for a visit.
 
-The assigned assistant may document only in `ASSIGNED`, `IN_PROGRESS`, or `RETURNED`. Submission locks assistant edits until the doctor returns it. Every assistant-created item carries `origin_handoff_id`, `entered_by_user_id`, and `source = ASSISTANT_HANDOFF`. It remains draft until dentist approval. Entering documentation never attributes clinical performance to the assistant automatically.
+The assigned user can record confirmed findings, planned acts, periodontal documentation, treatment sessions and outcomes, corrections/cancellations with reasons, and visit completion directly. They have the same documentation authority as the doctor **inside that assigned visit**, without acquiring doctor-only authority to create visits, delegate assignments, or edit unassigned visits. Permission checks apply to every mutation, not just the note form.
 
-Acceptance requires all submitted draft items to be approved or explicitly resolved. Return requires actual review text supplied by the dentist. Persist instruction revisions, reassignment, submission, return, acceptance, and cancellation history. Reassignment cannot change the responsible dentist and must not erase the prior assignee or provenance of already-entered items.
+Staff entries use `source = STAFF_HANDOFF` with `origin_handoff_id` and actual `entered_by_user_id`. The responsible doctor remains clinical performer for work described in their note. Never put the staff user in `performed_by_user_id` merely because they clicked Start/Finish, or insert the doctor into an approval field to pretend a review occurred.
 
-Assistant queue inclusion is based on authorized `assigned_to_assistant_id` and unresolved statuses; `SUBMITTED` can appear in a separate read-only “Awaiting review” filter. `ACCEPTED`/`CANCELLED` are history.
+The doctor note remains doctor-authored and unchanged by staff documentation. Persist assignment/note revisions and reassignment history. Reassignment revokes the former assignee immediately without changing existing authors. Completed/cancelled visits are read-only; later corrections require auditable addenda.
+
+The assigned-work queue uses authenticated clinic/user scope and active handoff statuses; include text-only handoffs with zero acts. Completed/cancelled assignments are history. Staff must not gain write access from a guessed visit ID, client role, or request-supplied actor ID.
 
 ## 4. Clinical targets and grouped teeth
 
@@ -228,7 +218,7 @@ Periodontal site `B` and furcation entrance `BUCCAL` belong to different vocabul
 
 ### 4.3 One grouped plan versus independent plans
 
-The current entry form creates **one plan item per save**, even when several teeth are selected. Those teeth share approval, status, sessions, cancellation, and completion. This must be visible to backend implementers and preserved by default.
+The current entry form creates **one plan item per save**, even when several teeth are selected. Those teeth share status, sessions, cancellation, and completion. This must be visible to backend implementers and preserved by default.
 
 | Example | Persistence and lifecycle |
 | --- | --- |
@@ -455,24 +445,25 @@ Appointment/queue references are not unique by default: repeat or corrective vis
 | --- | --- |
 | `visit_id` | Scoped FK → `treatment_visits` |
 | `status` | Handoff status |
-| `assigned_by_dentist_id`, `assigned_to_assistant_id` | UUID external staff references |
+| `assigned_by_dentist_id`, `assigned_to_user_id` | UUID external staff references |
 | `instruction_text` | TEXT, trimmed nonblank |
-| `review_note` | TEXT, NULL; nonblank when returned/cancelled |
+| `cancellation_reason` | TEXT, NULL; required when cancelled |
+| `assigned_to_role` | `DENTAL_ASSISTANT`, `SECRETARY`; authorized clinic membership required |
 | `revision` | `INT UNSIGNED`, starts at 1 |
 | `assigned_at` | `DATETIME(6)` |
-| `submitted_at`, `reviewed_at`, `cancelled_at` | `DATETIME(6)`, NULL |
-| `reviewed_by_user_id` | UUID, NULL |
-| `unresolved_visit_id` | Stored generated nullable UUID; visit ID for statuses other than `ACCEPTED`, `CANCELLED` |
+| `completed_at`, `cancelled_at` | `DATETIME(6)`, NULL |
+| `completed_by_user_id` | UUID actual completer, NULL until completion |
+| `unresolved_visit_id` | Stored generated nullable UUID; visit ID for active statuses `ASSIGNED`, `IN_PROGRESS` (include unresolved legacy states only during migration) |
 
-Unique `(clinic_id, patient_id, unresolved_visit_id)`. Index `(clinic_id, assigned_to_assistant_id, status, updated_at, id)` for assistant queue and `(clinic_id, patient_id, visit_id, created_at, id)` for visit history.
+Unique `(clinic_id, patient_id, unresolved_visit_id)`. Index `(clinic_id, assigned_to_user_id, status, updated_at, id)` for assigned-staff queue and `(clinic_id, patient_id, visit_id, created_at, id)` for visit history.
 
 ### 6.5 `documentation_handoff_revisions`
 
 `ID + SCOPE`.
 
-Fields: `handoff_id` scoped FK, `revision INT UNSIGNED`, `action VARCHAR(64)`, `status VARCHAR(64)`, `instruction_text TEXT`, `review_note TEXT NULL`, `assigned_to_assistant_id UUID`, `actor_user_id UUID`, `created_at DATETIME(6)`.
+Fields: `handoff_id` scoped FK, `revision INT UNSIGNED`, `action VARCHAR(64)`, `status VARCHAR(64)`, `instruction_text TEXT`, `change_reason TEXT NULL`, `assigned_to_user_id UUID`, `assigned_to_role VARCHAR(32)`, `actor_user_id UUID`, `created_at DATETIME(6)`.
 
-Unique `(clinic_id, patient_id, handoff_id, revision)`. Append-only; full revision text and assignment are retained, not just a mutable latest note. Write revision and current handoff in one transaction. Use actions `ASSIGNED`, `REVISED`, `REASSIGNED`, `STARTED`, `SUBMITTED`, `RETURNED`, `ACCEPTED`, `CANCELLED`.
+Unique `(clinic_id, patient_id, handoff_id, revision)`. Append-only; full revision text and assignment are retained, not just a mutable latest note. Write revision and current handoff in one transaction. Use actions `ASSIGNED`, `REVISED`, `REASSIGNED`, `STARTED`, `COMPLETED`, `CANCELLED`.
 
 ### 6.6 `clinical_targets`
 
@@ -505,12 +496,12 @@ Index target teeth `(clinic_id, patient_id, tooth_position, dentition, target_id
 | `target_id` | Scoped FK → `clinical_targets` |
 | `origin_visit_id` | Scoped FK → `treatment_visits`; immutable |
 | `origin_handoff_id` | Scoped FK → `documentation_handoffs`, NULL |
-| `source` | `DOCTOR_DIRECT`, `ASSISTANT_HANDOFF` |
+| `source` | `DOCTOR_DIRECT`, `STAFF_HANDOFF` |
 | `status` | Plan status from section 3 |
 | `details` | JSON array of validated typed details |
 | `note` | TEXT, NULL |
 | `entered_by_user_id` | UUID external reference; immutable author |
-| `approved_by_dentist_id`, `approved_at` | UUID and `DATETIME(6)`, NULL together |
+| `approved_by_dentist_id`, `approved_at` | Legacy metadata only, NULL for delegated records; never gate Start on these fields |
 | `performed_by_user_id` | UUID, NULL; final clinician summary, sessions remain authoritative for each encounter |
 | `completed_at` | `DATETIME(6)`, NULL |
 | `cancelled_at`, `cancelled_by_user_id`, `cancellation_reason` | Timestamp, UUID, TEXT, NULL until cancellation |
@@ -520,17 +511,18 @@ Index target teeth `(clinic_id, patient_id, tooth_position, dentition, target_id
 
 Indexes `(clinic_id, patient_id, removed_at, status, updated_at, id)`, `(clinic_id, patient_id, origin_visit_id)`, `(clinic_id, patient_id, origin_handoff_id)`, `(clinic_id, patient_id, target_id)`, `(clinic_id, patient_id, creation_batch_id)`.
 
-Server checks: direct source has no handoff; assistant source requires a handoff from the same origin visit. The handoff must be assigned to the entering assistant at entry time; retain original provenance after reassignment. Never accept author, approval, performance, removed metadata, or status as arbitrary creation fields.
+Server checks: direct source has no handoff; staff source requires a handoff from the same origin visit. The handoff must be assigned to the entering user with their authorized role at entry time; retain original provenance after reassignment. Never accept author, approval, performance, removed metadata, or status as arbitrary creation fields.
 
 ### 6.9 `clinical_findings`
 
 `ID + SCOPE + TIMESTAMPS + VERSION`.
 
-Fields: `visit_id` scoped FK, `origin_handoff_id` scoped FK NULL, `catalogue_entry_version_id` catalogue FK of kind `FINDING`, `target_id` scoped FK, `status VARCHAR(64)`, `details JSON`, `note TEXT NULL`, `entered_by_user_id UUID`, `verified_by_dentist_id UUID NULL`, `verified_at DATETIME(6) NULL`, `refutation_reason TEXT NULL`, `entered_in_error_at DATETIME(6) NULL`, `entry_error_reason TEXT NULL`, `removed_at DATETIME(6) NULL`, `removed_by_user_id UUID NULL`, `supersedes_finding_id` scoped self-FK NULL.
+Fields: `visit_id` scoped FK, `origin_handoff_id` scoped FK NULL, `catalogue_entry_version_id` catalogue FK of kind `FINDING`, `target_id` scoped FK, `status VARCHAR(64)`, `details JSON`, `note TEXT NULL`, `entered_by_user_id UUID`, `verified_by_dentist_id UUID NULL` (legacy doctor metadata; never populate from staff entry), `documented_by_user_id UUID`, `verified_at DATETIME(6) NULL`, `refutation_reason TEXT NULL`, `entered_in_error_at DATETIME(6) NULL`, `entry_error_reason TEXT NULL`, `removed_at DATETIME(6) NULL`, `removed_by_user_id UUID NULL`, `supersedes_finding_id` scoped self-FK NULL.
 
 Statuses: `DRAFT`, `CONFIRMED`, `REFUTED`, `ENTERED_IN_ERROR`. Index `(clinic_id, patient_id, status, created_at, id)`, `(clinic_id, patient_id, visit_id)`, `(clinic_id, patient_id, target_id)`, `(clinic_id, patient_id, origin_handoff_id)`.
 
-Doctor-entered findings start `CONFIRMED` with that dentist's verification; assistant-entered findings start `DRAFT` and require dentist confirmation. Only confirmed nonremoved findings affect the accepted chart. A finding from an earlier visit is referenced as baseline state, not copied into a new canonical finding. Corrections preserve the original and link any replacement using `supersedes_finding_id`; prevent cycles. Removing a draft and correcting an approved finding are distinct audited commands. An assistant may remove only their own unsigned draft in their editable assigned handoff; the backend retains a tombstone/audit even though the local array currently removes that draft directly.
+Doctor and authorized assigned-staff findings start `CONFIRMED`, retaining the actual author. `verified_by_user_id` identifies the confirming/documenting actor and must not falsely identify the doctor. Only confirmed nonremoved findings affect accepted chart state. Earlier findings are baseline references, not duplicated canonical records. Corrections retain originals and link replacements through `supersedes_finding_id`; prevent cycles. Legacy draft removal remains distinct from correction of an effective finding.
+
 
 ### 6.10 `treatment_sessions`
 
@@ -545,7 +537,7 @@ Doctor-entered findings start `CONFIRMED` with that dentist's verification; assi
 | `outcome` | `CONTINUE_LATER`, `TREATMENT_FINISHED`, NULL while open or cancelled |
 | `note` | TEXT, NULL while open; required when closed |
 | `performed_by_user_id`, `entered_by_user_id` | UUID external references; distinguish clinical performance from documentation |
-| `plan_version` | `INT UNSIGNED`; exact approved version used to start, before the start transition increments the canonical plan version |
+| `plan_version` | `INT UNSIGNED`; exact version used to start, before the start transition increments the canonical plan version |
 | `plan_snapshot` | Immutable JSON object; schema version, plan ID/version, code/catalogue version, status, target, details, note, attribution |
 | `started_at` | `DATETIME(6)` |
 | `closed_at` | `DATETIME(6)`, NULL while open |
@@ -559,7 +551,7 @@ Enforce status/outcome/timestamp combinations with checks. Cancelled sessions re
 
 ### 6.11 `visit_snapshots` and `visit_snapshot_plan_references`
 
-`visit_snapshots`: `ID + SCOPE`; `visit_id` scoped FK, `snapshot_kind VARCHAR(16)` (`BASELINE`, `FINAL`, `ADDENDUM`), `sequence INT UNSIGNED`, `schema_version INT UNSIGNED`, `payload JSON`, `signed_by_dentist_id UUID NULL`, `created_at DATETIME(6)`.
+`visit_snapshots`: `ID + SCOPE`; `visit_id` scoped FK, `snapshot_kind VARCHAR(16)` (`BASELINE`, `FINAL`, `ADDENDUM`), `sequence INT UNSIGNED`, `schema_version INT UNSIGNED`, `payload JSON`, `finalized_by_user_id UUID NULL`, `responsible_dentist_id UUID`, `created_at DATETIME(6)`.
 
 Unique `(clinic_id, patient_id, visit_id, sequence)`. A generated nullable final-visit key with scoped uniqueness allows only one `FINAL` snapshot per visit. Later addenda append rows and reference the original snapshot in their payload; they never replace it.
 
@@ -577,9 +569,9 @@ The current `TreatmentVisit.acts` array becomes a compatibility read projection 
 
 `ID + SCOPE + TIMESTAMPS + VERSION`.
 
-Fields: `visit_id` scoped FK, `origin_handoff_id` scoped FK NULL, `status VARCHAR(16)` (`DRAFT`, `CONFIRMED`), `entered_by_user_id UUID`, `verified_by_dentist_id UUID NULL`, `verified_at DATETIME(6) NULL`, `risk_context JSON` validated object.
+Fields: `visit_id` scoped FK, `origin_handoff_id` scoped FK NULL, `status VARCHAR(16)` (`DRAFT`, `CONFIRMED`), `entered_by_user_id UUID`, `verified_by_dentist_id UUID NULL` (legacy doctor metadata; never populate from staff entry), `documented_by_user_id UUID`, `verified_at DATETIME(6) NULL`, `risk_context JSON` validated object.
 
-Unique `(clinic_id, patient_id, visit_id)` for the current single exam per visit. Signed corrections belong in addenda/replacement versions, not silent edits of confirmed data. Prior examinations remain history; copying forward must be an explicit new examination with provenance, not an implicit current measurement.
+Unique `(clinic_id, patient_id, visit_id)` for the current single exam per visit. Entries are confirmed directly by authorized documenters. Finalized-visit corrections belong in addenda/replacement versions; editable-visit changes retain audit and actual updater attribution. Prior examinations remain history; copying forward must be an explicit new examination with provenance, not an implicit current measurement.
 
 Risk keys: `age` (integer ≥0), `smokingStatus` (`NEVER`, `FORMER`, `CURRENT`, `UNKNOWN`), `cigarettesPerDay` (integer ≥0), `diabetesStatus` (`NONE`, `PRESENT`, `UNKNOWN`), `hba1c` (nonnegative finite number), `periodontalToothLoss` (integer ≥0), `maximumRadiographicBoneLossPercent` (0–100). Upper limits beyond these technical bounds need clinical approval. Missing means unrecorded. Derive current age from Patient when appropriate; retain the recorded exam-time context.
 
@@ -613,7 +605,7 @@ Do not persist CAL, averages, percentages, Cairo output, or automated classifica
 
 Append-only. Index `(clinic_id, patient_id, occurred_at, id)`, `(clinic_id, patient_id, resource_type, resource_id, occurred_at, id)`, `(clinic_id, patient_id, visit_id, occurred_at, id)`, `(clinic_id, command_id)`.
 
-Audit creation, approval, removal, start/closure, cancellation/correction, finding review, periodontal changes, handoff revisions, and visit signing/cancellation. `changes` retains relevant before/after values and affected IDs; no credentials or authentication tokens. A polymorphic resource reference has no generic FK, so application code must validate it. Audit history is not the primary state store.
+Audit entry, removal, start/closure, cancellation/correction, periodontal changes, handoff revisions, and visit completion/cancellation, retaining the actual user for every action. `changes` retains relevant before/after values and affected IDs; no credentials or authentication tokens. A polymorphic resource reference has no generic FK, so application code must validate it. Audit history is not the primary state store.
 
 ### 6.15 `treatment_command_receipts`
 
@@ -710,29 +702,29 @@ Use a consistent lock order: patient coordination row first, affected visits sor
 
 Use transaction-scoped `SELECT ... FOR UPDATE` and versioned writes. These locks require a transaction and are held until commit/rollback; see [MySQL locking reads](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html). Bounded deadlock retries must repeat the whole transaction using the same idempotency key. Never use `SKIP LOCKED` to skip clinical guards.
 
-Serialize mutations through the visit row to prevent assistant submission racing a last draft creation or visit completion racing a new session. Increment the visit version for its clinically relevant child mutations; increment plan/session/handoff/exam versions when those records change. Responses return all changed versions. Reading an unscoped entity and checking scope afterward is forbidden.
+Serialize mutations through the visit row to prevent visit completion racing a new entry or session. Increment the visit version for its clinically relevant child mutations; increment plan/session/handoff/exam versions when those records change. Responses return all changed versions. Reading an unscoped entity and checking scope afterward is forbidden.
 
 ### 8.2 Create plan transaction
 
 1. Check/claim idempotency receipt, lock the visit, check expected visit version, editable status, actor permission, and handoff assignment where relevant.
 2. Load exact selectable catalogue version, validate target/details/applicability and plan overlaps against accepted clinical state.
-3. Insert immutable target and children, then the canonical plan item. Doctor source starts `PLANNED` with doctor approval; assistant source starts `DRAFT` with handoff provenance.
+3. Insert immutable target and children, then the canonical plan item. Both doctor and assigned-staff sources start `PLANNED`; staff entries include handoff provenance and never require approval.
 4. Increment visit version, append audit, optional outbox, persist receipt, commit.
 
 An independent batch does all item creation in one transaction and returns a complete result or no changes. Reject duplicate items in the request. Limit an initial batch to 100 items as a backend transport limit.
 
 ### 8.3 Start session transaction
 
-1. Lock relevant visit rows and plan; check expected visit/plan versions and doctor permission.
-2. Reject removed/terminal/draft/unapproved items; revalidate applicable target state and conflicts. Check no open session and no noncancelled session for this plan/visit.
-3. Capture the approved pre-start plan version and immutable snapshot, matching the local implementation. Update the canonical plan to `IN_PROGRESS` and increment its version. Insert an `IN_PROGRESS` session with that captured version/snapshot, clinician attribution, and start time. Return both the captured `planVersion` and the new canonical plan version under distinct fields.
+1. Lock relevant visit rows and plan; check expected visit/plan versions and doctor-or-current-assignee permission.
+2. Reject removed/terminal/legacy-draft items; revalidate applicable target state and conflicts. Check no open session and no noncancelled session for this plan/visit.
+3. Capture the pre-start plan version and immutable snapshot, matching the local implementation. Update the canonical plan to `IN_PROGRESS` and increment its version. Insert an `IN_PROGRESS` session with that captured version/snapshot, clinician attribution, and start time. Return both the captured `planVersion` and the new canonical plan version under distinct fields.
 4. Increment visit version, append audit, receipt and optional outbox, commit.
 
 Unique constraints resolve races even when two requests pass earlier reads. Translate their violations into domain conflicts. Never reuse a session belonging to another visit in a retry response.
 
 ### 8.4 Close session transaction
 
-Lock visit, plan, and session; verify scope, expected versions, open status, clinician permission, nonblank note, and allowed outcome. Close session and increment version. For `TREATMENT_FINISHED`, complete the plan with performer/time; for `CONTINUE_LATER`, retain `IN_PROGRESS`. Increment the plan version consistently for either outcome and return the new versions. Session start snapshot remains unchanged.
+Lock visit, plan, and session; verify scope, expected versions, open status, authorized documenter permission, nonblank note, and allowed outcome. Close session and increment version. For `TREATMENT_FINISHED`, complete the plan with performer/time; for `CONTINUE_LATER`, retain `IN_PROGRESS`. Increment the plan version consistently for either outcome and return the new versions. Session start snapshot remains unchanged.
 
 An exact idempotent replay returns the original response. A different close outcome or note for an already closed session is a conflict, not an implicit edit.
 
@@ -742,17 +734,13 @@ Remove locks origin/current visit and plan, checks the complete section 3.2 elig
 
 Cancel/correct locks affected visits and plan, finds/locks any open session, rejects a session in another visit, requires a reason, closes a current open session as cancelled, and changes plan status atomically. Preserve prior completed sessions and all snapshots. A terminal plan cannot be restarted. Further correction requires a new linked record or addendum.
 
-### 8.6 Handoff submit/review and visit finalization
+### 8.6 Direct documentation finalization
 
-Submit locks visit/handoff, checks assigned assistant and versions, freezes assistant edits, sets `SUBMITTED`/`AWAITING_REVIEW`, records a revision/audit, commits.
-
-Accept/return locks visit/handoff and affected drafts. Accept validates resolved drafts and sets `ACCEPTED`/`READY_FOR_COMPLETION`; return requires review text and sets `RETURNED`/`IN_PROGRESS`. Approvals are separate domain commands or an explicit atomic review operation with an enumerated list of decisions; never approve an unspecified set through a blind status change.
-
-Finalize locks visit and relevant records, rechecks completion guards, inserts the immutable `FINAL` snapshot and indexed plan references, sets visit `COMPLETED`, records signer/time and audit, and commits. The snapshot and completion status must never be persisted in separate transactions.
+Lock the patient scope, visit, handoff, and relevant records; verify the responsible doctor or current assignee and expected versions. Check no open sessions or unresolved legacy drafts. Insert the immutable final snapshot and indexed references, set visit and active handoff `COMPLETED`, record actual `completed_by_user_id` and timestamp on both, append audit/outbox/receipt, and commit atomically. There is no submission/acceptance transaction and no separate doctor sign-off requirement. A finalized documentation record must not claim the staff user clinically performed the treatment.
 
 ### 8.7 Visit cancellation
 
-Require the responsible dentist and a reason. Reject already completed visits; use addenda/corrections for signed records. Reject cancellation while sessions are open or a handoff is unresolved until those are explicitly resolved. Cancel the encounter without silently cancelling all patient-level plans or deleting completed work. Persist a cancellation snapshot/audit of already recorded content. Carrying plans into later visits remains possible when they are otherwise eligible.
+Require the responsible doctor or current authorized assignee and a reason. Reject already completed visits; use addenda/corrections for signed records. Reject cancellation while sessions are open until those are explicitly resolved; close the active handoff as cancelled in the same transaction. Cancel the encounter without silently cancelling all patient-level plans or deleting completed work. Persist a cancellation snapshot/audit of already recorded content. Carrying plans into later visits remains possible when they are otherwise eligible.
 
 ## 9. API and gRPC surface
 
@@ -779,7 +767,7 @@ The routes below are proposed Gateway routes under `/clinics/:clinicId/treatment
 | `GET /plan-items/:planItemId` | `GetTreatmentPlanItem` | Plan detail and provenance |
 | `GET /plan-items/:planItemId/sessions` | `ListTreatmentSessions` | Plan continuation history |
 | `GET /patients/:patientId/timeline` | `GetPatientTreatmentTimeline` | Visits, sessions, significant clinical events; removed proposals omitted by default |
-| `GET /handoffs?assignedTo=me&status=...` | `ListDocumentationHandoffs` | Authorized assistant queue, patient/visit summary and assignment state |
+| `GET /handoffs?assignedTo=me&status=...` | `ListDocumentationHandoffs` | Authorized assistant/secretariat queue, patient/visit summary and assignment state |
 | `GET /visits/:visitId/handoffs` | `ListVisitDocumentationHandoffs` | Active and historical handoffs/revisions |
 | `GET /visits/:visitId/periodontal-exam` | `GetPeriodontalExamination` | Measurements, verification, version, derived display summaries |
 | `GET /patients/:patientId/audit` | `ListTreatmentAuditEvents` | Privileged scoped audit history |
@@ -797,15 +785,13 @@ Workspace returns accepted chart state and proposal overlays separately. `COMPLE
 | `POST /visits/:visitId/complete` | `CompleteTreatmentVisit` | Expected visit version; server checks all completion guards |
 | `POST /visits/:visitId/cancel` | `CancelTreatmentVisit` | Reason, expected visit version |
 | `POST /visits/:visitId/addenda` | `AddTreatmentVisitAddendum` | Required text/reason, original snapshot reference; append only |
-| `POST /visits/:visitId/handoffs` | `AssignVisitDocumentation` | Assistant ID, required instructions, expected visit version |
+| `POST /visits/:visitId/handoffs` | `AssignVisitDocumentation` | Assignee user ID and role, required doctor instructions, expected visit version |
 | `PATCH /handoffs/:handoffId/instructions` | `ReviseVisitDocumentation` | Instructions, expected visit/handoff versions; only editable handoff states |
-| `POST /handoffs/:handoffId/reassign` | `ReassignVisitDocumentation` | Assistant ID, reason, expected versions |
+| `POST /handoffs/:handoffId/reassign` | `ReassignVisitDocumentation` | Assignee user ID and role, reason, expected versions |
 | `POST /handoffs/:handoffId/start` | `StartVisitDocumentation` | Expected visit/handoff versions |
-| `POST /handoffs/:handoffId/submit` | `SubmitVisitDocumentation` | Expected visit/handoff versions |
-| `POST /handoffs/:handoffId/review` | `ReviewVisitDocumentation` | `ACCEPT` or `RETURN`, review text required for return, expected versions |
 | `POST /handoffs/:handoffId/cancel` | `CancelVisitDocumentation` | Reason, expected versions; retain entered items |
 
-Cancelling a handoff does not silently approve/discard its drafts. Require explicit resolution of remaining drafts before visit completion. Reassignment after submission requires return/reopen through a deliberate workflow; do not unlock submitted documentation implicitly.
+Cancelling a handoff revokes delegated access without deleting its entries. Reassignment validates clinic role/membership and versions, preserves note and assignment revisions, and revokes the previous assignee. Neither action fabricates a doctor review or silently changes treatment outcomes.
 
 ### 9.4 Plan and session commands
 
@@ -814,7 +800,6 @@ Cancelling a handoff does not silently approve/discard its drafts. Require expli
 | `POST /visits/:visitId/plan-items` | `CreateTreatmentPlanItem` | Code/catalogue version, semantic target, typed details, optional note, expected visit version |
 | `POST /visits/:visitId/plan-item-batches` | `CreateTreatmentPlanItemBatch` | `INDEPENDENT_ITEMS`, item requests, expected visit version |
 | `PATCH /plan-items/:planItemId/proposal` | `UpdateTreatmentPlanProposal` | New target/details/note, expected visit/plan versions; own editable unstarted proposal only |
-| `POST /plan-items/:planItemId/approve` | `ApproveTreatmentPlanItem` | Dentist decision, expected visit/plan versions |
 | `POST /plan-items/:planItemId/remove` | `RemoveTreatmentPlanItem` | Context visit ID, expected visit/plan versions; no reason required if eligible |
 | `POST /plan-items/:planItemId/discard-draft` | `DiscardDraftTreatmentPlanItem` | Explicit review/discard reason, expected versions; draft-only authorization |
 | `POST /plan-items/:planItemId/cancel` | `CancelTreatmentPlanItem` | Context visit ID, reason, expected visit/plan version and open-session version if present |
@@ -832,26 +817,24 @@ Cancelling only an open session keeps the plan `IN_PROGRESS` for a retry/continu
 | HTTP route suffix | Proposed RPC | Core request |
 | --- | --- | --- |
 | `POST /visits/:visitId/findings` | `RecordClinicalFinding` | Catalogue/target/details/note, expected visit version |
-| `POST /findings/:findingId/confirm` | `ConfirmClinicalFinding` | Expected visit/finding versions; responsible dentist |
 | `POST /findings/:findingId/refute` | `RefuteClinicalFinding` | Reason, expected versions |
 | `POST /findings/:findingId/remove-draft` | `RemoveDraftClinicalFinding` | Expected versions; only authorized unsigned draft |
 | `POST /findings/:findingId/enter-in-error` | `CorrectClinicalFinding` | Reason, expected versions; optional separately created replacement |
 | `POST /visits/:visitId/periodontal-exam` | `CreatePeriodontalExamination` | Expected visit version |
 | `PATCH /periodontal-exams/:examId` | `UpdatePeriodontalExamination` | Typed bounded tooth/site/index/risk changes, expected visit/exam versions |
 | `POST /periodontal-exams/:examId/sites/remove` | `RemovePeriodontalSite` | Tooth/dentition/site, expected versions |
-| `POST /periodontal-exams/:examId/confirm` | `ConfirmPeriodontalExamination` | Expected visit/exam versions; responsible dentist |
 
-Draft periodontal changes are transactional patches, not replacement of the entire patient record. A confirmed exam is immutable; signed corrections use the addendum workflow and retain original measurements. The patch contract distinguishes omitted fields, explicit nulls, false, and zero.
+Draft periodontal changes are transactional patches, not replacement of the entire patient record. Confirmed exam data remains editable by authorized documenters while its visit is open; preserve audit. Finalized-visit corrections use addenda and retain original measurements. The patch contract distinguishes omitted fields, explicit nulls, false, and zero.
 
 ### 9.6 Authorization and errors
 
 | Actor | Allowed scope |
 | --- | --- |
-| Responsible dentist | Clinical entry, approval, start/close, correction/cancellation, handoff review, visit completion |
-| Assigned dental assistant | Read assigned visit/handoff; create/edit permitted draft documentation in editable handoff states; submit |
+| Responsible dentist | Clinical documentation, start/close, correction/cancellation, visit completion; exclusively creates visits and assigns documentation |
+| Currently assigned dental assistant or secretariat | Direct findings/acts/periodontal entry, sessions/outcomes, corrections/cancellation, visit completion; only inside that assigned editable visit |
 | Other clinic staff/admin | Only explicitly granted operational/read capabilities; no automatic dentist approval rights |
 
-Normalize existing external role strings such as `doctor`/`dental_assistant` at the trusted boundary. Do not trust request roles, assignee IDs as proof of permission, or the local demo actor. Actor attribution is server-generated. Delegation of clinical sign-off to another dentist requires an explicit future policy; do not let any doctor sign another's visit by default.
+Normalize existing external role strings such as `doctor`/`dental_assistant`/`secretary` at the trusted boundary. Do not trust request roles, assignee IDs as proof of permission, or the local demo actor. Actor attribution is server-generated. Documentation completion is permitted for the current assignee; clinical responsibility remains with the doctor. Being a doctor on staff does not automatically grant authority over every other doctor’s visit.
 
 | Domain error | HTTP | gRPC |
 | --- | --- | --- |
@@ -866,7 +849,7 @@ Normalize existing external role strings such as `doctor`/`dental_assistant` at 
 
 Include a stable application error code, affected resource ID when authorized, current version when useful, and field-level validation errors. Never return SQL, credentials, internal stack traces, or another clinic's resource data.
 
-For corrections affecting a completed visit, require a current authorized correction context and reason, preserve its original final snapshot, and append a signed addendum linked to that snapshot in the same transaction as the canonical correction. Return the addendum ID. Do not reopen or rewrite the completed visit through ordinary editable-visit commands. A replacement finding/plan is a new record with explicit provenance, not a changed session snapshot.
+For corrections affecting a completed visit, require a current authorized correction context and reason, preserve its original final snapshot, and append an attributed addendum linked to that snapshot in the same transaction as the canonical correction. Return the addendum ID. Do not reopen or rewrite the completed visit through ordinary editable-visit commands. A replacement finding/plan is a new record with explicit provenance, not a changed session snapshot.
 
 ### 9.7 Existing protobuf migration
 
@@ -961,9 +944,9 @@ This is a software workflow example, not a prescribed clinical sequence.
 
 ### 10.5 Handoff-only visit
 
-The doctor records instructions and assigns an assistant before entering structured acts. The visit remains open; the handoff carries the text and assignment. The assistant queue includes the visit even if it has zero plan rows. The assistant manually creates several draft plans/findings from the text. No automatic parsing, execution, approval, or completion of acts occurs.
+The doctor writes what was performed and any remaining work, then assigns an assistant or secretariat user. The visit remains open and appears in that user's work list even with no structured acts. The assignee manually records confirmed findings and active plans, and records session outcomes based on the doctor's note. These entries take effect without doctor approval. There is no automatic parsing or assumption that every proposed act was completed.
 
-After assistant submission, the dentist reviews each draft and accepts or returns documentation. Only after resolved drafts and session/completion guards pass can the visit be signed. A handoff can produce several patient-level plans, all with the same origin visit/handoff but independent plan IDs and future sessions.
+The assignee completes documentation/visit directly after session and consistency guards pass. Preserve the doctor note, each entry's author, each session recorder/closer, and visit completer separately from the responsible doctor/clinical performer. Several plans can originate from one handoff and continue in later visits under the relevant visit's authorization.
 
 ### 10.6 Removal and cancellation examples
 
@@ -1002,9 +985,9 @@ Do not expose physical clinical deletion endpoints. Record retention, patient er
 | Some target builder branches do not populate index/furcation geometry correctly | Implement and test explicit server target factories, not a direct copy of that builder |
 | Surface-index zero currently deletes a value | Preserve current semantics; measured zero versus unrecorded needs a product/clinical decision |
 | Periodontal classification is not approved | Keep automated diagnosis/stage/grade/extent disabled |
-| Local review return text is simplified | Require real dentist-entered return notes and durable revisions |
+| Legacy review/approval values remain in historical data/contracts | Deprecate old submission/review RPCs, preserve history, and migrate explicitly without fictitious approval |
 | Local actors/data are demos and in-memory | Resolve trusted users and real patients; do not seed demo identifiers as clinical records |
-| Patient consent, quotes, billing, inventory and lab orders are absent | Integrate through their own contexts later; plan approval is not consent/payment/stock consumption |
+| Patient consent, quotes, billing, inventory and lab orders are absent | Integrate through their own contexts later; documentation is not consent/payment/stock consumption |
 
 These gaps do not justify delaying the base visit/plan/session schema. Enable only supported workflows and make unsupported configurations explicit in the catalogue/API capabilities.
 
@@ -1015,8 +998,8 @@ Implement and verify each step separately; this document does not authorize depl
 1. **Contracts and persistence foundation:** versioned catalogue, target messages, scope/version/idempotency envelopes; service-local MySQL datasource and migrations. Preserve current domain boundaries.
 2. **Doctor visit and proposal slice:** visits, targets, catalogue seeds, plan items, audit, idempotency; create/list/remove eligible proposals. Wire Gateway/BFF through existing architecture.
 3. **Sessions and continuation:** transactional start/close/cancel/correct, session constraints, baseline/final snapshots, historical reads and indexed final plan references.
-4. **Assistant documentation:** handoff assignment/revisions/queue, draft entry, dentist approval/review, visit completion gates.
-5. **Findings and periodontal persistence:** validated clinical vocabularies, normalized measurement tables, verification and versioned derived summaries; retain approval restrictions.
+4. **Delegated documentation:** assistant/secretariat assignment, direct entries, assignment-scoped authority for every mutation, attribution and direct visit completion.
+5. **Findings and periodontal persistence:** validated clinical vocabularies, normalized measurement tables, verification and versioned derived summaries; retain clinical classification restrictions and actual documenter attribution.
 6. **Events and operations:** outbox for actual integrations, authorization/access audit, backup/restore, metrics, and rollout controls.
 
 Create SQL migrations in dependency order: catalogue, patient coordination rows, and visits; handoffs; targets and children; plans/findings; sessions; snapshots/references; exams and children; audit/receipts; outbox when introduced. Use named constraints and indexes. Rollbacks must not silently destroy production clinical data; destructive reversals require a deliberate operational plan.
@@ -1041,14 +1024,14 @@ These are implementation verification requirements, not claims that a database h
 | Session history | Cancelled session still blocks free removal; retry slot works; two completed sessions in different visits are allowed |
 | Closing | Required note; continue keeps plan ongoing; finish completes plan; repeated idempotent request is safe; conflicting close rejected |
 | Cancellation/correction | Required reason; current open session closes atomically; other-visit open session blocks; snapshots/closed sessions unchanged |
-| Handoff | Text-only assignment appears in queue with no acts; only assignee edits; submission locks; return needs text; revisions retained |
-| Sign-off | Dentist approval distinct from start; unresolved drafts/handoff/open sessions block completion; future ongoing plan does not |
+| Handoff | Text-only assistant/secretariat assignment appears in queue; only current assignee edits; direct completion; note/assignment history retained |
+| Completion | No doctor approval required; current assignee can complete; unresolved legacy drafts/open sessions block; future ongoing plan does not |
 | Snapshot races | Completion versus new session/proposal/removal cannot produce signed inconsistent state; final snapshot immutable |
 | Longitudinal care | Same plan continues in later visit; no cloned plans; older finalized visit remains historically accurate |
 | Findings | Existing restorations stored as findings; draft does not affect accepted chart; confirmed correction retains original history |
 | Periodontal | Bounds and signed GM, null versus zero, site deletion, index applicability, six sites/four surfaces, derived CAL, classification disabled |
 | Idempotency | Same key/payload replays; changed payload conflicts; rolled-back command leaves no success receipt; concurrent retries do not duplicate rows |
 | Reliability | Domain changes/audit/snapshot/outbox are atomic; deadlock handling bounded; event retries deduplicated by consumers |
-| Authorization | Assistant cannot approve/start/finish/sign; admin is not a clinician by default; browser-supplied actor fields ignored/rejected |
+| Authorization | Assigned assistant/secretariat can start/finish/complete; unassigned/wrong-role/revoked users fail every mutation; author/performer/completer stay distinct |
 
 Use focused domain/use-case tests, MySQL integration tests for constraints/transactions/concurrent commands, and contract/Gateway tests for mapping and trusted scope. SQLite or mocks alone cannot validate the MySQL-specific generated keys and locking behavior.

@@ -1,364 +1,300 @@
-import { createMockTreatmentVisit } from '../mock/treatment-workspace.mock';
-import { mapTreatmentVisitToOdontogram } from './treatment-odontogram.mapper';
 import {
-  approveWorkspacePeriodontalExamination,
-  approveWorkspaceAct,
+  createMockTreatmentVisit,
+  MOCK_DENTIST,
+  MOCK_ASSISTANT,
+  MOCK_SECRETARY,
+} from '../mock/treatment-workspace.mock';
+import {
   assignWorkspaceDocumentation,
   completeWorkspaceVisit,
   recordWorkspaceAct,
   recordWorkspaceFinding,
   removeWorkspaceFinding,
-  reviewWorkspaceDocumentation,
   startWorkspaceDocumentation,
-  submitWorkspaceDocumentation,
-  transitionWorkspaceAct,
   updateWorkspacePeriodontalExamination,
-  type MockTreatmentActor,
 } from './treatment-workspace';
+import {
+  createLocalTreatmentRecord,
+  updateLocalTreatmentVisit,
+  getLocalTreatmentVisit,
+  startLocalTreatmentSession,
+  closeLocalTreatmentSession,
+  completeLocalTreatmentVisit,
+  removeLocalTreatmentPlan,
+  transitionLocalTreatmentPlan,
+} from './local-treatment-record';
+import { canEditTreatmentDraft } from './treatment.rules';
 import { updatePeriodontalSite } from './periodontal';
 
-const now = new Date('2026-08-13T12:00:00.000Z');
-const dentist: MockTreatmentActor = {
-  name: 'Dr. Sara Benali',
-  role: 'doctor',
-  userId: 'doctor-demo',
+const now = new Date('2026-10-30T12:00:00.000Z');
+const target = {
+  kind: 'TOOTH' as const,
+  arch: null,
+  toothNumbers: [36],
+  surfaces: [],
+  periodontalSites: [],
 };
-const assistant: MockTreatmentActor = {
-  name: 'Yasmine Alaoui',
-  role: 'dental_assistant',
-  userId: 'assistant-demo',
+const input = {
+  id: 'staff-act',
+  code: 'ROOT_CANAL_FILLING' as const,
+  target,
+  details: [],
 };
+const assignedTo = (staff: typeof MOCK_ASSISTANT) =>
+  assignWorkspaceDocumentation(
+    createMockTreatmentVisit(),
+    MOCK_DENTIST,
+    staff.userId,
+    'handoff-1',
+    'Document today’s work on tooth 36.',
+    now,
+    staff.role === 'secretary' ? 'secretary' : 'dental_assistant',
+  );
 
-const fillingInput = {
-  code: 'DIRECT_FILLING' as const,
-  details: [{ key: 'FILLING_MATERIAL', value: 'COMPOSITE' }] as const,
-  id: 'act-assistant-draft',
-  target: {
-    arch: null,
-    kind: 'TOOTH_SURFACE' as const,
-    periodontalSites: [],
-    surfaces: ['OCCLUSAL' as const],
-    toothNumbers: [16],
-  },
-};
-
-describe('Mock Treatment workspace workflow', () => {
-  it('assigns the doctor instructions without completing the visit or creating acts', () => {
-    const visit = createMockTreatmentVisit();
-    const instruction =
-      'Plan an MOD composite restoration on tooth 16.\nPlan a crown on tooth 26.';
-    const assigned = assignWorkspaceDocumentation(
-      visit,
-      dentist,
-      assistant.userId,
-      'handoff-text',
-      `  ${instruction}  `,
-      now,
-    );
-
-    expect(assigned.documentationHandoff).toMatchObject({
-      note: instruction,
-      assignedByDentistId: dentist.userId,
-      assignedToAssistantId: assistant.userId,
-      status: 'ASSIGNED',
-    });
-    expect(assigned.status).toBe('IN_PROGRESS');
-    expect(assigned.completedAt).toBeNull();
-    expect(assigned.acts).toBe(visit.acts);
-    expect(assigned.auditHistory?.at(-1)).toMatchObject({
-      action: 'DOCUMENTATION_ASSIGNED',
-      actorUserId: dentist.userId,
-      recordId: 'handoff-text',
-    });
-    expect(() =>
-      assignWorkspaceDocumentation(
-        assigned,
-        dentist,
-        assistant.userId,
-        'replacement',
-        'Replace instructions.',
+describe('Direct assigned documentation', () => {
+  it.each([MOCK_ASSISTANT, MOCK_SECRETARY])(
+    'lets $role record active entries and finalize directly',
+    (staff) => {
+      const assigned = assignedTo(staff);
+      expect(assigned.documentationHandoff).toMatchObject({
+        assignedToUserId: staff.userId,
+        assignedToRole: staff.role,
+        note: 'Document today’s work on tooth 36.',
+        status: 'ASSIGNED',
+      });
+      expect(assigned.acts).toHaveLength(
+        createMockTreatmentVisit().acts.length,
+      );
+      const documented = recordWorkspaceAct(assigned, staff, input, now);
+      expect(documented.acts.at(-1)).toMatchObject({
+        status: 'PLANNED',
+        enteredByUserId: staff.userId,
+        approvedByDentistId: null,
+      });
+      const found = recordWorkspaceFinding(
+        documented,
+        staff,
+        { id: 'finding-staff', code: 'CALCULUS', target, details: [] },
         now,
-      ),
-    ).toThrow('Only an in-progress visit without a handoff can be assigned.');
-  });
-
-  it('rejects blank instructions and unauthorized or closed-visit assignment', () => {
-    const visit = createMockTreatmentVisit();
-    expect(() =>
-      assignWorkspaceDocumentation(
-        visit,
-        dentist,
-        assistant.userId,
-        'handoff-text',
-        '  \n  ',
+      );
+      expect(found.findings.at(-1)).toMatchObject({
+        status: 'CONFIRMED',
+        enteredByUserId: staff.userId,
+      });
+      const exam = updateWorkspacePeriodontalExamination(
+        found,
+        staff,
+        (current) => updatePeriodontalSite(current, 36, 'B', { pd: 4 }),
         now,
-      ),
-    ).toThrow('Enter instructions for the assistant');
-    expect(() =>
-      assignWorkspaceDocumentation(
-        visit,
-        assistant,
-        assistant.userId,
-        'handoff-text',
-        'Plan a crown.',
-        now,
-      ),
-    ).toThrow('Only the responsible dentist');
-    expect(() =>
-      assignWorkspaceDocumentation(
-        visit,
-        { ...dentist, userId: 'another-doctor' },
-        assistant.userId,
-        'handoff-text',
-        'Plan a crown.',
-        now,
-      ),
-    ).toThrow('Only the responsible dentist');
-    for (const status of ['COMPLETED', 'CANCELLED'] as const) {
+      );
+      expect(exam.periodontalExamination).toMatchObject({
+        status: 'CONFIRMED',
+        enteredByUserId: staff.userId,
+        verifiedByDentistId: null,
+      });
+      const completed = completeWorkspaceVisit(exam, staff, now);
+      expect(completed).toMatchObject({
+        status: 'COMPLETED',
+        completedByUserId: staff.userId,
+        documentationHandoff: {
+          status: 'COMPLETED',
+          completedByUserId: staff.userId,
+        },
+      });
+      expect(completed.auditHistory?.at(-1)).toMatchObject({
+        action: 'VISIT_COMPLETED',
+        actorUserId: staff.userId,
+      });
       expect(() =>
-        assignWorkspaceDocumentation(
-          { ...visit, status },
-          dentist,
-          assistant.userId,
-          'handoff-text',
-          'Plan a crown.',
+        recordWorkspaceAct(completed, staff, { ...input, id: 'late' }, now),
+      ).toThrow('read-only');
+    },
+  );
+
+  it.each([MOCK_ASSISTANT, MOCK_SECRETARY])(
+    'distinguishes the $role recorder from the clinical performer across sessions',
+    (staff) => {
+      let record = createLocalTreatmentRecord(assignedTo(staff));
+      record = updateLocalTreatmentVisit(record, (visit) =>
+        recordWorkspaceAct(visit, staff, input, now),
+      );
+      record = startLocalTreatmentSession(
+        record,
+        staff,
+        { planItemId: input.id, sessionId: 's1', expectedVersion: 1 },
+        now,
+      );
+      expect(record.sessions[0]).toMatchObject({
+        enteredByUserId: staff.userId,
+        performedByUserId: MOCK_DENTIST.userId,
+        originHandoffId: 'handoff-1',
+      });
+      expect(() => completeLocalTreatmentVisit(record, staff, now)).toThrow(
+        'Close today',
+      );
+      record = closeLocalTreatmentSession(
+        record,
+        staff,
+        {
+          sessionId: 's1',
+          expectedVersion: 1,
+          outcome: 'TREATMENT_FINISHED',
+          note: 'Doctor’s treatment recorded.',
+        },
+        now,
+      );
+      expect(record.sessions[0]).toMatchObject({
+        closedByUserId: staff.userId,
+        performedByUserId: MOCK_DENTIST.userId,
+      });
+      expect(record.planItems.at(-1)).toMatchObject({
+        status: 'COMPLETED',
+        enteredByUserId: staff.userId,
+        performedByUserId: MOCK_DENTIST.userId,
+        source: 'STAFF_HANDOFF',
+      });
+      expect(
+        getLocalTreatmentVisit(completeLocalTreatmentVisit(record, staff, now))
+          .completedByUserId,
+      ).toBe(staff.userId);
+    },
+  );
+
+  it.each([MOCK_ASSISTANT, MOCK_SECRETARY])(
+    'denies every treatment mutation to unassigned $role users',
+    (staff) => {
+      const visit = assignedTo(staff);
+      const other = { ...staff, userId: 'not-assigned' };
+      if (!visit.documentationHandoff)
+        throw new Error('Missing handoff fixture');
+      const record = createLocalTreatmentRecord(visit);
+      const planId = record.planItems[0].id;
+      expect(canEditTreatmentDraft(visit, other.userId, other.role)).toBe(
+        false,
+      );
+      const commands = [
+        () => recordWorkspaceAct(visit, other, input, now),
+        () =>
+          recordWorkspaceFinding(
+            visit,
+            other,
+            { id: 'f', code: 'CALCULUS', target },
+            now,
+          ),
+        () =>
+          removeWorkspaceFinding(
+            visit,
+            other,
+            visit.findings[0].id,
+            'Correction.',
+            now,
+          ),
+        () =>
+          updateWorkspacePeriodontalExamination(
+            visit,
+            other,
+            (exam) => exam,
+            now,
+          ),
+        () => startWorkspaceDocumentation(visit, other, now),
+        () =>
+          startLocalTreatmentSession(
+            record,
+            other,
+            { planItemId: planId, sessionId: 's', expectedVersion: 1 },
+            now,
+          ),
+        () =>
+          removeLocalTreatmentPlan(
+            record,
+            other,
+            { planItemId: planId, expectedVersion: 1 },
+            now,
+          ),
+        () =>
+          transitionLocalTreatmentPlan(
+            record,
+            other,
+            planId,
+            'CANCELLED',
+            'Reason.',
+            now,
+          ),
+        () => completeLocalTreatmentVisit(record, other, now),
+      ];
+      for (const command of commands) expect(command).toThrow('assignment');
+      expect(() =>
+        recordWorkspaceAct(
+          { ...visit, documentationHandoff: null },
+          staff,
+          input,
           now,
         ),
-      ).toThrow('This visit is read-only.');
-    }
-  });
+      ).toThrow('assignment');
+      expect(() =>
+        recordWorkspaceAct(
+          {
+            ...visit,
+            documentationHandoff: {
+              ...visit.documentationHandoff,
+              status: 'CANCELLED',
+            },
+          },
+          staff,
+          input,
+          now,
+        ),
+      ).toThrow('assignment');
+    },
+  );
 
-  it('removes a draft finding and audits the removal', () => {
-    const assigned = assignWorkspaceDocumentation(
-      createMockTreatmentVisit(),
-      dentist,
-      assistant.userId,
-      'handoff-finding',
-      'Plan an occlusal composite restoration on tooth 16.',
-      now,
-    );
-    const drafted = recordWorkspaceFinding(
-      startWorkspaceDocumentation(assigned, assistant, now),
-      assistant,
-      {
-        code: 'CALCULUS',
-        details: [],
-        id: 'finding-assistant-draft',
-        target: {
-          arch: null,
-          kind: 'TOOTH' as const,
-          periodontalSites: [],
-          surfaces: [],
-          toothNumbers: [16],
-        },
-      },
-      now,
-    );
-
-    const removed = removeWorkspaceFinding(
-      drafted,
-      assistant,
-      'finding-assistant-draft',
-      undefined,
-      now,
-    );
-
-    expect(removed.findings).toHaveLength(createMockTreatmentVisit().findings.length);
-    expect(removed.auditHistory?.at(-1)).toMatchObject({
-      action: 'FINDING_REMOVED',
-      actorUserId: assistant.userId,
-      recordId: 'finding-assistant-draft',
-    });
-  });
-
-  it('marks a confirmed finding entered in error instead of deleting it', () => {
-    const removed = removeWorkspaceFinding(
-      createMockTreatmentVisit(),
-      dentist,
-      'finding-demo-caries-16',
-      'Recorded against the wrong tooth.',
-      now,
-    );
-
-    expect(removed.findings.find(({ id }) => id === 'finding-demo-caries-16'))
-      .toMatchObject({ status: 'ENTERED_IN_ERROR' });
-    expect(removed.auditHistory?.at(-1)).toMatchObject({
-      action: 'FINDING_ENTERED_IN_ERROR',
-      reason: 'Recorded against the wrong tooth.',
-    });
-  });
-
-  it('requires an active assignment before an assistant can document', () => {
+  it('rejects blank doctor instructions and non-doctor delegation', () => {
     expect(() =>
-      recordWorkspaceAct(
+      assignWorkspaceDocumentation(
         createMockTreatmentVisit(),
-        assistant,
-        fillingInput,
+        MOCK_DENTIST,
+        MOCK_ASSISTANT.userId,
+        'h',
+        ' ',
         now,
       ),
-    ).toThrow('An active assistant assignment is required.');
-  });
-
-  it('keeps assistant entries as drafts until the responsible dentist approves', () => {
-    const assigned = assignWorkspaceDocumentation(
-      createMockTreatmentVisit(),
-      dentist,
-      assistant.userId,
-      'handoff-1',
-      'Plan an occlusal composite restoration on tooth 16.',
-      now,
-    );
-    const started = startWorkspaceDocumentation(assigned, assistant, now);
-    const documented = recordWorkspaceAct(
-      started,
-      assistant,
-      fillingInput,
-      now,
-    );
-
-    expect(documented.acts.at(-1)).toMatchObject({
-      approvedByDentistId: null,
-      enteredByUserId: assistant.userId,
-      status: 'DRAFT',
-    });
-    expect(
-      mapTreatmentVisitToOdontogram(documented)
-        .data.teeth.find(({ position }) => position === 16)
-        ?.conditions.some(({ kind }) => kind === 'filling'),
-    ).toBe(false);
-
-    const approved = approveWorkspaceAct(
-      documented,
-      dentist,
-      fillingInput.id,
-      now,
-    );
-    expect(approved.acts.at(-1)).toMatchObject({
-      approvedByDentistId: dentist.userId,
-      status: 'PLANNED',
-    });
-    expect(
-      mapTreatmentVisitToOdontogram(approved)
-        .data.teeth.find(({ position }) => position === 16)
-        ?.conditions.some(({ kind }) => kind === 'filling'),
-    ).toBe(true);
-  });
-
-  it('moves the handoff through assistant submission and dentist acceptance', () => {
-    const assigned = assignWorkspaceDocumentation(
-      createMockTreatmentVisit(),
-      dentist,
-      assistant.userId,
-      'handoff-1',
-      'Plan an occlusal composite restoration on tooth 16.',
-      now,
-    );
-    const started = startWorkspaceDocumentation(assigned, assistant, now);
-    const submitted = submitWorkspaceDocumentation(started, assistant, now);
-    const accepted = reviewWorkspaceDocumentation(
-      submitted,
-      dentist,
-      'ACCEPT',
-      now,
-    );
-    const completed = completeWorkspaceVisit(accepted, dentist, now);
-
-    expect(submitted.status).toBe('AWAITING_REVIEW');
-    expect(accepted).toMatchObject({
-      documentationHandoff: { status: 'ACCEPTED' },
-      status: 'READY_FOR_COMPLETION',
-    });
-    expect(completed).toMatchObject({
-      completedAt: now,
-      status: 'COMPLETED',
-    });
-  });
-
-  it('locks assistant editing after submission', () => {
-    const assigned = assignWorkspaceDocumentation(
-      createMockTreatmentVisit(),
-      dentist,
-      assistant.userId,
-      'handoff-1',
-      'Plan an occlusal composite restoration on tooth 16.',
-      now,
-    );
-    const submitted = submitWorkspaceDocumentation(
-      startWorkspaceDocumentation(assigned, assistant, now),
-      assistant,
-      now,
-    );
-
+    ).toThrow('doctor instructions');
     expect(() =>
-      recordWorkspaceAct(submitted, assistant, fillingInput, now),
-    ).toThrow('An active assistant assignment is required.');
+      assignWorkspaceDocumentation(
+        assignedTo(MOCK_ASSISTANT),
+        MOCK_ASSISTANT,
+        MOCK_SECRETARY.userId,
+        'h2',
+        'Instructions.',
+        now,
+        'secretary',
+      ),
+    ).toThrow('responsible dentist');
   });
 
-  it('moves an approved act through execution and records its performer', () => {
-    const visit = recordWorkspaceAct(
-      createMockTreatmentVisit(),
-      dentist,
-      fillingInput,
+  it('requires a reason to correct an effective finding without erasing its author', () => {
+    const visit = recordWorkspaceFinding(
+      assignedTo(MOCK_SECRETARY),
+      MOCK_SECRETARY,
+      { id: 'f', code: 'CALCULUS', target },
       now,
     );
-    const started = transitionWorkspaceAct(
+    expect(() =>
+      removeWorkspaceFinding(visit, MOCK_SECRETARY, 'f', undefined, now),
+    ).toThrow('reason');
+    const corrected = removeWorkspaceFinding(
       visit,
-      dentist,
-      fillingInput.id,
-      'IN_PROGRESS',
+      MOCK_SECRETARY,
+      'f',
+      'Wrong tooth.',
       now,
     );
-    const completed = transitionWorkspaceAct(
-      started,
-      dentist,
-      fillingInput.id,
-      'COMPLETED',
-      now,
-    );
-
-    expect(started.acts.at(-1)?.status).toBe('IN_PROGRESS');
-    expect(completed.acts.at(-1)).toMatchObject({
-      approvedByDentistId: dentist.userId,
-      performedByUserId: dentist.userId,
-      status: 'COMPLETED',
+    expect(corrected.findings.at(-1)).toMatchObject({
+      status: 'ENTERED_IN_ERROR',
+      enteredByUserId: MOCK_SECRETARY.userId,
     });
-    expect(() =>
-      transitionWorkspaceAct(
-        completed,
-        dentist,
-        fillingInput.id,
-        'PLANNED',
-        now,
-      ),
-    ).toThrow('Treatment act cannot transition to PLANNED.');
-  });
-
-  it('keeps assistant periodontal charting as a draft until dentist approval', () => {
-    const assigned = assignWorkspaceDocumentation(
-      createMockTreatmentVisit(),
-      dentist,
-      assistant.userId,
-      'handoff-periodontal',
-      'Plan an occlusal composite restoration on tooth 16.',
-      now,
+    expect(corrected.auditHistory?.at(-1)?.actorUserId).toBe(
+      MOCK_SECRETARY.userId,
     );
-    const started = startWorkspaceDocumentation(assigned, assistant, now);
-    const drafted = updateWorkspacePeriodontalExamination(
-      started,
-      assistant,
-      (examination) => updatePeriodontalSite(examination, 16, 'B', { pd: 5 }, now),
-      now,
-    );
-
-    expect(drafted.periodontalExamination).toMatchObject({
-      status: 'DRAFT',
-      teeth: [{ toothNumber: 16, sites: { B: { pd: 5 } } }],
-    });
-
-    const approved = approveWorkspacePeriodontalExamination(drafted, dentist, now);
-    expect(approved.periodontalExamination).toMatchObject({
-      status: 'CONFIRMED',
-      verifiedByDentistId: dentist.userId,
-    });
   });
 });

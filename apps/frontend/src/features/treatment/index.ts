@@ -50,7 +50,6 @@ export {
   updateSurfaceIndex,
 } from './model/periodontal';
 export {
-  canApproveTreatmentDocumentation,
   canEditTreatmentDraft,
   parseTreatmentLaunchContext,
 } from './model/treatment.rules';
@@ -58,10 +57,7 @@ export { mapTreatmentVisitFromDto } from './model/treatment.mapper';
 export { mapTreatmentVisitToOdontogram } from './model/treatment-odontogram.mapper';
 export { TreatmentWorkspacePage } from './pages/treatment-workspace-page';
 export { OdontogramReferencePage } from './pages/odontogram-reference-page';
-export {
-  approveWorkspacePeriodontalExamination,
-  updateWorkspacePeriodontalExamination,
-} from './model/treatment-workspace';
+export { updateWorkspacePeriodontalExamination } from './model/treatment-workspace';
 export {
   buildTreatmentToothSummaries,
   buildTreatmentWorkflowProjection,

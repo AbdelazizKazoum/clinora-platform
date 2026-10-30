@@ -5,8 +5,10 @@ import type {
   TreatmentSessionOutcome,
   TreatmentVisit,
 } from './treatment';
+import { canEditTreatmentDraft } from './treatment.rules';
 import {
   completeWorkspaceVisit,
+  assertCanDocument,
   transitionWorkspaceAct,
   type MockTreatmentActor,
 } from './treatment-workspace';
@@ -94,7 +96,7 @@ export function startLocalTreatmentSession(
   now: Date,
 ): LocalTreatmentRecord {
   const visit = getLocalTreatmentVisit(record);
-  assertDentist(visit, actor);
+  assertCanDocument(visit, actor);
   assertEditable(visit);
   if (!input.sessionId.trim())
     throw new Error('A treatment session ID is required.');
@@ -113,16 +115,15 @@ export function startLocalTreatmentSession(
     throw new Error(
       'The treatment plan changed. Refresh before starting a session.',
     );
-  if (
-    !['PLANNED', 'IN_PROGRESS'].includes(plan.status) ||
-    !plan.approvedByDentistId
-  ) {
-    throw new Error('Only approved, active treatment plans can be started.');
+  if (!['PLANNED', 'IN_PROGRESS'].includes(plan.status)) {
+    throw new Error('Only active treatment plans can be started.');
   }
-  if (!['IN_PROGRESS', 'READY_FOR_COMPLETION'].includes(visit.status)) {
-    throw new Error(
-      'Resolve the documentation review before starting treatment.',
-    );
+  if (
+    !['IN_PROGRESS', 'READY_FOR_COMPLETION', 'AWAITING_REVIEW'].includes(
+      visit.status,
+    )
+  ) {
+    throw new Error('Start treatment only in an editable active visit.');
   }
   if (
     record.sessions.some(
@@ -161,13 +162,15 @@ export function startLocalTreatmentSession(
     status: 'IN_PROGRESS',
     outcome: null,
     note: null,
-    performedByUserId: actor.userId,
+    performedByUserId: visit.responsibleDentistId,
     enteredByUserId: actor.userId,
-    originHandoffId: null,
+    originHandoffId:
+      actor.role === 'doctor' ? null : (visit.documentationHandoff?.id ?? null),
     planVersion: plan.version,
     planSnapshot: snapshotAct(plan),
     startedAt: now,
     closedAt: null,
+    closedByUserId: null,
     version: 1,
   };
   return commitPlan(
@@ -189,7 +192,7 @@ export function closeLocalTreatmentSession(
   now: Date,
 ): LocalTreatmentRecord {
   const visit = getLocalTreatmentVisit(record);
-  assertDentist(visit, actor);
+  assertCanDocument(visit, actor);
   assertEditable(visit);
   const session = record.sessions.find(
     (candidate) =>
@@ -242,6 +245,7 @@ export function closeLocalTreatmentSession(
             outcome: input.outcome,
             note,
             closedAt: now,
+            closedByUserId: actor.userId,
             version: session.version + 1,
           }
         : candidate,
@@ -268,13 +272,11 @@ export function canRemoveLocalTreatmentPlan(
   const visit = getLocalTreatmentVisit(record);
   const plan = record.planItems.find(({ id }) => id === planItemId);
   return Boolean(
-    actor.role === 'doctor' &&
-      actor.userId === visit.responsibleDentistId &&
+    canEditTreatmentDraft(visit, actor.userId, actor.role) &&
       !['COMPLETED', 'CANCELLED'].includes(visit.status) &&
       plan &&
       !plan.removedAt &&
       plan.status === 'PLANNED' &&
-      plan.source === 'DOCTOR_DIRECT' &&
       plan.enteredByUserId === actor.userId &&
       plan.originVisitId === visit.id &&
       plan.patientId === visit.patientId &&
@@ -295,14 +297,14 @@ export function removeLocalTreatmentPlan(
   now: Date,
 ): LocalTreatmentRecord {
   const visit = getLocalTreatmentVisit(record);
-  assertDentist(visit, actor);
+  assertCanDocument(visit, actor);
   assertEditable(visit);
   const plan = findPlan(record, input.planItemId, visit);
   if (plan.version !== input.expectedVersion)
     throw new Error('The treatment plan changed. Refresh before removing it.');
   if (!canRemoveLocalTreatmentPlan(record, actor, plan.id)) {
     throw new Error(
-      'Only never-started doctor plans from this editable visit can be removed. Use cancellation or correction with a reason for recorded treatment.',
+      'Only your never-started plans from this editable visit can be removed. Use cancellation or correction with a reason for recorded treatment.',
     );
   }
   return replaceVisit(
@@ -343,7 +345,7 @@ export function transitionLocalTreatmentPlan(
   now: Date,
 ): LocalTreatmentRecord {
   const visit = getLocalTreatmentVisit(record);
-  assertDentist(visit, actor);
+  assertCanDocument(visit, actor);
   assertEditable(visit);
   const plan = findPlan(record, id, visit);
   if (!reason.trim())
@@ -380,6 +382,7 @@ export function transitionLocalTreatmentPlan(
                     .filter(Boolean)
                     .join('\n\n'),
                   closedAt: now,
+                  closedByUserId: actor.userId,
                   version: session.version + 1,
                 }
               : session,
@@ -416,17 +419,9 @@ export function completeLocalTreatmentVisit(
   now: Date,
 ): LocalTreatmentRecord {
   const visit = getLocalTreatmentVisit(record);
-  assertDentist(visit, actor);
+  assertCanDocument(visit, actor);
   assertEditable(visit);
   assertReviewedEntries(visit);
-  if (
-    visit.documentationHandoff &&
-    !['ACCEPTED', 'CANCELLED'].includes(visit.documentationHandoff.status)
-  ) {
-    throw new Error(
-      'Resolve the assistant handoff before completing the visit.',
-    );
-  }
   const treatmentSessions = record.sessions.filter(
     ({ visitId }) => visitId === visit.id,
   );
@@ -539,7 +534,7 @@ function toPlanItem(
     source:
       act.enteredByUserId === visit.responsibleDentistId
         ? 'DOCTOR_DIRECT'
-        : 'ASSISTANT_HANDOFF',
+        : 'STAFF_HANDOFF',
     approvedAt: act.approvedByDentistId ? act.updatedAt : null,
     removedAt: null,
     removedByUserId: null,

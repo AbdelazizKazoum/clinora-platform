@@ -12,6 +12,8 @@ export const TREATMENT_VISIT_STATUSES = [
 export const DOCUMENTATION_HANDOFF_STATUSES = [
   'ASSIGNED',
   'IN_PROGRESS',
+  'COMPLETED',
+  // Read compatibility for records created under the former review workflow.
   'SUBMITTED',
   'RETURNED',
   'ACCEPTED',
@@ -223,7 +225,7 @@ export interface TreatmentPlanItem extends TreatmentAct {
   readonly patientId: string;
   readonly originVisitId: string;
   readonly originHandoffId: string | null;
-  readonly source: 'DOCTOR_DIRECT' | 'ASSISTANT_HANDOFF';
+  readonly source: 'DOCTOR_DIRECT' | 'STAFF_HANDOFF' | 'ASSISTANT_HANDOFF';
   readonly approvedAt: Date | null;
   readonly removedAt: Date | null;
   readonly removedByUserId: string | null;
@@ -248,6 +250,7 @@ export interface TreatmentSession {
   readonly planSnapshot: TreatmentAct;
   readonly startedAt: Date;
   readonly closedAt: Date | null;
+  readonly closedByUserId?: string | null;
   readonly version: number;
 }
 
@@ -255,7 +258,10 @@ export interface DocumentationHandoff {
   id: string;
   status: DocumentationHandoffStatus;
   assignedByDentistId: string;
-  assignedToAssistantId: string;
+  assignedToUserId: string;
+  assignedToRole?: 'dental_assistant' | 'secretary';
+  completedAt?: Date | null;
+  completedByUserId?: string | null;
   note: string | null;
   reviewNote: string | null;
   revision: number;
@@ -277,6 +283,8 @@ export type TreatmentAuditAction =
   | 'TREATMENT_SESSION_CLOSED'
   | 'VISIT_COMPLETED'
   | 'DOCUMENTATION_ASSIGNED'
+  | 'DOCUMENTATION_STARTED'
+  | 'DOCUMENTATION_COMPLETED'
   | 'DOCUMENTATION_RETURNED'
   | 'DOCUMENTATION_ACCEPTED'
   | 'PERIODONTAL_UPDATED'
@@ -311,6 +319,7 @@ export interface TreatmentVisit {
   documentationHandoff: DocumentationHandoff | null;
   startedAt: Date | null;
   completedAt: Date | null;
+  completedByUserId?: string | null;
   cancelledAt: Date | null;
   cancellationReason: string | null;
   createdAt: Date;
@@ -336,7 +345,8 @@ export const treatmentVisitStatusLabels = {
 
 export const documentationHandoffStatusLabels = {
   ASSIGNED: 'Assigned',
-  IN_PROGRESS: 'Assistant documenting',
+  IN_PROGRESS: 'Documentation in progress',
+  COMPLETED: 'Documentation completed',
   SUBMITTED: 'Submitted for review',
   RETURNED: 'Returned for correction',
   ACCEPTED: 'Accepted by dentist',

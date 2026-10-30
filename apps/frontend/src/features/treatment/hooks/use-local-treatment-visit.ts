@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import {
   MOCK_ASSISTANT,
+  MOCK_SECRETARY,
   MOCK_DENTIST,
   MOCK_TREATMENT_PATIENT,
   createMockTreatmentVisit,
@@ -21,22 +22,16 @@ import {
   type TreatmentInputDraft,
 } from '../model/treatment-inputs';
 import {
-  approveWorkspaceAct,
-  approveWorkspaceFinding,
-  approveWorkspacePeriodontalExamination,
   assignWorkspaceDocumentation,
   recordWorkspaceAct,
   recordWorkspaceFinding,
   removeWorkspaceFinding,
-  reviewWorkspaceDocumentation,
   startWorkspaceDocumentation,
-  submitWorkspaceDocumentation,
   updateWorkspacePeriodontalExamination,
   type PeriodontalExaminationUpdater,
 } from '../model/treatment-workspace';
 
 import {
-  assertReviewedEntries,
   canRemoveLocalTreatmentPlan,
   closeLocalTreatmentSession,
   completeLocalTreatmentVisit,
@@ -61,9 +56,7 @@ type ActDraft = Omit<TreatmentInputDraft, 'id' | 'code'> & {
 export interface TreatmentVisitActions {
   readonly recordFinding: (input: FindingDraft) => void;
   readonly recordAct: (input: ActDraft) => void;
-  readonly approveFinding: (id: string) => void;
   readonly removeFinding: (id: string, reason?: string) => void;
-  readonly approveAct: (id: string) => void;
   readonly removeAct: (id: string) => void;
   readonly transitionAct: (
     id: string,
@@ -80,15 +73,13 @@ export interface TreatmentVisitActions {
   readonly assignDocumentation: (
     assistantId: string,
     instruction: string,
+    assigneeRole?: 'dental_assistant' | 'secretary',
   ) => void;
   readonly startDocumentation: () => void;
-  readonly submitDocumentation: () => void;
-  readonly reviewDocumentation: (decision: 'ACCEPT' | 'RETURN') => void;
   readonly completeVisit: () => void;
   readonly updatePeriodontalExamination: (
     update: PeriodontalExaminationUpdater,
   ) => void;
-  readonly approvePeriodontalExamination: () => void;
 }
 
 export interface TreatmentFeedback {
@@ -227,9 +218,7 @@ export function useLocalTreatmentVisit(
               createTreatmentFindingInput({ ...input, id }),
               now,
             ),
-          actor.role === 'doctor'
-            ? 'Clinical finding confirmed and added to the chart.'
-            : 'Draft finding added for dentist review.',
+          'Clinical finding confirmed and added to the chart.',
         );
       },
       recordAct: (input) => {
@@ -242,25 +231,13 @@ export function useLocalTreatmentVisit(
               createTreatmentActInput({ ...input, id }),
               now,
             ),
-          actor.role === 'doctor'
-            ? 'Treatment act planned and projected on the odontogram where supported.'
-            : 'Draft treatment act added for dentist approval.',
+          'Treatment act planned and projected on the odontogram where supported.',
         );
       },
-      approveFinding: (id) =>
-        run(
-          (visit, now) => approveWorkspaceFinding(visit, actor, id, now),
-          'Clinical finding confirmed.',
-        ),
       removeFinding: (id, reason) =>
         run(
           (visit, now) => removeWorkspaceFinding(visit, actor, id, reason, now),
           'Clinical finding removed from the active chart.',
-        ),
-      approveAct: (id) =>
-        run(
-          (visit, now) => approveWorkspaceAct(visit, actor, id, now),
-          'Treatment act approved.',
         ),
       removeAct: (id) => {
         const expectedVersion =
@@ -306,7 +283,7 @@ export function useLocalTreatmentVisit(
           }, 'Treatment plan updated.');
         }
       },
-      assignDocumentation: (assistantId, instruction) => {
+      assignDocumentation: (assistantId, instruction, assigneeRole) => {
         const id = nextId('handoff');
         run(
           (visit, now) =>
@@ -317,29 +294,15 @@ export function useLocalTreatmentVisit(
               id,
               instruction,
               now,
+              assigneeRole,
             ),
-          'Documentation assigned to the assistant.',
+          'Visit documentation assigned.',
         );
       },
       startDocumentation: () =>
         run(
           (visit, now) => startWorkspaceDocumentation(visit, actor, now),
           'Documentation session started.',
-        ),
-      submitDocumentation: () =>
-        run(
-          (visit, now) => submitWorkspaceDocumentation(visit, actor, now),
-          'Documentation submitted for dentist review.',
-        ),
-      reviewDocumentation: (decision) =>
-        run(
-          (visit, now) => {
-            if (decision === 'ACCEPT') assertReviewedEntries(visit);
-            return reviewWorkspaceDocumentation(visit, actor, decision, now);
-          },
-          decision === 'ACCEPT'
-            ? 'Assistant documentation accepted.'
-            : 'Documentation returned for correction.',
         ),
       completeVisit: () =>
         runRecord(
@@ -351,12 +314,6 @@ export function useLocalTreatmentVisit(
           (visit, now) =>
             updateWorkspacePeriodontalExamination(visit, actor, update, now),
           'Periodontal examination updated.',
-        ),
-      approvePeriodontalExamination: () =>
-        run(
-          (visit, now) =>
-            approveWorkspacePeriodontalExamination(visit, actor, now),
-          'Periodontal examination confirmed.',
         ),
     };
   }, [actor, state.data.planItems, state.data.sessions]);
@@ -395,6 +352,7 @@ export function useLocalTreatmentVisit(
     setActor,
     dentist,
     assistant: MOCK_ASSISTANT,
+    secretary: MOCK_SECRETARY,
     patient: { ...MOCK_TREATMENT_PATIENT, id: visit.patientId },
     actions,
     showFeedback,

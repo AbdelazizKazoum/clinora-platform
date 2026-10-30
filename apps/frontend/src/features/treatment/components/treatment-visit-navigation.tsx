@@ -1,4 +1,5 @@
 import { Button, Card, CardBody, Form } from 'react-bootstrap';
+import { canEditTreatmentDraft } from '../model/treatment.rules';
 import type { TreatmentVisit } from '../model/treatment';
 import { treatmentVisitStatusLabels } from '../model/treatment';
 import type { MockTreatmentActor } from '../model/treatment-workspace';
@@ -44,11 +45,12 @@ export function TreatmentVisitNavigation({
               ))}
             </Form.Select>
           </Form.Group>
-          {dentist && !closed && !visit.documentationHandoff && (
-            <Button variant="success" onClick={actions.completeVisit}>
-              Complete visit
-            </Button>
-          )}
+          {canEditTreatmentDraft(visit, actor.userId, actor.role) &&
+            !closed && (
+              <Button variant="success" onClick={actions.completeVisit}>
+                Complete visit
+              </Button>
+            )}
           {dentist && (
             <Button
               variant="outline-primary"
